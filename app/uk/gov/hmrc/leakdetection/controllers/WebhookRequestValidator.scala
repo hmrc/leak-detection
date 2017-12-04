@@ -54,7 +54,7 @@ object WebhookRequestValidator {
   private def errorAsJson(errorMsg: String): JsValue =
     Json.obj("error" -> errorMsg)
 
-  private def isValidSignature(payload: String, ghSignature: String, secret: String): Boolean = {
+  def isValidSignature(payload: String, ghSignature: String, secret: String): Boolean = {
     val algorithm  = "HmacSHA1"
     val secretSpec = new SecretKeySpec(secret.getBytes(), algorithm)
     val hmac       = Mac.getInstance(algorithm)
@@ -63,13 +63,6 @@ object WebhookRequestValidator {
 
     val sig           = hmac.doFinal(payload.getBytes("UTF-8"))
     val hashOfPayload = s"sha1=${DatatypeConverter.printHexBinary(sig)}"
-
-    println
-    println("payload when verifying:")
-    println(payload)
-    println
-    println(s"hashOfPayload $hashOfPayload")
-    println(s"ghSignature $ghSignature")
 
     ghSignature.equalsIgnoreCase(hashOfPayload)
   }

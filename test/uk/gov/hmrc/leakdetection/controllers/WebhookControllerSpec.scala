@@ -36,7 +36,7 @@ class WebhookControllerSpec extends WordSpec with Matchers with OneAppPerSuite {
 
       implicit val timeout = Timeout(5.seconds)
 
-      val input = jsonify(aPayloadDetails)
+      val input = asJson(aPayloadDetails)
 
       println
       println(Json.prettyPrint(Json.parse(input)))

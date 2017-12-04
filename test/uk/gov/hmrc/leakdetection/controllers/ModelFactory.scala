@@ -72,7 +72,7 @@ object ModelFactory {
       }
     }
 
-  def jsonify[A: Writes](a: A): String =
+  def asJson[A: Writes](a: A): String =
     Json.stringify(Json.toJson(a))
 
 }
