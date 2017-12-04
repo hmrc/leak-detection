@@ -16,39 +16,36 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
+import ModelFactory._
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
+import concurrent.duration._
+import org.apache.commons.codec.digest.HmacUtils
 import org.scalatest.{Matchers, WordSpec}
 import org.scalatestplus.play.OneAppPerSuite
+import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.test.Helpers.CONTENT_TYPE
 import play.api.test.{FakeRequest, Helpers}
-import concurrent.duration._
-import ModelFactory._
-import play.api.libs.json.Json
+import play.api.{Application, Configuration}
 
-class WebhookControllerSpec extends WordSpec with Matchers with OneAppPerSuite {
-
-  implicit val system: ActorSystem    = ActorSystem()
-  implicit val mat: ActorMaterializer = ActorMaterializer()
+class WebhookControllerSpec extends WordSpec with Matchers with OneAppPerSuite with Fixtures {
 
   "Github Webhook" should {
     "work e2e" in {
 
-      implicit val timeout = Timeout(5.seconds)
-
-      val input = asJson(aPayloadDetails)
-
-      println
-      println(Json.prettyPrint(Json.parse(input)))
-      println
-
-      println
-      println(s"input was = $input")
-      println
+      val githubRequest: String = asJson(aPayloadDetails)
 
       val req =
         FakeRequest("POST", "/leak-detection/validate")
-          .withBody(input)
+          .withBody(githubRequest)
+          .withHeaders(
+            CONTENT_TYPE      -> "application/json",
+            "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequest))
+          )
+
+      implicit val timeout = Timeout(5.seconds)
 
       val res = Helpers.route(app, req).get
 
@@ -60,4 +57,43 @@ class WebhookControllerSpec extends WordSpec with Matchers with OneAppPerSuite {
 
     }
   }
+
+}
+
+trait Fixtures { self: OneAppPerSuite =>
+
+  implicit val system: ActorSystem    = ActorSystem()
+  implicit val mat: ActorMaterializer = ActorMaterializer()
+
+  val secret = aString()
+
+  implicit override lazy val app: Application =
+    new GuiceApplicationBuilder()
+      .configure(
+        Configuration(
+          ConfigFactory.parseString(
+            s"""
+              rules {
+                publicRules = []
+                privateRules = [
+                  {
+                   regex = "^.*(null).*$$"
+                   tag = "uses nulls!"
+                  },
+                  {
+                   regex = "^.*(throw).*$$"
+                   tag = "throws exceptions!"
+                  }
+                ]
+              }
+
+              githubSecrets {
+                webhookSecretKey = $secret
+                personalAccessToken = pat
+              }
+            """
+          ))
+      )
+      .build
+
 }

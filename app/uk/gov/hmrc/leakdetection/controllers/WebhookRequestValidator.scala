@@ -25,7 +25,7 @@ import javax.xml.bind.DatatypeConverter
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 import play.api.libs.streams.Accumulator
-import play.api.mvc.BodyParser
+import play.api.mvc.{BodyParser, Headers}
 import play.api.mvc.Results._
 import scala.concurrent.ExecutionContext
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
@@ -34,25 +34,34 @@ object WebhookRequestValidator {
 
   val logger = Logger(this.getClass.getName)
 
-  def parser(implicit ec: ExecutionContext): BodyParser[PayloadDetails] =
-    BodyParser { _ =>
+  def parser(webhookSecret: String)(implicit ec: ExecutionContext): BodyParser[PayloadDetails] =
+    BodyParser { rh =>
       val sink = Sink.fold[ByteString, ByteString](ByteString.empty)(_ ++ _)
-
       Accumulator(sink).map { bytes =>
         Either
           .catchNonFatal {
-            Json.parse(bytes.utf8String).as[PayloadDetails]
+            validateAndParse(bytes, rh.headers, webhookSecret)
           }
           .leftMap { ex =>
-            val msg = s"Error parsing request, details: ${ex.getMessage}"
-            logger.warn(msg)
-            BadRequest(errorAsJson(msg))
+            logger.warn(ex.getMessage)
+            BadRequest(errorAsJson(ex.getMessage))
           }
       }
     }
 
-  private def errorAsJson(errorMsg: String): JsValue =
-    Json.obj("error" -> errorMsg)
+  private def validateAndParse(bytes: ByteString, headers: Headers, webhookSecret: String) = {
+    val payload = bytes.utf8String
+    val signature =
+      headers
+        .get("X-Hub-Signature")
+        .getOrElse(throw new Exception("Signature not found in headers"))
+
+    if (isValidSignature(payload, signature, webhookSecret)) {
+      Json.parse(payload).as[PayloadDetails]
+    } else {
+      throw new Exception("Invalid signature")
+    }
+  }
 
   def isValidSignature(payload: String, ghSignature: String, secret: String): Boolean = {
     val algorithm  = "HmacSHA1"
@@ -66,4 +75,7 @@ object WebhookRequestValidator {
 
     ghSignature.equalsIgnoreCase(hashOfPayload)
   }
+
+  private def errorAsJson(errorMsg: String): JsValue =
+    Json.obj("error" -> "Error parsing request", "details" -> errorMsg)
 }

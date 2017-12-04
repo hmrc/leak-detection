@@ -16,19 +16,23 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import WebhookRequestValidator.parser
 import javax.inject.Inject
 import play.api.Logger
 import play.api.mvc.Action
 import scala.concurrent.ExecutionContext
+import uk.gov.hmrc.leakdetection.ConfigLoader
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import scala.concurrent.ExecutionContext.Implicits.global
 
-class WebhookController @Inject()(implicit ec: ExecutionContext) extends BaseController {
+class WebhookController @Inject()(configLoader: ConfigLoader) extends BaseController {
 
   val logger = Logger(classOf[WebhookController])
 
-  def processGithubWebhook() = Action(parser) { implicit request =>
-    Ok("foo")
-  }
+  def processGithubWebhook =
+    Action(WebhookRequestValidator.parser(webhookSecret)) { implicit request =>
+      Ok("foo")
+    }
 
+  val webhookSecret: String =
+    configLoader.cfg.githubSecrets.webhookSecretKey
 }

@@ -55,7 +55,7 @@ class WebhookRequestValidatorSpec extends WordSpec with Matchers {
 
       val res = isValidSignature(payload, validSignature, secret)
 
-      withClue("Expected valid signature") {
+      withClue("Expected signature validation to succeed") {
         res shouldBe true
       }
     }
