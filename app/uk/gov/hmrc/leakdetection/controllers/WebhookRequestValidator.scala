@@ -25,17 +25,22 @@ import javax.xml.bind.DatatypeConverter
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 import play.api.libs.streams.Accumulator
-import play.api.mvc.{BodyParser, Headers}
 import play.api.mvc.Results._
-import scala.concurrent.ExecutionContext
+import play.api.mvc.{BodyParser, Headers}
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
+import uk.gov.hmrc.play.HeaderCarrierConverter
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
 object WebhookRequestValidator {
 
   val logger = Logger(this.getClass.getName)
 
-  def parser(webhookSecret: String)(implicit ec: ExecutionContext): BodyParser[PayloadDetails] =
+  def parser(webhookSecret: String): BodyParser[PayloadDetails] =
     BodyParser { rh =>
+      implicit val hc: HeaderCarrier =
+        HeaderCarrierConverter.fromHeadersAndSession(rh.headers)
+
       val sink = Sink.fold[ByteString, ByteString](ByteString.empty)(_ ++ _)
       Accumulator(sink).map { bytes =>
         Either

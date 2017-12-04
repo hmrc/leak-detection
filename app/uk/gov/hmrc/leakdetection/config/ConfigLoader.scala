@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.leakdetection
+package uk.gov.hmrc.leakdetection.config
 
 import javax.inject.Inject
 import play.api.Configuration
-import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 import pureconfig.syntax._
+import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 
 class ConfigLoader @Inject()(configuration: Configuration) {
 
