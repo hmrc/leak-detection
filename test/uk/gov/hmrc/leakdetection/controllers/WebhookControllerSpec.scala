@@ -62,7 +62,7 @@ class WebhookControllerSpec
 
         And("the request is signed using a secret known to us")
         val signedRequest =
-          FakeRequest("POST", "/leak-detection/validate")
+          FakeRequest("POST", "/validate")
             .withBody(githubRequestPayload)
             .withHeaders(
               CONTENT_TYPE      -> "application/json",
@@ -110,11 +110,11 @@ trait Fixtures { self: OneAppPerSuite with MongoSpecSupport =>
                 privateRules = [
                   {
                    regex = "^.*(null).*$$"
-                   tag = "uses nulls!"
+                   description = "uses nulls!"
                   },
                   {
                    regex = "^.*(throw).*$$"
-                   tag = "throws exceptions!"
+                   description = "throws exceptions!"
                   }
                 ]
               }

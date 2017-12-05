@@ -41,7 +41,7 @@ final case class AllRules(
 
 final case class Rule(
   regex: String,
-  tag: String
+  description: String
 )
 
 final case class GithubSecrets(

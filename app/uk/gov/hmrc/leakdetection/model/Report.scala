@@ -38,7 +38,7 @@ object Report {
   implicit val format: Format[Report] = Json.format[Report]
 }
 
-case class ReportLine(filePath: String, lineNumber: Int, urlToSource: String, tag: String)
+case class ReportLine(filePath: String, lineNumber: Int, urlToSource: String, description: String)
 
 object ReportLine {
   def build(payloadDetails: PayloadDetails, result: Result): ReportLine = {
@@ -48,7 +48,8 @@ object ReportLine {
       result.filePath,
       result.scanResults.lineNumber,
       s"$repoUrl/blob/$branch${result.filePath}#L${result.scanResults.lineNumber}",
-      result.scanResults.tag)
+      result.scanResults.description
+    )
   }
 
   implicit val format: Format[ReportLine] = Json.format[ReportLine]

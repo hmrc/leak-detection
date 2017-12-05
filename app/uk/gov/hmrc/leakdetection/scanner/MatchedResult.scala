@@ -16,4 +16,4 @@
 
 package uk.gov.hmrc.leakdetection.scanner
 
-case class MatchedResult(lineText: String, lineNumber: Int, tag: String)
+case class MatchedResult(lineText: String, lineNumber: Int, description: String)

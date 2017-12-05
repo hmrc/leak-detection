@@ -55,28 +55,28 @@ class RegexMatchingEngineSpec
       val matches = new RegexMatchingEngine().run(
         explodedZipDir = rootDir.toNIO.toFile,
         rules = Seq(
-          Rule(".*secretA.*", "tag 1"),
-          Rule(".*secretB.*", "tag 2"),
-          Rule(".*secretC.*", "tag 3")
+          Rule(".*secretA.*", "descr 1"),
+          Rule(".*secretB.*", "descr 2"),
+          Rule(".*secretC.*", "descr 3")
         )
       )
 
       matches should have size 6
 
       matches should contain(
-        Result("/dir1/fileA", MatchedResult("matching on: secretA", 1, "tag 1")))
+        Result("/dir1/fileA", MatchedResult("matching on: secretA", 1, "descr 1")))
       matches should contain(
-        Result("/dir1/fileA", MatchedResult("matching on: secretA again", 2, "tag 1")))
+        Result("/dir1/fileA", MatchedResult("matching on: secretA again", 2, "descr 1")))
 
       matches should contain(
-        Result("/dir2/fileB", MatchedResult("matching on: secretB", 2, "tag 2")))
+        Result("/dir2/fileB", MatchedResult("matching on: secretB", 2, "descr 2")))
       matches should contain(
-        Result("/dir2/fileB", MatchedResult("matching on: secretB again", 3, "tag 2")))
+        Result("/dir2/fileB", MatchedResult("matching on: secretB again", 3, "descr 2")))
 
       matches should contain(
-        Result("/dir2/dir3/fileC", MatchedResult("matching on: secretC", 1, "tag 3")))
+        Result("/dir2/dir3/fileC", MatchedResult("matching on: secretC", 1, "descr 3")))
       matches should contain(
-        Result("/dir2/dir3/fileC", MatchedResult("matching on: secretC again", 2, "tag 3")))
+        Result("/dir2/dir3/fileC", MatchedResult("matching on: secretC again", 2, "descr 3")))
     }
 
   }
