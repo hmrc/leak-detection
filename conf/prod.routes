@@ -1,6 +1,5 @@
 # Add all the application routes to the app.routes file
-->         /                          health.Routes
+->         /                            app.Routes
+->         /                            health.Routes
 
-GET        /admin/metrics             @com.kenshoo.play.metrics.MetricsController.metrics
-
-POST       /validate                  @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook
+GET        /admin/metrics               @com.kenshoo.play.metrics.MetricsController.metrics
