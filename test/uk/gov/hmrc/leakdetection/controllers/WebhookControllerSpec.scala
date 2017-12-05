@@ -27,41 +27,61 @@ import java.io.{BufferedOutputStream, ByteArrayInputStream, ByteArrayOutputStrea
 import java.util.UUID
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import org.apache.commons.codec.digest.HmacUtils
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{FeatureSpec, GivenWhenThen, Matchers}
 import org.scalatestplus.play.OneAppPerSuite
 import play.api._
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.Json
 import play.api.mvc.{Action, Results}
+import play.api.routing.sird._
 import play.api.test.Helpers.{CONTENT_DISPOSITION, CONTENT_TYPE}
 import play.api.test.{FakeRequest, Helpers}
-import play.core.server.{NettyServer, ServerConfig}
-import play.api.routing.sird._
+import uk.gov.hmrc.leakdetection.TestServer
+import uk.gov.hmrc.leakdetection.model.Report
 
-class WebhookControllerSpec extends WordSpec with Matchers with OneAppPerSuite with Fixtures {
+class WebhookControllerSpec
+    extends FeatureSpec
+    with GivenWhenThen
+    with Matchers
+    with OneAppPerSuite
+    with Fixtures {
 
-  "Github Webhook" should {
-    "work e2e" in withFakeGithub { archiveUrl =>
-      val githubRequest: String =
-        asJson(aPayloadDetails.copy(archiveUrl = archiveUrl, isPrivate = true))
+  feature("Verifying Github commits") {
 
-      val req =
-        FakeRequest("POST", "/leak-detection/validate")
-          .withBody(githubRequest)
-          .withHeaders(
-            CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequest))
-          )
+    scenario("happy path") {
 
-      implicit val timeout = Timeout(5.seconds)
+      withFakeGithub {
+        Given("Github makes a request with all required fields incl. a link to download a zip")
+        And("repository is private")
+        val githubRequestPayload: String =
+          asJson(aPayloadDetails.copy(archiveUrl = archiveUrl, isPrivate = true))
 
-      val res = Helpers.route(app, req).get
+        And("the request is signed using a secret known to us")
+        val signedRequest =
+          FakeRequest("POST", "/leak-detection/validate")
+            .withBody(githubRequestPayload)
+            .withHeaders(
+              CONTENT_TYPE      -> "application/json",
+              "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequestPayload))
+            )
 
-      println("-----------------------")
-      println(Helpers.contentAsString(res))
-      println("-----------------------")
+        And("Github, when called will return a zip with source code files")
+        filesInTheArchive = List(
+          TestZippedFile(content = "package foo \n var x = null"),
+          TestZippedFile(content = "Option(1).getOrElse(throw SadnessException)")
+        )
 
-      Helpers.status(res) shouldBe 200
+        When("Leak Detection service receives a request")
+        val res = Helpers.route(app, signedRequest).get
 
+        Then("Processing should be successful")
+        Helpers.status(res) shouldBe 200
+
+        And("Report should include info about all found problems")
+        val report = Json.parse(Helpers.contentAsString(res)).as[Report]
+        report.inspectionResults.size shouldBe 2
+
+      }
     }
   }
 
@@ -69,6 +89,7 @@ class WebhookControllerSpec extends WordSpec with Matchers with OneAppPerSuite w
 
 trait Fixtures { self: OneAppPerSuite =>
 
+  implicit val timeout                = Timeout(5.seconds)
   implicit val system: ActorSystem    = ActorSystem()
   implicit val mat: ActorMaterializer = ActorMaterializer()
 
@@ -80,7 +101,7 @@ trait Fixtures { self: OneAppPerSuite =>
         Configuration(
           ConfigFactory.parseString(
             s"""
-              rules {
+              allRules {
                 publicRules = []
                 privateRules = [
                   {
@@ -103,54 +124,36 @@ trait Fixtures { self: OneAppPerSuite =>
       )
       .build
 
-  val server = NettyServer.fromRouter(
-    new ServerConfig(
-      rootDir    = new java.io.File("."),
-      port       = Some(0),
-      sslPort    = None,
-      address    = "0.0.0.0",
-      mode       = play.api.Mode.Test,
-      properties = System.getProperties,
-      configuration = play.api.Configuration(
-        "play.server.netty" -> Map(
-          "maxInitialLineLength" -> 4096,
-          "maxHeaderSize"        -> 8192,
-          "maxChunkSize"         -> 8192,
-          "log.wire"             -> false,
-          "eventLoopThreads"     -> 0,
-          "transport"            -> "jdk",
-          "option.child"         -> Map()
-        )
-      )
-    )) {
-    case GET =>
-      Action {
-        Results.Ok
-          .chunked(StreamConverters.fromInputStream(createZip))
-          .withHeaders(
-            CONTENT_TYPE        -> "application/zip",
-            CONTENT_DISPOSITION -> s"attachment; filename = test.zip"
-          )
-      }
-  }
-
-  type ArchiveUrl = String
-
-  def withFakeGithub(f: ArchiveUrl => Any): Any =
+  def withFakeGithub(block: => Any): Any =
     try {
-      f(s"http://localhost:${server.httpPort.get}")
+      block
     } finally {
       server.stop
     }
 
-  var zippedFiles = List.empty[TestZippedFile]
+  val server =
+    TestServer {
+      case GET(p"/") =>
+        Action {
+          Results.Ok
+            .chunked(StreamConverters.fromInputStream(createZip))
+            .withHeaders(
+              CONTENT_TYPE        -> "application/zip",
+              CONTENT_DISPOSITION -> s"attachment; filename = test.zip"
+            )
+        }
+    }
+
+  val archiveUrl = s"http://localhost:${server.httpPort.get}/"
+
+  var filesInTheArchive: List[TestZippedFile] = _
 
   def createZip(): ByteArrayInputStream = {
     val baos = new ByteArrayOutputStream()
     val zos  = new ZipOutputStream(new BufferedOutputStream(baos))
 
     try {
-      zippedFiles.foreach { file =>
+      filesInTheArchive.foreach { file =>
         zos.putNextEntry(new ZipEntry(file.path))
         zos.write(file.content.getBytes("UTF-8"))
         zos.closeEntry()

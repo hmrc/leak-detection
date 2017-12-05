@@ -30,7 +30,7 @@ class ConfigLoader @Inject()(configuration: Configuration) {
 }
 
 final case class Cfg(
-  rules: AllRules,
+  allRules: AllRules,
   githubSecrets: GithubSecrets
 )
 

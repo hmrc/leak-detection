@@ -18,18 +18,22 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import javax.inject.Inject
 import play.api.Logger
+import play.api.libs.json.Json
 import play.api.mvc.{Action, BodyParser}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
+import uk.gov.hmrc.leakdetection.services.ScanningService
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 
-class WebhookController @Inject()(configLoader: ConfigLoader) extends BaseController {
+class WebhookController @Inject()(configLoader: ConfigLoader, scanningService: ScanningService)
+    extends BaseController {
 
   val logger = Logger(classOf[WebhookController])
 
   def processGithubWebhook() =
     Action(validateAndParse) { implicit request =>
-      Ok("foo")
+      val report = scanningService.scanCodeBaseFromGit(request.body)
+      Ok(Json.toJson(report))
     }
 
   val validateAndParse: BodyParser[PayloadDetails] =
