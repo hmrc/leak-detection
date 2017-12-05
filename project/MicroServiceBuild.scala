@@ -4,7 +4,7 @@ import play.core.PlayVersion
 
 object MicroServiceBuild extends Build with MicroService {
 
-  val appName = "leak-detection-service"
+  val appName = "leak-detection"
 
   override lazy val appDependencies: Seq[ModuleID] = compile ++ test()
 
