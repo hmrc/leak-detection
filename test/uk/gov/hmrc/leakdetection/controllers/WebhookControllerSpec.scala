@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import ModelFactory._
+import uk.gov.hmrc.leakdetection.ModelFactory._
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.StreamConverters
@@ -36,15 +36,19 @@ import play.api.mvc.{Action, Results}
 import play.api.routing.sird._
 import play.api.test.Helpers.{CONTENT_DISPOSITION, CONTENT_TYPE}
 import play.api.test.{FakeRequest, Helpers}
+import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.leakdetection.TestServer
 import uk.gov.hmrc.leakdetection.model.Report
+import play.api.inject.bind
+import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 
 class WebhookControllerSpec
     extends FeatureSpec
     with GivenWhenThen
     with Matchers
     with OneAppPerSuite
-    with Fixtures {
+    with Fixtures
+    with MongoSpecSupport {
 
   feature("Verifying Github commits") {
 
@@ -87,9 +91,9 @@ class WebhookControllerSpec
 
 }
 
-trait Fixtures { self: OneAppPerSuite =>
+trait Fixtures { self: OneAppPerSuite with MongoSpecSupport =>
 
-  implicit val timeout                = Timeout(5.seconds)
+  implicit val timeout                = Timeout(10.seconds)
   implicit val system: ActorSystem    = ActorSystem()
   implicit val mat: ActorMaterializer = ActorMaterializer()
 
@@ -122,6 +126,9 @@ trait Fixtures { self: OneAppPerSuite =>
             """
           ))
       )
+      .overrides(bind[ReactiveMongoComponent].toInstance(new ReactiveMongoComponent {
+        override def mongoConnector: MongoConnector = mongoConnectorForTest
+      }))
       .build
 
   def withFakeGithub(block: => Any): Any =

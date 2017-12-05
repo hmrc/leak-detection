@@ -18,8 +18,10 @@ package uk.gov.hmrc.leakdetection.services
 
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.io.FileUtils
+import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetectionservice.services.ArtifactService
 
@@ -27,16 +29,18 @@ import uk.gov.hmrc.leakdetectionservice.services.ArtifactService
 class ScanningService @Inject()(
   artifactService: ArtifactService,
   regexMatchingEngine: RegexMatchingEngine,
-  configLoader: ConfigLoader
+  configLoader: ConfigLoader,
+  reportsRepository: ReportsRepository
 ) {
 
-  def scanCodeBaseFromGit(p: PayloadDetails): Report = {
+  def scanCodeBaseFromGit(p: PayloadDetails)(implicit ec: ExecutionContext): Future[Report] = {
     import configLoader.cfg._
     val explodedZipDir = artifactService.getZipAndExplode(githubSecrets.personalAccessToken, p)
     try {
       val rls     = if (p.isPrivate) allRules.privateRules else allRules.publicRules
       val results = regexMatchingEngine.run(explodedZipDir, rls)
-      Report.create(p, results)
+      val report  = Report.create(p, results)
+      reportsRepository.saveReport(report).map(_ => report)
     } finally {
       FileUtils.deleteDirectory(explodedZipDir)
     }

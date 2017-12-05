@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import ModelFactory._
+import uk.gov.hmrc.leakdetection.ModelFactory._
 import org.apache.commons.codec.digest.HmacUtils
 import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.Json

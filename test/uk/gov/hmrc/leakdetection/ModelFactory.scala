@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.leakdetection.controllers
+package uk.gov.hmrc.leakdetection
 
 import play.api.libs.json.{JsValue, Json, Writes}
 import scala.util.Random
