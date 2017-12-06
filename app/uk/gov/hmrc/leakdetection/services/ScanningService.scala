@@ -23,7 +23,6 @@ import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
-import uk.gov.hmrc.leakdetectionservice.services.ArtifactService
 
 @Singleton
 class ScanningService @Inject()(
@@ -37,8 +36,8 @@ class ScanningService @Inject()(
     import configLoader.cfg._
     val explodedZipDir = artifactService.getZipAndExplode(githubSecrets.personalAccessToken, p)
     try {
-      val rls     = if (p.isPrivate) allRules.privateRules else allRules.publicRules
-      val results = regexMatchingEngine.run(explodedZipDir, rls)
+      val rules   = if (p.isPrivate) allRules.privateRules else allRules.publicRules
+      val results = regexMatchingEngine.run(explodedZipDir, rules)
       val report  = Report.create(p, results)
       reportsRepository.saveReport(report).map(_ => report)
     } finally {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.leakdetectionservice.services
+package uk.gov.hmrc.leakdetection.services
 
 import java.io.File
 import java.nio.file.Files

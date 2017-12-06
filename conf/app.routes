@@ -1,3 +1,6 @@
 # microservice specific routes
 
 POST       /validate                @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook
+
+POST       /test-public-rules       @uk.gov.hmrc.leakdetection.controllers.RulesController.testPublicRules
+POST       /test-private-rules      @uk.gov.hmrc.leakdetection.controllers.RulesController.testPublicRules
