@@ -28,11 +28,14 @@ object ModelFactory {
   def few[T](f: () => T): List[T] =
     List.fill(Random.nextInt(5))(f())
 
+  def maybe[T](t: T): Option[T] =
+    if (aBoolean) Some(t) else None
+
   def anAuthor =
     Author(
       name     = aString("author"),
       email    = aString("email"),
-      username = aString("username")
+      username = maybe(aString("username"))
     )
 
   def aBoolean: Boolean = Random.nextBoolean()

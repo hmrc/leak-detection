@@ -24,7 +24,7 @@ import scala.language.implicitConversions
 case class Author(
   name: String,
   email: String,
-  username: String
+  username: Option[String]
 )
 
 object Author {
