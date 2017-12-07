@@ -30,19 +30,22 @@ class RegexScannerSpec extends FreeSpec with Matchers {
             |this matches the regex too
             |nothing matching here
             |""".stripMargin
-        val descr = "descr for regex"
-        val rule  = Rule("(matches)", descr)
+        val descr  = "descr for regex"
+        val ruleId = "rule-1"
+        val rule   = Rule(ruleId, "(matches)", descr)
 
         new RegexScanner(rule).scan(text) should
           contain theSameElementsAs Seq(
-          MatchedResult("this matches the regex", lineNumber     = 2, descr),
-          MatchedResult("this matches the regex too", lineNumber = 3, descr)
+          MatchedResult("this matches the regex", lineNumber     = 2, ruleId, descr),
+          MatchedResult("this matches the regex too", lineNumber = 3, ruleId, descr)
         )
       }
 
       "and return empty seq if text doesn't have matching lines for the given regex" in {
-        val text = "this is a test"
-        val rule = Rule("(was)", "descr")
+        val text   = "this is a test"
+        val ruleId = "rule-1"
+
+        val rule = Rule(ruleId, "(was)", "descr")
 
         new RegexScanner(rule).scan(text) shouldBe Nil
       }

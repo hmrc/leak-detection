@@ -109,10 +109,12 @@ trait Fixtures { self: OneAppPerSuite with MongoSpecSupport =>
                 publicRules = []
                 privateRules = [
                   {
+                   id = "rule-1"
                    regex = "^.*(null).*$$"
                    description = "uses nulls!"
                   },
                   {
+                   id = "rule-2"
                    regex = "^.*(throw).*$$"
                    description = "throws exceptions!"
                   }

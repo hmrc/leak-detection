@@ -32,11 +32,14 @@ class ReportLineSpec extends FreeSpec with Matchers {
         val urlToFile = "/src/main/scala/SomeClass.scala"
 
         val descr      = "some descr"
+        val ruleId     = "rule-1"
         val lineNumber = 95
 
         val reportLine = ReportLine.build(
           payloadDetails,
-          Result(urlToFile, MatchedResult("some matched text in the file", lineNumber, descr)))
+          Result(
+            urlToFile,
+            MatchedResult("some matched text in the file", lineNumber, ruleId, descr)))
 
         reportLine.urlToSource shouldBe s"$repoUrl/blob/branchXyz$urlToFile#L$lineNumber"
         reportLine.description shouldBe descr

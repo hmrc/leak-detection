@@ -40,6 +40,7 @@ final case class AllRules(
 )
 
 final case class Rule(
+  id: String,
   regex: String,
   description: String
 )

@@ -33,7 +33,7 @@ class RegexScanner(rule: Rule) {
       }
       .map {
         case (lineText, lineNumber) =>
-          MatchedResult(lineText, adjustForBase1Numbering(lineNumber), rule.description)
+          MatchedResult(lineText, adjustForBase1Numbering(lineNumber), rule.id, rule.description)
       }
 
   def adjustForBase1Numbering(i: Int): Int = i + 1
