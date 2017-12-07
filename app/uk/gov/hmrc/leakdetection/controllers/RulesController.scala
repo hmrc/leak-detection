@@ -17,6 +17,7 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import javax.inject.Inject
+import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.Action
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
@@ -24,6 +25,8 @@ import uk.gov.hmrc.leakdetection.scanner.RegexScanner
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 
 class RulesController @Inject()(configLoader: ConfigLoader) extends BaseController {
+
+  val logger = Logger(this.getClass.getName)
 
   import configLoader.cfg.allRules._
 
@@ -33,6 +36,8 @@ class RulesController @Inject()(configLoader: ConfigLoader) extends BaseControll
 
   private def testRules(rules: List[Rule]) =
     Action(parse.tolerantText) { implicit request =>
+      logger.info(s"Checking:\n ${request.body}")
+
       val scanners = rules.map(new RegexScanner(_))
       val matches  = scanners.flatMap(_.scan(request.body))
 
