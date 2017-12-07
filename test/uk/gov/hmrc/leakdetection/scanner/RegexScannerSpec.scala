@@ -31,7 +31,7 @@ class RegexScannerSpec extends FreeSpec with Matchers {
             |nothing matching here
             |""".stripMargin
         val descr = "descr for regex"
-        val rule  = Rule("^.*(matches).*", descr)
+        val rule  = Rule("(matches)", descr)
 
         new RegexScanner(rule).scan(text) should
           contain theSameElementsAs Seq(
@@ -42,7 +42,7 @@ class RegexScannerSpec extends FreeSpec with Matchers {
 
       "and return empty seq if text doesn't have matching lines for the given regex" in {
         val text = "this is a test"
-        val rule = Rule("^.*(was).*", "descr")
+        val rule = Rule("(was)", "descr")
 
         new RegexScanner(rule).scan(text) shouldBe Nil
       }

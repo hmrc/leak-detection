@@ -20,7 +20,7 @@ import uk.gov.hmrc.leakdetection.config.Rule
 
 class RegexScanner(rule: Rule) {
 
-  val compiledRegex = rule.regex.r
+  val compiledRegex = matchAnywhereInLine(rule.regex).r
 
   def scan(text: String): Seq[MatchedResult] =
     text.lines.toSeq.zipWithIndex
@@ -37,5 +37,7 @@ class RegexScanner(rule: Rule) {
       }
 
   def adjustForBase1Numbering(i: Int): Int = i + 1
+
+  def matchAnywhereInLine(regex: String) = s".*$regex.*"
 
 }
