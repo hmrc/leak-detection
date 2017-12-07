@@ -23,10 +23,10 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.xml.bind.DatatypeConverter
 import play.api.Logger
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{Format, JsError, JsSuccess, JsValue, Json}
 import play.api.libs.streams.Accumulator
 import play.api.mvc.Results._
-import play.api.mvc.{BodyParser, Headers}
+import play.api.mvc.{BodyParser, Headers, Result}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
 import uk.gov.hmrc.play.HeaderCarrierConverter
@@ -43,30 +43,45 @@ object WebhookRequestValidator {
 
       val sink = Sink.fold[ByteString, ByteString](ByteString.empty)(_ ++ _)
       Accumulator(sink).map { bytes =>
-        Either
-          .catchNonFatal {
-            validateAndParse(bytes, rh.headers, webhookSecret)
-          }
-          .leftMap { ex =>
-            logger.warn(ex.getMessage)
-            BadRequest(errorAsJson(ex.getMessage))
-          }
+        getPayloadDetails(bytes, rh.headers, webhookSecret)
       }
     }
 
-  private def validateAndParse(bytes: ByteString, headers: Headers, webhookSecret: String) = {
+  private def getPayloadDetails(
+    bytes: ByteString,
+    headers: Headers,
+    webhookSecret: String): Either[Result, PayloadDetails] = {
     val payload = bytes.utf8String
-    val signature =
-      headers
-        .get("X-Hub-Signature")
-        .getOrElse(throw new Exception("Signature not found in headers"))
+    val signature: Either[ValidationError, String] =
+      Either.fromOption(headers.get("X-Hub-Signature"), ifNone = SignatureNotFound)
 
-    if (isValidSignature(payload, signature, webhookSecret)) {
-      Json.parse(payload).as[PayloadDetails]
-    } else {
-      throw new Exception("Invalid signature")
-    }
+    signature
+      .flatMap { s =>
+        if (isValidSignature(payload, s, webhookSecret)) {
+          Json.parse(payload).validate[PayloadDetails] match {
+            case JsSuccess(pd, _) => pd.asRight
+            case JsError(_)       => ignoreIfZenMessage(payload).asLeft
+          }
+        } else {
+          InvalidSignature.asLeft
+        }
+      }
+      .leftMap {
+        case ZenMessage         => Ok("Zen message ignored")
+        case e: ValidationError => BadRequest(errorAsJson(e.toString))
+      }
   }
+
+  final case class ZenPayload(zen: String)
+  object ZenPayload {
+    implicit val format: Format[ZenPayload] = Json.format[ZenPayload]
+  }
+
+  def ignoreIfZenMessage(payload: String): ValidationError =
+    Json.parse(payload).validate[ZenPayload] match {
+      case JsSuccess(_, _) => ZenMessage
+      case JsError(errors) => InvalidPayload(errors.toString)
+    }
 
   def isValidSignature(payload: String, ghSignature: String, secret: String): Boolean = {
     val algorithm  = "HmacSHA1"
@@ -83,4 +98,11 @@ object WebhookRequestValidator {
 
   private def errorAsJson(errorMsg: String): JsValue =
     Json.obj("error" -> "Error parsing request", "details" -> errorMsg)
+
+  sealed trait ValidationError
+  case object SignatureNotFound extends ValidationError
+  case object InvalidSignature extends ValidationError
+  case object ZenMessage extends ValidationError
+  case class InvalidPayload(errors: String) extends ValidationError
+
 }
