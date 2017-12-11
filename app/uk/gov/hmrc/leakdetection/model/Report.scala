@@ -23,7 +23,9 @@ import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.Result
 import uk.gov.hmrc.play.binders.SimpleObjectBinder
 
-final case class ReportId(value: String) extends AnyVal
+final case class ReportId(value: String) extends AnyVal {
+  override def toString: String = value
+}
 
 object ReportId {
   def random = ReportId(UUID.randomUUID().toString)
@@ -79,7 +81,9 @@ final case class ReportLine(
   filePath: String,
   lineNumber: Int,
   urlToSource: String,
-  description: String
+  description: String,
+  lineText: String,
+  matches: List[String]
 )
 
 object ReportLine {
@@ -90,7 +94,9 @@ object ReportLine {
       result.filePath,
       result.scanResults.lineNumber,
       s"$repoUrl/blob/$branch${result.filePath}#L${result.scanResults.lineNumber}",
-      result.scanResults.description
+      result.scanResults.description,
+      result.scanResults.lineText,
+      result.scanResults.matches
     )
   }
 

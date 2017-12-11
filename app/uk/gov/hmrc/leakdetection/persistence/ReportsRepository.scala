@@ -56,6 +56,6 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
   def findByReportId(reportId: ReportId): Future[Option[Report]] =
     findById(reportId)
 
-  def getDistinctRepoNames: Future[Set[String]] =
-    collection.distinct[String, Set]("repoName")
+  def getDistinctRepoNames: Future[List[String]] =
+    collection.distinct[String, List]("repoName").map(_.sorted)
 }

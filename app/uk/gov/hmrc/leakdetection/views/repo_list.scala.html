@@ -16,11 +16,12 @@
 
 @import uk.gov.hmrc.leakdetection.controllers.routes
 
-@(repos: Set[String])
+@(repos: List[String])
 
 <html>
     <body>
         <ul>
+            <h1>Repositories</h1>
             @repos.map { repoName =>
                 <li>
                     <a href="@routes.ReportsController.reportsForRepository(repoName)">@repoName</a>

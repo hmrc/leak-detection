@@ -39,9 +39,17 @@ class ReportsController @Inject()(reportsService: ReportsService) extends BaseCo
     }
   }
 
+  def redirectToRepositories = Action {
+    Redirect(routes.ReportsController.repositories())
+  }
+
   def showReport(reportId: ReportId) = Action.async { implicit request =>
-    reportsService.getReport(reportId).map { report =>
-      Ok(Json.toJson(report))
+    reportsService.getReport(reportId).map { maybeReport =>
+      maybeReport
+        .map { r =>
+          Ok(Json.toJson(r))
+        }
+        .getOrElse(NotFound(Json.obj("msg" -> s"Report w/id $reportId not found")))
     }
   }
 }
