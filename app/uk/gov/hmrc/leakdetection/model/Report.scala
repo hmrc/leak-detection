@@ -16,18 +16,41 @@
 
 package uk.gov.hmrc.leakdetection.model
 
-import play.api.libs.json.{Format, Json}
+import java.util.UUID
+import play.api.libs.json._
+import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.Result
+import uk.gov.hmrc.play.binders.SimpleObjectBinder
 
-case class Report(
+final case class ReportId(value: String) extends AnyVal
+
+object ReportId {
+  def random = ReportId(UUID.randomUUID().toString)
+
+  implicit val format: Format[ReportId] = new Format[ReportId] {
+    def writes(o: ReportId): JsValue = JsString(o.value)
+    def reads(json: JsValue): JsResult[ReportId] = json match {
+      case JsString(v) => JsSuccess(ReportId(v))
+      case _           => JsError("invalid reportId")
+    }
+  }
+
+  implicit val binder: PathBindable[ReportId] =
+    new SimpleObjectBinder[ReportId](ReportId.apply, _.value)
+}
+
+final case class Report(
+  _id: ReportId,
   repoName: String,
   repoUrl: String,
   commitId: String,
   authors: Seq[Author],
-  inspectionResults: Seq[ReportLine]) {}
+  inspectionResults: Seq[ReportLine]
+)
 
 object Report {
   def create(payloadDetails: PayloadDetails, results: Seq[Result]) = Report(
+    ReportId.random,
     payloadDetails.repositoryName,
     payloadDetails.repositoryUrl,
     payloadDetails.commitId,
@@ -38,7 +61,12 @@ object Report {
   implicit val format: Format[Report] = Json.format[Report]
 }
 
-case class ReportLine(filePath: String, lineNumber: Int, urlToSource: String, description: String)
+final case class ReportLine(
+  filePath: String,
+  lineNumber: Int,
+  urlToSource: String,
+  description: String
+)
 
 object ReportLine {
   def build(payloadDetails: PayloadDetails, result: Result): ReportLine = {

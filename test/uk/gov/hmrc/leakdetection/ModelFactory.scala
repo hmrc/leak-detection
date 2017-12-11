@@ -18,12 +18,15 @@ package uk.gov.hmrc.leakdetection
 
 import play.api.libs.json.{JsValue, Json, Writes}
 import scala.util.Random
-import uk.gov.hmrc.leakdetection.model.{Author, PayloadDetails}
+import uk.gov.hmrc.leakdetection.model.{Author, PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.scanner.{MatchedResult, Result}
 
 object ModelFactory {
 
   def aString(s: String = ""): String =
     s + "_" + Random.alphanumeric.take(10).mkString
+
+  def aPositiveInt: Int = Random.nextInt(Int.MaxValue)
 
   def few[T](f: () => T): List[T] =
     List.fill(Random.nextInt(5))(f())
@@ -49,6 +52,24 @@ object ModelFactory {
       repositoryUrl  = aString("repo"),
       commitId       = aString("commitId"),
       archiveUrl     = aString("archiveUrl")
+    )
+
+  def aMatchedResult = MatchedResult(
+    lineText    = aString("lineText"),
+    lineNumber  = aPositiveInt,
+    ruleId      = aString("ruleId"),
+    description = aString("description")
+  )
+
+  def aResult = Result(
+    filePath    = aString("file-path"),
+    scanResults = aMatchedResult
+  )
+
+  def aReport: Report =
+    Report.create(
+      payloadDetails = aPayloadDetails,
+      results        = few(() => aResult)
     )
 
   implicit val payloadDetailsWrites: Writes[PayloadDetails] =

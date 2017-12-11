@@ -19,17 +19,18 @@ package uk.gov.hmrc.leakdetection.persistence
 import com.google.inject.Inject
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.bson.BSONObjectID
 import scala.concurrent.{ExecutionContext, Future}
-import uk.gov.hmrc.leakdetection.model.Report
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
 
 class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent)(
   implicit ec: ExecutionContext)
-    extends ReactiveRepository[Report, BSONObjectID](
+    extends ReactiveRepository[Report, ReportId](
       collectionName = "reports",
       mongo          = reactiveMongoComponent.mongoConnector.db,
-      domainFormat   = Report.format) {
+      domainFormat   = Report.format,
+      idFormat       = ReportId.format
+    ) {
 
   override def ensureIndexes(implicit ec: ExecutionContext): Future[Seq[Boolean]] =
     Future.sequence(
@@ -46,4 +47,13 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
       throw new Exception(s"Error saving following report in db: $report")
     }
   }
+
+  def findByRepoName(repoName: String): Future[List[Report]] =
+    find("repoName" -> repoName)
+
+  def findByReportId(reportId: ReportId): Future[Option[Report]] =
+    findById(reportId)
+
+  def getDistinctRepoNames: Future[Set[String]] =
+    collection.distinct[String, Set]("repoName")
 }

@@ -21,7 +21,7 @@ import play.api.libs.json.Reads._
 import play.api.libs.json._
 import scala.language.implicitConversions
 
-case class Author(
+final case class Author(
   name: String,
   email: String,
   username: Option[String]
@@ -31,7 +31,7 @@ object Author {
   implicit val reads: OFormat[Author] = Json.format[Author]
 }
 
-case class PayloadDetails(
+final case class PayloadDetails(
   repositoryName: String,
   isPrivate: Boolean,
   authors: Seq[Author],
