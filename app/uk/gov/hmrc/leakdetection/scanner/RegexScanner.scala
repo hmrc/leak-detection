@@ -20,24 +20,29 @@ import uk.gov.hmrc.leakdetection.config.Rule
 
 class RegexScanner(rule: Rule) {
 
-  val compiledRegex = matchAnywhereInLine(rule.regex).r
+  private val compiledRegex = rule.regex.r
+
+  private object Extractor {
+    def unapply(arg: String): Option[(String, List[String])] =
+      compiledRegex.findAllMatchIn(arg).toList match {
+        case Nil     => None
+        case matches => Some((arg, matches.map(_.matched)))
+      }
+  }
 
   def scan(text: String): Seq[MatchedResult] =
     text.lines.toSeq.zipWithIndex
-      .filter {
-        case (lineText, _) =>
-          lineText match {
-            case compiledRegex(_*) => true
-            case _                 => false
-          }
-      }
-      .map {
-        case (lineText, lineNumber) =>
-          MatchedResult(lineText, adjustForBase1Numbering(lineNumber), rule.id, rule.description)
+      .collect {
+        case (Extractor(lineText, matches), lineNumber) =>
+          MatchedResult(
+            lineText    = lineText,
+            lineNumber  = adjustForBase1Numbering(lineNumber),
+            ruleId      = rule.id,
+            description = rule.description,
+            matches     = matches
+          )
       }
 
   def adjustForBase1Numbering(i: Int): Int = i + 1
-
-  def matchAnywhereInLine(regex: String) = s".*$regex.*"
 
 }

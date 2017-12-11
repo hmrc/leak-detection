@@ -29,7 +29,7 @@ object ModelFactory {
   def aPositiveInt: Int = Random.nextInt(Int.MaxValue)
 
   def few[T](f: () => T): List[T] =
-    List.fill(Random.nextInt(5))(f())
+    List.fill(Random.nextInt(5) + 1)(f())
 
   def maybe[T](t: T): Option[T] =
     if (aBoolean) Some(t) else None
@@ -58,7 +58,8 @@ object ModelFactory {
     lineText    = aString("lineText"),
     lineNumber  = aPositiveInt,
     ruleId      = aString("ruleId"),
-    description = aString("description")
+    description = aString("description"),
+    matches     = few(() => aString("match"))
   )
 
   def aResult = Result(

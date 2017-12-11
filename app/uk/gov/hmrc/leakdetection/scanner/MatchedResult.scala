@@ -18,7 +18,13 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import play.api.libs.json.{Format, Json}
 
-case class MatchedResult(lineText: String, lineNumber: Int, ruleId: String, description: String)
+final case class MatchedResult(
+  lineText: String,
+  lineNumber: Int,
+  ruleId: String,
+  description: String,
+  matches: List[String]
+)
 
 object MatchedResult {
   implicit val format: Format[MatchedResult] = Json.format[MatchedResult]

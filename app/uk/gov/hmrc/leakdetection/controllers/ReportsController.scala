@@ -35,7 +35,7 @@ class ReportsController @Inject()(reportsService: ReportsService) extends BaseCo
 
   def reportsForRepository(repoName: String) = Action.async { implicit request =>
     reportsService.getReports(repoName).map { reports =>
-      Ok(html.reports_for_repo(reports))
+      Ok(html.reports_for_repo(repoName, reports))
     }
   }
 

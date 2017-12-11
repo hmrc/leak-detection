@@ -17,20 +17,21 @@
 @import uk.gov.hmrc.leakdetection.model.Report
 @import uk.gov.hmrc.leakdetection.controllers.routes
 
-@(reports: List[Report])
+@(repoName: String, reports: List[Report])
 
 <html>
     <body>
         <table>
+            <h1>@repoName</h1>
             <tr>
-                <th>Repo Name</th>
                 <th>Commit id</th>
+                <th>Timestamp</th>
                 <th>See full</th>
             </tr>
             @reports.map { r =>
                 <tr>
-                    <th>@r.repoName</th>
                     <th>@r.commitId</th>
+                    <th>@r.timestamp</th>
                     <th><a href="@routes.ReportsController.showReport(r._id)">full report</a></th>
                 </tr>
             }

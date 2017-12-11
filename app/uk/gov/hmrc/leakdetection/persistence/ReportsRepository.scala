@@ -17,9 +17,11 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import com.google.inject.Inject
+import play.api.libs.json.Reads._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.indexes.{Index, IndexType}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
 
@@ -28,7 +30,7 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
     extends ReactiveRepository[Report, ReportId](
       collectionName = "reports",
       mongo          = reactiveMongoComponent.mongoConnector.db,
-      domainFormat   = Report.format,
+      domainFormat   = Report.mongoFormat,
       idFormat       = ReportId.format
     ) {
 

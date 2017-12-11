@@ -55,30 +55,40 @@ class RegexMatchingEngineSpec
       val matches = new RegexMatchingEngine().run(
         explodedZipDir = rootDir.toNIO.toFile,
         rules = Seq(
-          Rule("rule-1", ".*secretA.*", "descr 1"),
-          Rule("rule-2", ".*secretB.*", "descr 2"),
-          Rule("rule-3", ".*secretC.*", "descr 3")
+          Rule("rule-1", "secretA", "descr 1"),
+          Rule("rule-2", "secretB", "descr 2"),
+          Rule("rule-3", "secretC", "descr 3")
         )
       )
 
       matches should have size 6
 
       matches should contain(
-        Result("/dir1/fileA", MatchedResult("matching on: secretA", 1, "rule-1", "descr 1")))
+        Result(
+          "/dir1/fileA",
+          MatchedResult("matching on: secretA", 1, "rule-1", "descr 1", List("secretA"))))
       matches should contain(
-        Result("/dir1/fileA", MatchedResult("matching on: secretA again", 2, "rule-1", "descr 1")))
+        Result(
+          "/dir1/fileA",
+          MatchedResult("matching on: secretA again", 2, "rule-1", "descr 1", List("secretA"))))
 
       matches should contain(
-        Result("/dir2/fileB", MatchedResult("matching on: secretB", 2, "rule-2", "descr 2")))
+        Result(
+          "/dir2/fileB",
+          MatchedResult("matching on: secretB", 2, "rule-2", "descr 2", List("secretB"))))
       matches should contain(
-        Result("/dir2/fileB", MatchedResult("matching on: secretB again", 3, "rule-2", "descr 2")))
+        Result(
+          "/dir2/fileB",
+          MatchedResult("matching on: secretB again", 3, "rule-2", "descr 2", List("secretB"))))
 
-      matches should contain(
-        Result("/dir2/dir3/fileC", MatchedResult("matching on: secretC", 1, "rule-3", "descr 3")))
       matches should contain(
         Result(
           "/dir2/dir3/fileC",
-          MatchedResult("matching on: secretC again", 2, "rule-3", "descr 3")))
+          MatchedResult("matching on: secretC", 1, "rule-3", "descr 3", List("secretC"))))
+      matches should contain(
+        Result(
+          "/dir2/dir3/fileC",
+          MatchedResult("matching on: secretC again", 2, "rule-3", "descr 3", List("secretC"))))
     }
 
   }
