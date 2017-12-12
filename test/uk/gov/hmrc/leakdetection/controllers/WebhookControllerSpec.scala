@@ -16,20 +16,20 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import uk.gov.hmrc.leakdetection.ModelFactory._
+import java.io.{BufferedOutputStream, ByteArrayInputStream, ByteArrayOutputStream}
+import java.util.UUID
+import java.util.zip.{ZipEntry, ZipOutputStream}
+
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.StreamConverters
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import concurrent.duration._
-import java.io.{BufferedOutputStream, ByteArrayInputStream, ByteArrayOutputStream}
-import java.util.UUID
-import java.util.zip.{ZipEntry, ZipOutputStream}
 import org.apache.commons.codec.digest.HmacUtils
 import org.scalatest.{FeatureSpec, GivenWhenThen, Matchers}
 import org.scalatestplus.play.OneAppPerSuite
 import play.api._
+import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Results}
@@ -37,10 +37,12 @@ import play.api.routing.sird._
 import play.api.test.Helpers.{CONTENT_DISPOSITION, CONTENT_TYPE}
 import play.api.test.{FakeRequest, Helpers}
 import play.modules.reactivemongo.ReactiveMongoComponent
+import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.TestServer
 import uk.gov.hmrc.leakdetection.model.Report
-import play.api.inject.bind
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+
+import scala.concurrent.duration._
 
 class WebhookControllerSpec
     extends FeatureSpec
@@ -91,7 +93,6 @@ class WebhookControllerSpec
       }
     }
   }
-
 }
 
 trait Fixtures { self: OneAppPerSuite with MongoSpecSupport =>

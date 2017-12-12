@@ -48,15 +48,8 @@ class ReportsController @Inject()(reportsService: ReportsService) extends BaseCo
       maybeReport
         .map { r =>
           Ok(html.report(r))
-//          Ok(Json.toJson(r))
         }
         .getOrElse(NotFound(Json.obj("msg" -> s"Report w/id $reportId not found")))
-    }
-  }
-
-  def clearCollection() = Action.async { implicit request =>
-    reportsService.clearCollection().map { res =>
-      Ok(s"ok=${res.ok}, errors = ${res.writeErrors}")
     }
   }
 }

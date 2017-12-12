@@ -63,7 +63,11 @@ object ModelFactory {
 
   def aReport: Report =
     Report.create(
-      payloadDetails = aPayloadDetails,
+      repositoryName = aString("repositoryName"),
+      repositoryUrl  = aString("repo"),
+      commitId       = aString("commitId"),
+      authorName     = aString("author"),
+      branch         = aString("ref"),
       results        = few(() => aResult)
     )
 

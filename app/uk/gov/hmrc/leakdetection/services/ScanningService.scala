@@ -16,13 +16,16 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import java.io.File
 import javax.inject.{Inject, Singleton}
+
 import org.apache.commons.io.FileUtils
+
 import scala.concurrent.{ExecutionContext, Future}
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
+import uk.gov.hmrc.leakdetection.scanner.{RegexMatchingEngine, Result}
 
 @Singleton
 class ScanningService @Inject()(
@@ -32,17 +35,27 @@ class ScanningService @Inject()(
   reportsRepository: ReportsRepository
 ) {
 
-  def scanCodeBaseFromGit(p: PayloadDetails)(implicit ec: ExecutionContext): Future[Report] = {
-    import configLoader.cfg._
-    val explodedZipDir = artifactService.getZipAndExplode(githubSecrets.personalAccessToken, p)
+  def scanRepository(repository: String,
+                     branch: String,
+                     isPrivate: Boolean,
+                     repositoryUrl: String,
+                     commitId: String,
+                     authorName: String,
+                     archiveUrl: String
+                    )(implicit ec: ExecutionContext): Future[Report] = {
+
+    val explodedZipDir = artifactService.getZipAndExplode(configLoader.cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
     try {
-      val rules   = if (p.isPrivate) allRules.privateRules else allRules.publicRules
+      val rules   = if (isPrivate) configLoader.cfg.allRules.privateRules else configLoader.cfg.allRules.publicRules
       val results = regexMatchingEngine.run(explodedZipDir, rules)
-      val report  = Report.create(p, results)
+      val report  = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
       reportsRepository.saveReport(report).map(_ => report)
     } finally {
       FileUtils.deleteDirectory(explodedZipDir)
     }
   }
+
+  def scanCodeBaseFromGit(p: PayloadDetails)(implicit ec: ExecutionContext): Future[Report] =
+    scanRepository(p.repositoryName, p.branchRef, p.isPrivate, p.repositoryUrl, p.commitId, p.authorName, p.archiveUrl)
 
 }

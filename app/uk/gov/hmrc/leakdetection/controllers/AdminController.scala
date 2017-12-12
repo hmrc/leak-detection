@@ -17,18 +17,37 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import javax.inject.Inject
+
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.Action
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.{AllRules, ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.scanner.RegexScanner
+import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
-class RulesController @Inject()(configLoader: ConfigLoader) extends BaseController {
+import scala.concurrent.Future
+
+class AdminController @Inject()(configLoader: ConfigLoader, scanningService: ScanningService, reportsService: ReportsService) extends BaseController {
 
   val logger = Logger(this.getClass.getName)
 
   import configLoader.cfg.allRules._
+
+  implicit val ruleWrites = AllRules.f
+
+  def rules() = Action {
+    Ok(Json.toJson(configLoader.cfg.allRules))
+  }
+
+  def validatePrivate(repository: String, branch: String) = Action.async {
+    implicit request =>
+      scanningService.scanRepository(repository, branch, true, s"https://github.com/hmrc/$repository",
+        "NA", "NA", s"https://api.github.com/repos/hmrc/$repository/{archive_format}{/ref}").map { report =>
+        Ok(Json.toJson(report))
+      }
+  }
 
   def testPublicRules() = testRules(publicRules)
 
@@ -39,9 +58,15 @@ class RulesController @Inject()(configLoader: ConfigLoader) extends BaseControll
       logger.info(s"Checking:\n ${request.body}")
 
       val scanners = rules.map(new RegexScanner(_))
-      val matches  = scanners.flatMap(_.scan(request.body))
+      val matches = scanners.flatMap(_.scan(request.body))
 
       Ok(Json.toJson(matches))
     }
 
+
+  def clearCollection() = Action.async { implicit request =>
+    reportsService.clearCollection().map { res =>
+      Ok(s"ok=${res.ok}, errors = ${res.writeErrors}")
+    }
+  }
 }

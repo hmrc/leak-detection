@@ -1,14 +1,22 @@
 # microservice specific routes
 
-POST       /validate                                @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook
+POST       /validate                                    @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook
 
-GET        /reports                                 @uk.gov.hmrc.leakdetection.controllers.ReportsController.redirectToRepositories
-GET        /reports/repositories                    @uk.gov.hmrc.leakdetection.controllers.ReportsController.repositories
-GET        /reports/repositories/:repo              @uk.gov.hmrc.leakdetection.controllers.ReportsController.reportsForRepository(repo: String)
-GET        /reports/:id                             @uk.gov.hmrc.leakdetection.controllers.ReportsController.showReport(id: uk.gov.hmrc.leakdetection.model.ReportId)
+GET        /reports                                     @uk.gov.hmrc.leakdetection.controllers.ReportsController.redirectToRepositories
+GET        /reports/repositories                        @uk.gov.hmrc.leakdetection.controllers.ReportsController.repositories
+GET        /reports/repositories/:repo                  @uk.gov.hmrc.leakdetection.controllers.ReportsController.reportsForRepository(repo: String)
+GET        /reports/:id                                 @uk.gov.hmrc.leakdetection.controllers.ReportsController.showReport(id: uk.gov.hmrc.leakdetection.model.ReportId)
 
-POST       /test-public-rules                       @uk.gov.hmrc.leakdetection.controllers.RulesController.testPublicRules
-POST       /test-private-rules                      @uk.gov.hmrc.leakdetection.controllers.RulesController.testPrivateRules
 
-POST       /clear-collection-use-only-until-we-go-live     @uk.gov.hmrc.leakdetection.controllers.ReportsController.clearCollection()
+
+
+# Admin endpoints
+
+GET        /admin/rules                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.rules
+GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetection.controllers.AdminController.validatePrivate(repository, branch)
+
+POST       /admin/test-public-rules                     @uk.gov.hmrc.leakdetection.controllers.AdminController.testPublicRules
+POST       /admin/test-private-rules                    @uk.gov.hmrc.leakdetection.controllers.AdminController.testPrivateRules
+
+POST       /admin/clear-collection                      @uk.gov.hmrc.leakdetection.controllers.AdminController.clearCollection()
 
