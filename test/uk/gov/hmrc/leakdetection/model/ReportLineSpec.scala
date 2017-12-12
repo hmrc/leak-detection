@@ -48,7 +48,7 @@ class ReportLineSpec extends FreeSpec with Matchers {
                 List(Match(start = 6, end = 12, value = "matched text"))))
           )
 
-        reportLine.urlToSource shouldBe s"$repoUrl/blob/branchXyz$urlToFile#L$lineNumber"
+        reportLine.urlToSource shouldBe s"$repoUrl/blame/branchXyz$urlToFile#L$lineNumber"
         reportLine.description shouldBe descr
 
       }

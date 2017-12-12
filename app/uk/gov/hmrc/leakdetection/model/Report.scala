@@ -88,7 +88,7 @@ object ReportLine {
     new ReportLine(
       result.filePath,
       result.scanResults.lineNumber,
-      s"$repoUrl/blob/$branch${result.filePath}#L${result.scanResults.lineNumber}",
+      s"$repoUrl/blame/$branch${result.filePath}#L${result.scanResults.lineNumber}",
       result.scanResults.description,
       result.scanResults.lineText,
       result.scanResults.matches
