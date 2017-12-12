@@ -20,7 +20,7 @@ import java.time.Instant
 import java.util.UUID
 import play.api.libs.json._
 import play.api.mvc.PathBindable
-import uk.gov.hmrc.leakdetection.scanner.Result
+import uk.gov.hmrc.leakdetection.scanner.{Match, Result}
 import uk.gov.hmrc.play.binders.SimpleObjectBinder
 
 final case class ReportId(value: String) extends AnyVal {
@@ -83,7 +83,7 @@ final case class ReportLine(
   urlToSource: String,
   description: String,
   lineText: String,
-  matches: List[String]
+  matches: List[Match]
 )
 
 object ReportLine {

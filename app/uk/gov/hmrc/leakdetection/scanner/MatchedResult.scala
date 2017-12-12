@@ -17,14 +17,31 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import play.api.libs.json.{Format, Json}
+import scala.util.matching.Regex
 
 final case class MatchedResult(
   lineText: String,
   lineNumber: Int,
   ruleId: String,
   description: String,
-  matches: List[String]
+  matches: List[Match]
 )
+
+final case class Match(
+  start: Int,
+  end: Int,
+  value: String
+)
+
+object Match {
+  def create(regexMatch: Regex.Match): Match =
+    Match(
+      start = regexMatch.start,
+      end   = regexMatch.end,
+      value = regexMatch.matched
+    )
+  implicit val format: Format[Match] = Json.format[Match]
+}
 
 object MatchedResult {
   implicit val format: Format[MatchedResult] = Json.format[MatchedResult]

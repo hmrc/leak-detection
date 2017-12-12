@@ -36,13 +36,18 @@ class RegexScannerSpec extends FreeSpec with Matchers {
 
         new RegexScanner(rule).scan(text) should
           contain theSameElementsAs Seq(
-          MatchedResult("this matches the regex", lineNumber = 2, ruleId, descr, List("matches")),
           MatchedResult(
-            "this matches the regex too",
-            lineNumber = 3,
-            ruleId,
-            descr,
-            List("matches"))
+            lineText    = "this matches the regex",
+            lineNumber  = 2,
+            ruleId      = ruleId,
+            description = descr,
+            matches     = List(Match(start = 5, end = 12, value = "matches"))),
+          MatchedResult(
+            lineText    = "this matches the regex too",
+            lineNumber  = 3,
+            ruleId      = ruleId,
+            description = descr,
+            matches     = List(Match(start = 5, end = 12, value = "matches")))
         )
       }
 

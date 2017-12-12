@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection
 import play.api.libs.json.{JsValue, Json, Writes}
 import scala.util.Random
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
-import uk.gov.hmrc.leakdetection.scanner.{MatchedResult, Result}
+import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
 
 object ModelFactory {
 
@@ -47,13 +47,14 @@ object ModelFactory {
       archiveUrl     = aString("archiveUrl")
     )
 
-  def aMatchedResult = MatchedResult(
-    lineText    = aString("lineText"),
-    lineNumber  = aPositiveInt,
-    ruleId      = aString("ruleId"),
-    description = aString("description"),
-    matches     = few(() => aString("match"))
-  )
+  def aMatchedResult =
+    MatchedResult(
+      lineText    = aString("lineText"),
+      lineNumber  = aPositiveInt,
+      ruleId      = aString("ruleId"),
+      description = aString("description"),
+      matches     = List(Match(10, 14, "line"))
+    )
 
   def aResult = Result(
     filePath    = aString("file-path"),

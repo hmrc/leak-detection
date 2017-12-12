@@ -23,10 +23,10 @@ class RegexScanner(rule: Rule) {
   private val compiledRegex = rule.regex.r
 
   private object Extractor {
-    def unapply(arg: String): Option[(String, List[String])] =
+    def unapply(arg: String): Option[(String, List[Match])] =
       compiledRegex.findAllMatchIn(arg).toList match {
         case Nil     => None
-        case matches => Some((arg, matches.map(_.matched)))
+        case matches => Some((arg, matches.map(Match.create)))
       }
   }
 

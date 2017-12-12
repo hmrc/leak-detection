@@ -65,30 +65,72 @@ class RegexMatchingEngineSpec
 
       matches should contain(
         Result(
-          "/dir1/fileA",
-          MatchedResult("matching on: secretA", 1, "rule-1", "descr 1", List("secretA"))))
+          filePath = "/dir1/fileA",
+          scanResults = MatchedResult(
+            lineText    = "matching on: secretA",
+            lineNumber  = 1,
+            ruleId      = "rule-1",
+            description = "descr 1",
+            matches     = List(Match(start = 13, end = 20, value = "secretA")))
+        )
+      )
       matches should contain(
         Result(
-          "/dir1/fileA",
-          MatchedResult("matching on: secretA again", 2, "rule-1", "descr 1", List("secretA"))))
+          filePath = "/dir1/fileA",
+          scanResults = MatchedResult(
+            lineText    = "matching on: secretA again",
+            lineNumber  = 2,
+            ruleId      = "rule-1",
+            description = "descr 1",
+            matches     = List(Match(start = 13, end = 20, value = "secretA")))
+        )
+      )
 
       matches should contain(
         Result(
-          "/dir2/fileB",
-          MatchedResult("matching on: secretB", 2, "rule-2", "descr 2", List("secretB"))))
+          filePath = "/dir2/fileB",
+          scanResults = MatchedResult(
+            lineText    = "matching on: secretB",
+            lineNumber  = 2,
+            ruleId      = "rule-2",
+            description = "descr 2",
+            matches     = List(Match(start = 13, end = 20, value = "secretB")))
+        )
+      )
       matches should contain(
         Result(
-          "/dir2/fileB",
-          MatchedResult("matching on: secretB again", 3, "rule-2", "descr 2", List("secretB"))))
+          filePath = "/dir2/fileB",
+          scanResults = MatchedResult(
+            lineText    = "matching on: secretB again",
+            lineNumber  = 3,
+            ruleId      = "rule-2",
+            description = "descr 2",
+            matches     = List(Match(start = 13, end = 20, value = "secretB")))
+        )
+      )
 
       matches should contain(
         Result(
-          "/dir2/dir3/fileC",
-          MatchedResult("matching on: secretC", 1, "rule-3", "descr 3", List("secretC"))))
+          filePath = "/dir2/dir3/fileC",
+          scanResults = MatchedResult(
+            lineText    = "matching on: secretC",
+            lineNumber  = 1,
+            ruleId      = "rule-3",
+            description = "descr 3",
+            matches     = List(Match(start = 13, end = 20, value = "secretC")))
+        )
+      )
       matches should contain(
         Result(
-          "/dir2/dir3/fileC",
-          MatchedResult("matching on: secretC again", 2, "rule-3", "descr 3", List("secretC"))))
+          filePath = "/dir2/dir3/fileC",
+          scanResults = MatchedResult(
+            lineText    = "matching on: secretC again",
+            lineNumber  = 2,
+            ruleId      = "rule-3",
+            description = "descr 3",
+            matches     = List(Match(start = 13, end = 20, value = "secretC")))
+        )
+      )
     }
 
   }
