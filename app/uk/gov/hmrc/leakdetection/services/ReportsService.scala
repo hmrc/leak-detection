@@ -29,4 +29,6 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(
   def getReports(repoName: String) = reportsRepository.findByRepoName(repoName)
 
   def getReport(reportId: ReportId) = reportsRepository.findByReportId(reportId)
+
+  def clearCollection() = reportsRepository.removeAll()
 }

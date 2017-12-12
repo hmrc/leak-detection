@@ -10,4 +10,5 @@ GET        /reports/:id                             @uk.gov.hmrc.leakdetection.c
 POST       /test-public-rules                       @uk.gov.hmrc.leakdetection.controllers.RulesController.testPublicRules
 POST       /test-private-rules                      @uk.gov.hmrc.leakdetection.controllers.RulesController.testPrivateRules
 
+POST       /clear-collection-use-only-until-we-go-live     @uk.gov.hmrc.leakdetection.controllers.ReportsController.clearCollection()
 
