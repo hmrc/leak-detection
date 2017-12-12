@@ -48,7 +48,7 @@ final case class Report(
   repoUrl: String,
   commitId: String,
   timestamp: Instant,
-  authors: Seq[Author],
+  author: String,
   inspectionResults: Seq[ReportLine]
 )
 
@@ -59,7 +59,7 @@ object Report {
     payloadDetails.repositoryUrl,
     payloadDetails.commitId,
     Instant.now(),
-    payloadDetails.authors,
+    payloadDetails.authorName,
     results.map(r => ReportLine.build(payloadDetails, r))
   )
 

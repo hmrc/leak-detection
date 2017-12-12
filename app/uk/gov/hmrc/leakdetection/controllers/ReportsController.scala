@@ -47,7 +47,8 @@ class ReportsController @Inject()(reportsService: ReportsService) extends BaseCo
     reportsService.getReport(reportId).map { maybeReport =>
       maybeReport
         .map { r =>
-          Ok(Json.toJson(r))
+          Ok(html.report(r))
+//          Ok(Json.toJson(r))
         }
         .getOrElse(NotFound(Json.obj("msg" -> s"Report w/id $reportId not found")))
     }

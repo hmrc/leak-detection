@@ -21,20 +21,10 @@ import play.api.libs.json.Reads._
 import play.api.libs.json._
 import scala.language.implicitConversions
 
-final case class Author(
-  name: String,
-  email: String,
-  username: Option[String]
-)
-
-object Author {
-  implicit val reads: OFormat[Author] = Json.format[Author]
-}
-
 final case class PayloadDetails(
   repositoryName: String,
   isPrivate: Boolean,
-  authors: Seq[Author],
+  authorName: String,
   branchRef: String,
   repositoryUrl: String,
   commitId: String,
@@ -43,16 +33,10 @@ final case class PayloadDetails(
 
 object PayloadDetails {
 
-  implicit private def str(js: JsLookupResult): String =
-    js.as[String]
-
-  private case class AuthorWrapper(author: Author)
-  private implicit val format: Format[AuthorWrapper] = Json.format[AuthorWrapper]
-
   implicit val reads: Reads[PayloadDetails] = (
     (__ \ "repository" \ "name").read[String] and
       (__ \ "repository" \ "private").read[Boolean] and
-      (__ \ "commits").read[List[AuthorWrapper]].map(_.map(_.author)) and
+      (__ \ "pusher" \ "name").read[String] and
       (__ \ "ref").read[String] and
       (__ \ "repository" \ "url").read[String] and
       (__ \ "after").read[String] and

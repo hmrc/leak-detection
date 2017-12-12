@@ -1,0 +1,69 @@
+@*
+ * Copyright 2017 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *@
+
+@import uk.gov.hmrc.leakdetection.model.Report
+
+@(report: Report)
+
+@main {
+
+    <br/>
+    <h1>Full Report</h1>
+    <br/>
+
+    <table class="table">
+        <tbody>
+        <tr>
+            <th>Repository Name</th>
+            <td>@report.repoName</td>
+        </tr>
+        <tr>
+            <th>Repository URL</th>
+            <td>
+                <a href="@report.repoName">@report.repoUrl</a>
+            </td>
+        </tr>
+        <tr>
+            <th>Commit Id</th>
+            <td>@report.commitId</td>
+        </tr>
+        <tr>
+            <th>Timestamp</th>
+            <td>@report.timestamp</td>
+        </tr>
+        <tr>
+            <th>Author</th>
+            <td>@report.author</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <br/>
+    <h2>Problems detected</h2>
+    <br/>
+
+    @report.inspectionResults.map { problem =>
+        <div class="card">
+            <div class="card-header">@problem.description</div>
+            <div class="card-body">@problem.lineText</div>
+            <div class="card-footer">
+                <a href="@problem.urlToSource">Link to source</a>
+            </div>
+        </div>
+        <br/>
+    }
+
+}

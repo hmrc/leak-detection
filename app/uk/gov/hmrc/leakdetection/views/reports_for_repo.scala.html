@@ -19,22 +19,31 @@
 
 @(repoName: String, reports: List[Report])
 
-<html>
-    <body>
-        <table>
-            <h1>@repoName</h1>
-            <tr>
-                <th>Commit id</th>
-                <th>Timestamp</th>
-                <th>See full</th>
-            </tr>
+@main {
+
+    <br/>
+    <h1>@repoName</h1>
+    <br/>
+
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Commid Id</th>
+            <th>Timestamp</th>
+            <th>Author</th>
+            <th>See full</th>
+        </tr>
+        </thead>
+        <tbody>
             @reports.map { r =>
-                <tr>
-                    <th>@r.commitId</th>
-                    <th>@r.timestamp</th>
-                    <th><a href="@routes.ReportsController.showReport(r._id)">full report</a></th>
-                </tr>
+            <tr>
+                <td>@r.commitId</td>
+                <td>@r.timestamp</td>
+                <td>@r.author</td>
+                <td><a href="@routes.ReportsController.showReport(r._id)">full report</a></td>
+            </tr>
             }
-        </table>
-    </body>
-</html>
+        </tbody>
+    </table>
+
+}

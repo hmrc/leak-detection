@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection
 
 import play.api.libs.json.{JsValue, Json, Writes}
 import scala.util.Random
-import uk.gov.hmrc.leakdetection.model.{Author, PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.scanner.{MatchedResult, Result}
 
 object ModelFactory {
@@ -34,20 +34,13 @@ object ModelFactory {
   def maybe[T](t: T): Option[T] =
     if (aBoolean) Some(t) else None
 
-  def anAuthor =
-    Author(
-      name     = aString("author"),
-      email    = aString("email"),
-      username = maybe(aString("username"))
-    )
-
   def aBoolean: Boolean = Random.nextBoolean()
 
   def aPayloadDetails =
     PayloadDetails(
       repositoryName = aString("repositoryName"),
       isPrivate      = aBoolean,
-      authors        = few(() => anAuthor),
+      authorName     = aString("author"),
       branchRef      = aString("ref"),
       repositoryUrl  = aString("repo"),
       commitId       = aString("commitId"),
@@ -85,14 +78,7 @@ object ModelFactory {
             "url"         -> repositoryUrl,
             "archive_url" -> archiveUrl,
             "private"     -> isPrivate),
-          "commits" -> authors.map { a =>
-            Json.obj(
-              "author" -> Json.obj(
-                "name"     -> a.name,
-                "email"    -> a.email,
-                "username" -> a.username
-              ))
-          }
+          "pusher" -> Json.obj("name" -> authorName)
         )
       }
     }

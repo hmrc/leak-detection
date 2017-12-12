@@ -18,15 +18,19 @@
 
 @(repos: List[String])
 
-<html>
-    <body>
-        <ul>
-            <h1>Repositories</h1>
-            @repos.map { repoName =>
-                <li>
-                    <a href="@routes.ReportsController.reportsForRepository(repoName)">@repoName</a>
-                </li>
-            }
-        </ul>
-    </body>
-</html>
+@main {
+
+    <br/>
+    <h1>Repositories</h1>
+    <p>Following repositories contain potentially sensitive data</p>
+
+    <div class="list-group">
+        @repos.map { repoName =>
+        <a href="@routes.ReportsController.reportsForRepository(repoName)"
+           class="list-group-item list-group-item-action">
+            @repoName
+        </a>
+        }
+    </div>
+
+}

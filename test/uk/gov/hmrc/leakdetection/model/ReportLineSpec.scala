@@ -28,7 +28,7 @@ class ReportLineSpec extends FreeSpec with Matchers {
         val repoUrl = "http://githib.com/some-special-repo/"
         val branch  = "refs/heads/branchXyz"
         val payloadDetails =
-          PayloadDetails("someRepo", true, Nil, branch, repoUrl, "commit-123", "")
+          PayloadDetails("someRepo", true, "author", branch, repoUrl, "commit-123", "")
         val urlToFile = "/src/main/scala/SomeClass.scala"
 
         val descr      = "some descr"
