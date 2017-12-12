@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import com.google.inject.Inject
-import play.api.libs.json.Json
+import play.api.libs.json.{JsArray, Json}
 import play.api.libs.json.Reads._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.ReadPreference
@@ -69,5 +69,9 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
     findById(reportId)
 
   def getDistinctRepoNames: Future[List[String]] =
-    collection.distinct[String, List]("repoName").map(_.sorted)
+    collection
+      .distinct[String, List](
+        "repoName",
+        Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
+      .map(_.sorted)
 }

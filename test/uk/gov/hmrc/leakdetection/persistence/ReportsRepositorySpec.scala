@@ -32,14 +32,15 @@ class ReportsRepositorySpec
     with BeforeAndAfterEach {
 
   "Reports repository" should {
-    "provide a set of repository names that reports were generated for" in {
-      val reports            = few(() => aReport)
-      val withSomeDuplicates = reports ::: reports
+    "provide a distinct list of repository names only if there were problems" in {
+      val reportsWithProblems    = few(() => aReport)
+      val reportsWithoutProblems = few(() => aReport).map(_.copy(inspectionResults = Nil))
+      val withSomeDuplicates     = reportsWithProblems ::: reportsWithProblems ::: reportsWithoutProblems
 
       repo.bulkInsert(withSomeDuplicates).futureValue
 
       val foundNames = repo.getDistinctRepoNames.futureValue
-      foundNames should contain theSameElementsAs reports.map(_.repoName)
+      foundNames should contain theSameElementsAs reportsWithProblems.map(_.repoName)
     }
   }
 
