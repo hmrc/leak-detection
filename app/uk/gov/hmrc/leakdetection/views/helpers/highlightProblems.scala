@@ -22,13 +22,19 @@ import uk.gov.hmrc.leakdetection.model.ReportLine
 object highlightProblems extends (ReportLine => Html) {
 
   def apply(r: ReportLine): Html = {
-    val highlightedErrors = r.matches.foldLeft(r.lineText) {
-      case (acc, m) =>
-        r.lineText.substring(0, m.start) +
-          "<span class='highlighted'>" + m.value + "</span>" +
-          r.lineText.substring(m.end)
+    val spanOpening = "<span class='highlighted'>"
+    val spanEnd     = "</span>"
+    val overhead    = spanOpening.length + spanEnd.length
+
+    val (highlightedErrors, _) = r.matches.foldLeft((r.lineText, 0)) {
+      case ((acc, n), m) =>
+        val beforeMatch      = acc.substring(0, m.start + n * overhead)
+        val highlightedMatch = spanOpening + m.value + spanEnd
+        val restOfLine       = acc.substring(m.end + n * overhead)
+
+        (beforeMatch + highlightedMatch + restOfLine, n + 1)
     }
-    HtmlFormat.raw(s"<p class='monospace'>$highlightedErrors</p>")
+    HtmlFormat.raw(highlightedErrors)
   }
 
 }

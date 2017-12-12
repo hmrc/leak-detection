@@ -72,7 +72,10 @@ class WebhookControllerSpec
         And("Github, when called will return a zip with source code files")
         filesInTheArchive = List(
           TestZippedFile(content = "package foo \n var x = null"),
-          TestZippedFile(content = "Option(1).getOrElse(throw SadnessException)")
+          TestZippedFile(content = "Option(1).getOrElse(throw SadnessException)"),
+          TestZippedFile(content = "package foo \n var x = null"),
+          TestZippedFile(
+            content = "Option(1).getOrElse(throw SadnessException)\n\n foo; throw; throw; throw")
         )
 
         When("Leak Detection service receives a request")
@@ -83,7 +86,7 @@ class WebhookControllerSpec
 
         And("Report should include info about all found problems")
         val report = Json.parse(Helpers.contentAsString(res)).as[Report]
-        report.inspectionResults.size shouldBe 2
+        report.inspectionResults.size shouldBe 5
 
       }
     }

@@ -17,9 +17,12 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import com.google.inject.Inject
+import play.api.libs.json.Json
 import play.api.libs.json.Reads._
 import play.modules.reactivemongo.ReactiveMongoComponent
+import reactivemongo.api.ReadPreference
 import reactivemongo.api.indexes.{Index, IndexType}
+import reactivemongo.play.json.ImplicitBSONHandlers
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
@@ -34,13 +37,18 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
       idFormat       = ReportId.format
     ) {
 
+  import ImplicitBSONHandlers._
+
   override def ensureIndexes(implicit ec: ExecutionContext): Future[Seq[Boolean]] =
     Future.sequence(
       Seq(
-        collection.indexesManager.ensure(
-          Index(Seq("commitId" -> IndexType.Hashed), name = Some("commitId-idx")))
-      )
-    )
+        idx("repoName", IndexType.Hashed),
+        idx("timestamp", IndexType.Descending)
+      ))
+
+  private def idx(field: String, indexType: IndexType) =
+    collection.indexesManager
+      .ensure(Index(Seq("field" -> indexType), name = Some(s"$field-idx")))
 
   def saveReport(report: Report): Future[Report] = insert(report).map { writeResult =>
     if (writeResult.ok && writeResult.n == 1) {
@@ -51,7 +59,11 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
   }
 
   def findByRepoName(repoName: String): Future[List[Report]] =
-    find("repoName" -> repoName)
+    collection
+      .find(Json.obj("repoName" -> repoName))
+      .sort(Json.obj("timestamp" -> -1))
+      .cursor[Report](ReadPreference.primaryPreferred)
+      .collect[List]()
 
   def findByReportId(reportId: ReportId): Future[Option[Report]] =
     findById(reportId)
