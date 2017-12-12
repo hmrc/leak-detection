@@ -18,6 +18,7 @@ package uk.gov.hmrc.leakdetection.model
 
 import java.time.Instant
 import java.util.UUID
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json._
 import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.{Match, Result}
@@ -47,7 +48,7 @@ final case class Report(
   repoName: String,
   repoUrl: String,
   commitId: String,
-  timestamp: Instant,
+  timestamp: DateTime,
   author: String,
   inspectionResults: Seq[ReportLine]
 )
@@ -58,7 +59,7 @@ object Report {
     payloadDetails.repositoryName,
     payloadDetails.repositoryUrl,
     payloadDetails.commitId,
-    Instant.now(),
+    DateTime.now(DateTimeZone.UTC),
     payloadDetails.authorName,
     results.map(r => ReportLine.build(payloadDetails, r))
   )
@@ -66,13 +67,7 @@ object Report {
   implicit val format: Format[Report] = Json.format[Report]
 
   val mongoFormat: OFormat[Report] = {
-    implicit val mongoInstantReads: Reads[Instant] =
-      (__ \ "$date").read[Long].map(Instant.ofEpochMilli)
-
-    implicit val mongoInstantWrites: Writes[Instant] = new Writes[Instant] {
-      def writes(o: Instant): JsValue = Json.obj("$date" -> o.toEpochMilli)
-    }
-
+    import uk.gov.hmrc.mongo.json.ReactiveMongoFormats._
     Json.format[Report]
   }
 }

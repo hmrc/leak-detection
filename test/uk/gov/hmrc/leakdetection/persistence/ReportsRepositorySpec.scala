@@ -17,10 +17,12 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import concurrent.duration._
+import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Random
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 
@@ -42,6 +44,30 @@ class ReportsRepositorySpec
       val foundNames = repo.getDistinctRepoNames.futureValue
       foundNames should contain theSameElementsAs reportsWithProblems.map(_.repoName)
     }
+
+    "return reports by repository in inverse chronological order" in {
+      val increasingTimestamp = {
+        var t = DateTime.now(DateTimeZone.UTC)
+        () =>
+          {
+            t = t.plusSeconds(1)
+            println(t)
+            t
+          }
+      }
+
+      val repoName = "repo"
+      val reports = few(() => {
+        aReport.copy(repoName = repoName, timestamp = increasingTimestamp())
+      })
+
+      repo.bulkInsert(Random.shuffle(reports)).futureValue
+
+      val foundReports = repo.findByRepoName(repoName).futureValue
+
+      foundReports shouldBe reports
+    }
+
   }
 
   override def beforeEach(): Unit =
