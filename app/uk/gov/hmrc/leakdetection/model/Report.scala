@@ -22,6 +22,7 @@ import org.joda.time.DateTime
 import play.api.libs.json._
 import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.{Match, Result}
+import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 import uk.gov.hmrc.play.binders.SimpleObjectBinder
 import uk.gov.hmrc.time.DateTimeUtils
 
@@ -34,6 +35,7 @@ object ReportId {
 
   implicit val format: Format[ReportId] = new Format[ReportId] {
     def writes(o: ReportId): JsValue = JsString(o.value)
+
     def reads(json: JsValue): JsResult[ReportId] = json match {
       case JsString(v) => JsSuccess(ReportId(v))
       case _           => JsError("invalid reportId")
@@ -56,12 +58,13 @@ final case class Report(
 
 object Report {
 
-  def create(repositoryName: String,
-             repositoryUrl: String,
-             commitId: String,
-             authorName: String,
-             branch: String,
-             results: Seq[Result]): Report = {
+  def create(
+    repositoryName: String,
+    repositoryUrl: String,
+    commitId: String,
+    authorName: String,
+    branch: String,
+    results: Seq[Result]): Report =
     Report(
       ReportId.random,
       repositoryName,
@@ -71,15 +74,16 @@ object Report {
       authorName,
       results.map(r => ReportLine.build(repositoryUrl, branch, r))
     )
-  }
 
   implicit val format: Format[Report] = {
 
-    implicit val f =  uk.gov.hmrc.http.controllers.RestFormats.dateTimeFormats
+    implicit val f = uk.gov.hmrc.http.controllers.RestFormats.dateTimeFormats
     Json.format[Report]
   }
 
   val mongoFormat: OFormat[Report] = {
+
+    implicit val mf = ReactiveMongoFormats.dateTimeFormats
     Json.format[Report]
   }
 }
