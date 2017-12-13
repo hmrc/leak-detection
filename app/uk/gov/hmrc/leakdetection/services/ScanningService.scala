@@ -16,16 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import java.io.File
 import javax.inject.{Inject, Singleton}
 
 import org.apache.commons.io.FileUtils
-
-import scala.concurrent.{ExecutionContext, Future}
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.leakdetection.scanner.{RegexMatchingEngine, Result}
+import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
+
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ScanningService @Inject()(
@@ -35,16 +34,17 @@ class ScanningService @Inject()(
   reportsRepository: ReportsRepository
 ) {
 
-  def scanRepository(repository: String,
-                     branch: String,
-                     isPrivate: Boolean,
-                     repositoryUrl: String,
-                     commitId: String,
-                     authorName: String,
-                     archiveUrl: String
-                    )(implicit ec: ExecutionContext): Future[Report] = {
+  def scanRepository(
+    repository: String,
+    branch: String,
+    isPrivate: Boolean,
+    repositoryUrl: String,
+    commitId: String,
+    authorName: String,
+    archiveUrl: String)(implicit ec: ExecutionContext): Future[Report] = {
 
-    val explodedZipDir = artifactService.getZipAndExplode(configLoader.cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
+    val explodedZipDir = artifactService
+      .getZipAndExplode(configLoader.cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
     try {
       val rules   = if (isPrivate) configLoader.cfg.allRules.privateRules else configLoader.cfg.allRules.publicRules
       val results = regexMatchingEngine.run(explodedZipDir, rules)

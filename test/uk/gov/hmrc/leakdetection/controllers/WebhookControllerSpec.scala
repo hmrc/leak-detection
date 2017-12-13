@@ -76,8 +76,7 @@ class WebhookControllerSpec
           TestZippedFile(content = "package foo \n var x = null"),
           TestZippedFile(content = "Option(1).getOrElse(throw SadnessException)"),
           TestZippedFile(content = "package foo \n var x = null"),
-          TestZippedFile(
-            content = "Option(1).getOrElse(throw SadnessException)\n\n foo; throw; throw; throw")
+          TestZippedFile(content = "Option(1).getOrElse(throw SadnessException)\n\n foo; throw; throw; throw")
         )
 
         When("Leak Detection service receives a request")

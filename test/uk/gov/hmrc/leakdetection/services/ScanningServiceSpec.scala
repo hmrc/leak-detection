@@ -45,22 +45,39 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     "scan the git repository and return an empty report" in new TestSetup {
 
       val now = new DateTime(0, DateTimeZone.UTC)
-      val id = ReportId.random
+      val id  = ReportId.random
 
-      when(artifactService.getZipAndExplode(is("pat"),
-        is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        is("master"))).thenReturn(unzippedTmpDirectory.toFile)
+      when(
+        artifactService.getZipAndExplode(
+          is("pat"),
+          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+          is("master"))).thenReturn(unzippedTmpDirectory.toFile)
 
-      val report = scanningService.scanRepository("repoName", "master", true, "https://github.com/hmrc/repoName",
-        "some commit id", "me", "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}").futureValue
+      val report = scanningService
+        .scanRepository(
+          "repoName",
+          "master",
+          true,
+          "https://github.com/hmrc/repoName",
+          "some commit id",
+          "me",
+          "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+        .futureValue
 
-      report.author shouldBe "me"
+      report.author   shouldBe "me"
       report.repoName shouldBe "repoName"
       report.commitId shouldBe "some commit id"
-      report.repoUrl shouldBe "https://github.com/hmrc/repoName"
+      report.repoUrl  shouldBe "https://github.com/hmrc/repoName"
       report.inspectionResults shouldBe
-        Seq(ReportLine(s"/${fileInProject.getName}", 2, s"https://github.com/hmrc/repoName/blame/master/${fileInProject.getName}#L2",
-          "uses nulls!", " var x = null", List(Match(9, 13, "null"))))
+        Seq(
+          ReportLine(
+            s"/${fileInProject.getName}",
+            2,
+            s"https://github.com/hmrc/repoName/blame/master/${fileInProject.getName}#L2",
+            "uses nulls!",
+            " var x = null",
+            List(Match(9, 13, "null"))
+          ))
 
     }
 
@@ -93,19 +110,19 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     val reportRepository = mock[ReportsRepository]
     when(reportRepository.saveReport(any())).thenAnswer(new Answer[Future[Report]] {
-      override def answer(invocation: InvocationOnMock): Future[Report] = Future(invocation.getArgumentAt(0, classOf[Report]))
+      override def answer(invocation: InvocationOnMock): Future[Report] =
+        Future(invocation.getArgumentAt(0, classOf[Report]))
     })
 
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
-    val projectDirectory = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
-    val fileInProject = Files.createTempFile(projectDirectory, "test", ".txt").toFile
+    val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
+    val fileInProject        = Files.createTempFile(projectDirectory, "test", ".txt").toFile
     new PrintWriter(fileInProject) {
       write("package foo \n var x = null"); close()
     }
 
-
-    val scanningService = new ScanningService(artifactService, new RegexMatchingEngine(), new ConfigLoader(config), reportRepository)
+    val scanningService =
+      new ScanningService(artifactService, new RegexMatchingEngine(), new ConfigLoader(config), reportRepository)
   }
-
 
 }

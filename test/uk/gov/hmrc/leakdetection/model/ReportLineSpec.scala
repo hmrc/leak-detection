@@ -25,8 +25,8 @@ class ReportLineSpec extends FreeSpec with Matchers {
     "when creating" - {
       "should set the url to the correct line of the file" in {
 
-        val repoUrl = "http://githib.com/some-special-repo/"
-        val branch  = "refs/heads/branchXyz"
+        val repoUrl   = "http://githib.com/some-special-repo/"
+        val branch    = "refs/heads/branchXyz"
         val urlToFile = "/src/main/scala/SomeClass.scala"
 
         val descr      = "some descr"
@@ -54,8 +54,8 @@ class ReportLineSpec extends FreeSpec with Matchers {
 
       "should set the url to the correct line of the file when the branch is without refs/heads" in {
 
-        val repoUrl = "http://githib.com/some-special-repo/"
-        val branch  = "branchXyz"
+        val repoUrl   = "http://githib.com/some-special-repo/"
+        val branch    = "branchXyz"
         val urlToFile = "/src/main/scala/SomeClass.scala"
 
         val descr      = "some descr"

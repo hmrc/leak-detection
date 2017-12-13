@@ -29,7 +29,11 @@ import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
 import scala.concurrent.Future
 
-class AdminController @Inject()(configLoader: ConfigLoader, scanningService: ScanningService, reportsService: ReportsService) extends BaseController {
+class AdminController @Inject()(
+  configLoader: ConfigLoader,
+  scanningService: ScanningService,
+  reportsService: ReportsService)
+    extends BaseController {
 
   val logger = Logger(this.getClass.getName)
 
@@ -41,10 +45,18 @@ class AdminController @Inject()(configLoader: ConfigLoader, scanningService: Sca
     Ok(Json.toJson(configLoader.cfg.allRules))
   }
 
-  def validatePrivate(repository: String, branch: String) = Action.async {
-    implicit request =>
-      scanningService.scanRepository(repository, branch, true, s"https://github.com/hmrc/$repository",
-        "NA", "NA", s"https://api.github.com/repos/hmrc/$repository/{archive_format}{/ref}").map { report =>
+  def validatePrivate(repository: String, branch: String) = Action.async { implicit request =>
+    scanningService
+      .scanRepository(
+        repository    = repository,
+        branch        = branch,
+        isPrivate     = true,
+        repositoryUrl = s"https://github.com/hmrc/$repository",
+        commitId      = "NA",
+        authorName    = "NA",
+        archiveUrl    = s"https://api.github.com/repos/hmrc/$repository/{archive_format}{/ref}"
+      )
+      .map { report =>
         Ok(Json.toJson(report))
       }
   }
@@ -58,11 +70,10 @@ class AdminController @Inject()(configLoader: ConfigLoader, scanningService: Sca
       logger.info(s"Checking:\n ${request.body}")
 
       val scanners = rules.map(new RegexScanner(_))
-      val matches = scanners.flatMap(_.scan(request.body))
+      val matches  = scanners.flatMap(_.scan(request.body))
 
       Ok(Json.toJson(matches))
     }
-
 
   def clearCollection() = Action.async { implicit request =>
     reportsService.clearCollection().map { res =>

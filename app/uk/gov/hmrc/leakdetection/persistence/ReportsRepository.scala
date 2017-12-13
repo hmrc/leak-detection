@@ -28,8 +28,7 @@ import scala.language.implicitConversions
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
 
-class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent)(
-  implicit ec: ExecutionContext)
+class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent)(implicit ec: ExecutionContext)
     extends ReactiveRepository[Report, ReportId](
       collectionName = "reports",
       mongo          = reactiveMongoComponent.mongoConnector.db,
@@ -70,8 +69,6 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
 
   def getDistinctRepoNames: Future[List[String]] =
     collection
-      .distinct[String, List](
-        "repoName",
-        Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
+      .distinct[String, List]("repoName", Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
       .map(_.sorted)
 }

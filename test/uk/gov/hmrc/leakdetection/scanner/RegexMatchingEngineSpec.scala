@@ -21,27 +21,15 @@ import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, FreeSpec, Matchers}
 import uk.gov.hmrc.leakdetection.config.Rule
 
-class RegexMatchingEngineSpec
-    extends FreeSpec
-    with MockitoSugar
-    with Matchers
-    with BeforeAndAfterAll {
+class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers with BeforeAndAfterAll {
 
   val wd: Path = tmp.dir()
 
   def createFilesForTest() = {
-    write(
-      wd / 'zip_file_name_xyz / 'dir1 / "fileA",
-      "matching on: secretA\nmatching on: secretA again")
-    write(
-      wd / 'zip_file_name_xyz / 'dir2 / "fileB",
-      "\nmatching on: secretB\nmatching on: secretB again")
-    write(
-      wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC",
-      "matching on: secretC\nmatching on: secretC again")
-    write(
-      wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD",
-      "no match\nto be found in this file\n")
+    write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
+    write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again")
+    write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again")
+    write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD", "no match\nto be found in this file\n")
     wd
   }
 

@@ -41,13 +41,21 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
     "scan the git repository and return an empty report" in new TestSetup {
 
       val now = new DateTime(0, DateTimeZone.UTC)
-      val id = ReportId.random
+      val id  = ReportId.random
 
-      when(scanningService.scanRepository(is("repoName"), is("master"), is(true), is("https://github.com/hmrc/repoName"),
-        is("NA"), is("NA"), is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"))(any[ExecutionContext]))
+      when(
+        scanningService.scanRepository(
+          is("repoName"),
+          is("master"),
+          is(true),
+          is("https://github.com/hmrc/repoName"),
+          is("NA"),
+          is("NA"),
+          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+        )(any[ExecutionContext]))
         .thenReturn(Future.successful(Report(id, "repoName", "someUrl", "NA", now, "NA", Seq.empty)))
 
-      val result = controller.validatePrivate("repoName", "master")(FakeRequest())
+      val result       = controller.validatePrivate("repoName", "master")(FakeRequest())
       val json: String = contentAsString(result)
 
       json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"NA","timestamp":"1970-01-01T00:00:00.000Z","author":"NA","inspectionResults":[]}"""
@@ -56,17 +64,32 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
     "scan the git repository and some report" in new TestSetup {
 
       val now = new DateTime(0, DateTimeZone.UTC)
-      val id = ReportId.random
+      val id  = ReportId.random
 
-      when(scanningService.scanRepository(is("repoName"), is("master"), is(true), is("https://github.com/hmrc/repoName"),
-        is("NA"), is("NA"), is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"))(any[ExecutionContext]))
-        .thenReturn(Future.successful(Report(id, "repoName", "someUrl", "NA", now, "NA",
-          inspectionResults = Seq(
-            ReportLine("/some-file", 1, "some url", "a description", "the line", List(Match(0, 1, "line")))
-          )
-        )))
+      when(
+        scanningService.scanRepository(
+          is("repoName"),
+          is("master"),
+          is(true),
+          is("https://github.com/hmrc/repoName"),
+          is("NA"),
+          is("NA"),
+          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+        )(any[ExecutionContext]))
+        .thenReturn(
+          Future.successful(
+            Report(
+              id,
+              "repoName",
+              "someUrl",
+              "NA",
+              now,
+              "NA",
+              inspectionResults = Seq(
+                ReportLine("/some-file", 1, "some url", "a description", "the line", List(Match(0, 1, "line")))
+              ))))
 
-      val result = controller.validatePrivate("repoName", "master")(FakeRequest())
+      val result        = controller.validatePrivate("repoName", "master")(FakeRequest())
       val json: JsValue = contentAsJson(result)
 
       (json \ "inspectionResults").get.toString shouldBe """[{"filePath":"/some-file","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1,"value":"line"}]}]"""
@@ -75,13 +98,11 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
 
   trait TestSetup {
 
-    val configLoader = mock[ConfigLoader]
+    val configLoader    = mock[ConfigLoader]
     val scanningService = mock[ScanningService]
-    val reportService = mock[ReportsService]
-
+    val reportService   = mock[ReportsService]
 
     val controller = new AdminController(configLoader, scanningService, reportService)
   }
 
 }
-

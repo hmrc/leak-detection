@@ -54,5 +54,5 @@ final case class GithubSecrets(
 
 object AllRules {
   implicit val rf = Json.format[Rule]
-  val f = Json.format[AllRules]
+  val f           = Json.format[AllRules]
 }

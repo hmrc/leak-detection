@@ -21,8 +21,7 @@ import scala.concurrent.ExecutionContext
 import uk.gov.hmrc.leakdetection.model.ReportId
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 
-class ReportsService @Inject()(reportsRepository: ReportsRepository)(
-  implicit ec: ExecutionContext) {
+class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 

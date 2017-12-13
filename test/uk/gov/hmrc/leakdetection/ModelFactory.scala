@@ -78,11 +78,8 @@ object ModelFactory {
         Json.obj(
           "ref"   -> branchRef,
           "after" -> commitId,
-          "repository" -> Json.obj(
-            "name"        -> repositoryName,
-            "url"         -> repositoryUrl,
-            "archive_url" -> archiveUrl,
-            "private"     -> isPrivate),
+          "repository" -> Json
+            .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate),
           "pusher" -> Json.obj("name" -> authorName)
         )
       }
