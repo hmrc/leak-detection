@@ -65,7 +65,7 @@ class ReportsRepositorySpec
 
       val foundReports = repo.findByRepoName(repoName).futureValue
 
-      foundReports shouldBe reports
+      foundReports shouldBe reports.reverse
     }
 
   }
