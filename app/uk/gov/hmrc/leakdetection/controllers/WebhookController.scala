@@ -26,8 +26,7 @@ import uk.gov.hmrc.leakdetection.services.ScanningService
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
-class WebhookController @Inject()(configLoader: ConfigLoader, scanningService: ScanningService)
-    extends BaseController {
+class WebhookController @Inject()(configLoader: ConfigLoader, scanningService: ScanningService) extends BaseController {
 
   val logger = Logger(classOf[WebhookController])
 

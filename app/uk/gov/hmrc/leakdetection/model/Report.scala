@@ -16,13 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.model
 
-import java.time.Instant
 import java.util.UUID
-import org.joda.time.{DateTime, DateTimeZone}
+
+import org.joda.time.DateTime
 import play.api.libs.json._
 import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.{Match, Result}
+import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 import uk.gov.hmrc.play.binders.SimpleObjectBinder
+import uk.gov.hmrc.time.DateTimeUtils
 
 final case class ReportId(value: String) extends AnyVal {
   override def toString: String = value
@@ -33,6 +35,7 @@ object ReportId {
 
   implicit val format: Format[ReportId] = new Format[ReportId] {
     def writes(o: ReportId): JsValue = JsString(o.value)
+
     def reads(json: JsValue): JsResult[ReportId] = json match {
       case JsString(v) => JsSuccess(ReportId(v))
       case _           => JsError("invalid reportId")
@@ -54,20 +57,33 @@ final case class Report(
 )
 
 object Report {
-  def create(payloadDetails: PayloadDetails, results: Seq[Result]) = Report(
-    ReportId.random,
-    payloadDetails.repositoryName,
-    payloadDetails.repositoryUrl,
-    payloadDetails.commitId,
-    DateTime.now(DateTimeZone.UTC),
-    payloadDetails.authorName,
-    results.map(r => ReportLine.build(payloadDetails, r))
-  )
 
-  implicit val format: Format[Report] = Json.format[Report]
+  def create(
+    repositoryName: String,
+    repositoryUrl: String,
+    commitId: String,
+    authorName: String,
+    branch: String,
+    results: Seq[Result]): Report =
+    Report(
+      ReportId.random,
+      repositoryName,
+      repositoryUrl,
+      commitId,
+      DateTimeUtils.now,
+      authorName,
+      results.map(r => ReportLine.build(repositoryUrl, branch, r))
+    )
+
+  implicit val format: Format[Report] = {
+
+    implicit val f = uk.gov.hmrc.http.controllers.RestFormats.dateTimeFormats
+    Json.format[Report]
+  }
 
   val mongoFormat: OFormat[Report] = {
-    import uk.gov.hmrc.mongo.json.ReactiveMongoFormats._
+
+    implicit val mf = ReactiveMongoFormats.dateTimeFormats
     Json.format[Report]
   }
 }
@@ -82,9 +98,9 @@ final case class ReportLine(
 )
 
 object ReportLine {
-  def build(payloadDetails: PayloadDetails, result: Result): ReportLine = {
-    val repoUrl: String = payloadDetails.repositoryUrl
-    val branch          = payloadDetails.branchRef.diff("refs/heads/")
+  def build(repositoryUrl: String, branchRef: String, result: Result): ReportLine = {
+    val repoUrl: String = repositoryUrl
+    val branch          = branchRef.replaceFirst("refs/heads/", "")
     new ReportLine(
       result.filePath,
       result.scanResults.lineNumber,

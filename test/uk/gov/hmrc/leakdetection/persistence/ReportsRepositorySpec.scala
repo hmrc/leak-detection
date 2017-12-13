@@ -21,9 +21,11 @@ import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import play.modules.reactivemongo.ReactiveMongoComponent
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 import uk.gov.hmrc.leakdetection.ModelFactory._
+import uk.gov.hmrc.leakdetection.model.Report
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 
 class ReportsRepositorySpec
@@ -56,13 +58,13 @@ class ReportsRepositorySpec
       }
 
       val repoName = "repo"
-      val reports = few(() => {
+      val reports: Seq[Report] = few(() => {
         aReport.copy(repoName = repoName, timestamp = increasingTimestamp())
       })
 
       repo.bulkInsert(Random.shuffle(reports)).futureValue
 
-      val foundReports = repo.findByRepoName(repoName).futureValue
+      val foundReports: Seq[Report] = repo.findByRepoName(repoName).futureValue
 
       foundReports shouldBe reports.reverse
     }

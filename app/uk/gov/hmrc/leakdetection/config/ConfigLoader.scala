@@ -17,7 +17,9 @@
 package uk.gov.hmrc.leakdetection.config
 
 import javax.inject.Inject
+
 import play.api.Configuration
+import play.api.libs.json.Json
 import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 
@@ -49,3 +51,8 @@ final case class GithubSecrets(
   webhookSecretKey: String,
   personalAccessToken: String
 )
+
+object AllRules {
+  implicit val rf = Json.format[Rule]
+  val f           = Json.format[AllRules]
+}

@@ -23,11 +23,8 @@ trait MicroService {
   lazy val playSettings: Seq[Setting[_]]  = Seq.empty
 
   lazy val microservice = Project(appName, file("."))
-    .enablePlugins(Seq(
-      play.sbt.PlayScala,
-      SbtAutoBuildPlugin,
-      SbtGitVersioning,
-      SbtDistributablesPlugin) ++ plugins: _*)
+    .enablePlugins(
+      Seq(play.sbt.PlayScala, SbtAutoBuildPlugin, SbtGitVersioning, SbtDistributablesPlugin) ++ plugins: _*)
     .settings(playSettings: _*)
     .settings(scalaSettings: _*)
     .settings(publishingSettings: _*)
@@ -44,11 +41,9 @@ trait MicroService {
     .settings(inConfig(IntegrationTest)(Defaults.itSettings): _*)
     .settings(
       Keys.fork in IntegrationTest := false,
-      unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest)(base =>
-        Seq(base / "it")),
+      unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest)(base => Seq(base / "it")),
       addTestReportOption(IntegrationTest, "int-test-reports"),
-      testGrouping in IntegrationTest := oneForkedJvmPerTest(
-        (definedTests in IntegrationTest).value),
+      testGrouping in IntegrationTest := oneForkedJvmPerTest((definedTests in IntegrationTest).value),
       parallelExecution in IntegrationTest := false
     )
     .settings(resolvers ++= Seq(
@@ -61,9 +56,6 @@ private object TestPhases {
 
   def oneForkedJvmPerTest(tests: Seq[TestDefinition]) =
     tests map { test =>
-      new Group(
-        test.name,
-        Seq(test),
-        SubProcess(ForkOptions(runJVMOptions = Seq("-Dtest.name=" + test.name))))
+      new Group(test.name, Seq(test), SubProcess(ForkOptions(runJVMOptions = Seq("-Dtest.name=" + test.name))))
     }
 }

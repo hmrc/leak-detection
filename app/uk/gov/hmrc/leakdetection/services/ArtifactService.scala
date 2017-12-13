@@ -18,33 +18,27 @@ package uk.gov.hmrc.leakdetection.services
 
 import java.io.File
 import java.nio.file.Files
+
 import org.apache.commons.io.FileUtils
 import org.zeroturnaround.zip.ZipUtil
 import play.api.Logger
+
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 import scalaj.http._
-import uk.gov.hmrc.leakdetection.model.PayloadDetails
 
 class ArtifactService() {
   val logger = Logger("ArtifactManager")
 
-  def getZipAndExplode(
-    githubPersonalAccessToken: String,
-    payloadDetails: PayloadDetails
-  ): File = {
+  def getZipAndExplode(githubPersonalAccessToken: String, archiveUrl: String, branchRef: String): File = {
     logger.info("starting zip process....")
     val savedZipFilePath = Files.createTempDirectory("unzipped_").toString
-    getZip(githubPersonalAccessToken, payloadDetails, payloadDetails.branchRef, savedZipFilePath)
+    getZip(githubPersonalAccessToken, archiveUrl, branchRef, savedZipFilePath)
     explodeZip(savedZipFilePath)
   }
 
-  def getZip(
-    githubPersonalAccessToken: String,
-    payloadDetails: PayloadDetails,
-    branch: String,
-    savedZipFilePath: String): Unit = {
-    val githubZipUri = getArtifactUrl(payloadDetails, branch)
+  def getZip(githubPersonalAccessToken: String, archiveUrl: String, branch: String, savedZipFilePath: String): Unit = {
+    val githubZipUri = getArtifactUrl(archiveUrl, branch)
     logger.info(s"Getting code archive from: $githubZipUri")
 
     downloadFile(githubPersonalAccessToken, githubZipUri, savedZipFilePath, branch)
@@ -90,6 +84,6 @@ class ArtifactService() {
         } else throw t
     }
 
-  private def getArtifactUrl(payloadDetails: PayloadDetails, branch: String) =
-    payloadDetails.archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$branch")
+  private def getArtifactUrl(archiveUrl: String, branch: String) =
+    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$branch")
 }

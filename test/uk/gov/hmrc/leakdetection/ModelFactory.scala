@@ -63,7 +63,11 @@ object ModelFactory {
 
   def aReport: Report =
     Report.create(
-      payloadDetails = aPayloadDetails,
+      repositoryName = aString("repositoryName"),
+      repositoryUrl  = aString("repo"),
+      commitId       = aString("commitId"),
+      authorName     = aString("author"),
+      branch         = aString("ref"),
       results        = few(() => aResult)
     )
 
@@ -74,11 +78,8 @@ object ModelFactory {
         Json.obj(
           "ref"   -> branchRef,
           "after" -> commitId,
-          "repository" -> Json.obj(
-            "name"        -> repositoryName,
-            "url"         -> repositoryUrl,
-            "archive_url" -> archiveUrl,
-            "private"     -> isPrivate),
+          "repository" -> Json
+            .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate),
           "pusher" -> Json.obj("name" -> authorName)
         )
       }
