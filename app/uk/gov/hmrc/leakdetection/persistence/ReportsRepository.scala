@@ -60,8 +60,8 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
 
   def findByRepoName(repoName: String): Future[List[Report]] =
     collection
-      .find(Json.obj("repoName" -> repoName))
-      .sort(Json.obj("timestamp" -> 1))
+      .find(Json.obj("repoName" -> repoName, "inspectionResults" -> Json.obj("$gt" -> JsArray())))
+      .sort(Json.obj("timestamp" -> -1))
       .cursor[Report](ReadPreference.primaryPreferred)
       .collect[List]()
 
