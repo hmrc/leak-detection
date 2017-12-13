@@ -46,12 +46,11 @@ class ReportsRepositorySpec
     }
 
     "return reports by repository in inverse chronological order" in {
-      val increasingTimestamp = {
+      val increasingTimestamp: () => DateTime = {
         var t = DateTime.now(DateTimeZone.UTC)
         () =>
           {
             t = t.plusSeconds(1)
-            println(t)
             t
           }
       }
@@ -66,6 +65,19 @@ class ReportsRepositorySpec
       val foundReports = repo.findByRepoName(repoName).futureValue
 
       foundReports shouldBe reports.reverse
+    }
+
+    "only return reports that actually had problems in them" in {
+      val repoName               = "repo"
+      def reportsForRepo         = few(() => aReport.copy(repoName = repoName))
+      val reportsWithProblems    = reportsForRepo
+      val reportsWithoutProblems = reportsForRepo.map(_.copy(inspectionResults = Nil))
+
+      repo.bulkInsert(reportsWithProblems ::: reportsWithoutProblems).futureValue
+
+      val foundReports = repo.findByRepoName(repoName).futureValue
+
+      foundReports should contain theSameElementsAs (reportsWithProblems)
     }
 
   }
