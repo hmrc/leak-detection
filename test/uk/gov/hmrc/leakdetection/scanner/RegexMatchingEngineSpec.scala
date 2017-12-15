@@ -43,9 +43,9 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
       val matches = new RegexMatchingEngine().run(
         explodedZipDir = rootDir.toNIO.toFile,
         rules = Seq(
-          Rule("rule-1", "secretA", "descr 1"),
-          Rule("rule-2", "secretB", "descr 2"),
-          Rule("rule-3", "secretC", "descr 3")
+          Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1"),
+          Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
+          Rule("rule-3", Rule.Scope.FILE_CONTENT, "secretC", "descr 3")
         )
       )
 

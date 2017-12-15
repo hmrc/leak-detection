@@ -93,6 +93,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
                 privateRules = [
                   {
                    id = "rule-1"
+                   scope = "fileContent"
                    regex = "null"
                    description = "uses nulls!"
                   }

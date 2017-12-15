@@ -17,7 +17,6 @@
 package uk.gov.hmrc.leakdetection.config
 
 import javax.inject.Inject
-
 import play.api.Configuration
 import play.api.libs.json.Json
 import pureconfig.syntax._
@@ -43,9 +42,17 @@ final case class AllRules(
 
 final case class Rule(
   id: String,
+  scope: String,
   regex: String,
   description: String
 )
+
+object Rule {
+  object Scope {
+    val FILE_CONTENT = "fileContent"
+    val FILE_NAME    = "fileName"
+  }
+}
 
 final case class GithubSecrets(
   webhookSecretKey: String,

@@ -32,7 +32,7 @@ class RegexScannerSpec extends FreeSpec with Matchers {
             |""".stripMargin
         val descr  = "descr for regex"
         val ruleId = "rule-1"
-        val rule   = Rule(ruleId, "(matches)", descr)
+        val rule   = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(matches)", descr)
 
         new RegexScanner(rule).scan(text) should
           contain theSameElementsAs Seq(
@@ -55,7 +55,7 @@ class RegexScannerSpec extends FreeSpec with Matchers {
         val text   = "this is a test"
         val ruleId = "rule-1"
 
-        val rule = Rule(ruleId, "(was)", "descr")
+        val rule = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(was)", "descr")
 
         new RegexScanner(rule).scan(text) shouldBe Nil
       }
