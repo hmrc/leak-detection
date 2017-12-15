@@ -70,7 +70,7 @@ class AdminController @Inject()(
       logger.info(s"Checking:\n ${request.body}")
 
       val scanners = rules.map(new RegexScanner(_))
-      val matches  = scanners.flatMap(_.scan(request.body))
+      val matches  = scanners.flatMap(_.scanFileContent(request.body))
 
       Ok(Json.toJson(matches))
     }

@@ -20,6 +20,7 @@ import play.api.libs.json.{Format, Json}
 import scala.util.matching.Regex
 
 final case class MatchedResult(
+  scope: String,
   lineText: String,
   lineNumber: Int,
   ruleId: String,

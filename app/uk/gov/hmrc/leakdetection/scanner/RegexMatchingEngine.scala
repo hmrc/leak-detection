@@ -30,7 +30,8 @@ class RegexMatchingEngine() {
   import FileAndDirectoryUtils._
 
   def run(explodedZipDir: File, rules: Seq[Rule]): List[Result] = {
-    val scanners = rules.map(new RegexScanner(_))
+    val fileContentScanners = createFileContentScanners(rules)
+    val fileNameScanners    = createFileNameScanners(rules)
 
     val filesAndDirs: Iterable[File] = getFiles(explodedZipDir)
 
@@ -38,18 +39,27 @@ class RegexMatchingEngine() {
       .filterNot(_.isDirectory)
       .par
       .flatMap { file =>
-        val fileContent = getFileContents(file)
-        scanners.map { scanner =>
-          val scanResults: Seq[Result] =
-            scanner.scan(fileContent).map(sr => Result(getPath(explodedZipDir, file), sr))
-          scanResults
-        }
+        val fileContent                 = getFileContents(file)
+        def toResult(mr: MatchedResult) = Result(getPath(explodedZipDir, file), mr)
+
+        val contentResults = fileContentScanners.flatMap { _.scanFileContent(fileContent).map(toResult) }
+        val fileNameResult = fileNameScanners.flatMap { _.scanFileName(file.getName).map(toResult) }
+
+        contentResults ++ fileNameResult
       }
-      .flatten
       .toList
 
     results
   }
+
+  private def createFileContentScanners(rules: Seq[Rule]): Seq[RegexScanner] =
+    createScanners(rules, Rule.Scope.FILE_CONTENT)
+
+  private def createFileNameScanners(rules: Seq[Rule]): Seq[RegexScanner] =
+    createScanners(rules, Rule.Scope.FILE_NAME)
+
+  private def createScanners(rules: Seq[Rule], ruleScope: String): Seq[RegexScanner] =
+    rules.filter(_.scope == ruleScope).map(new RegexScanner(_))
 
   private def getPath(explodedZipDir: File, file: File): String = {
     val strippedTmpDir   = file.getAbsolutePath.stripPrefix(explodedZipDir.getAbsolutePath)

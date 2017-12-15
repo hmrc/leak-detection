@@ -18,7 +18,6 @@ package uk.gov.hmrc.leakdetection.services
 
 import java.io.PrintWriter
 import java.nio.file.Files
-
 import com.typesafe.config.ConfigFactory
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.Matchers.{any, eq => is}
@@ -30,11 +29,10 @@ import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
 import play.api.mvc.Results
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.scanner.{Match, RegexMatchingEngine}
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -72,6 +70,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         Seq(
           ReportLine(
             s"/${fileInProject.getName}",
+            Rule.Scope.FILE_CONTENT,
             2,
             s"https://github.com/hmrc/repoName/blame/master/${fileInProject.getName}#L2",
             "uses nulls!",

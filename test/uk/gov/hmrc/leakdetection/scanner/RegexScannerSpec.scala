@@ -21,9 +21,9 @@ import uk.gov.hmrc.leakdetection.config.Rule
 
 class RegexScannerSpec extends FreeSpec with Matchers {
 
-  "scan" - {
+  "scanning file content" - {
     "should look for a regex in a given text" - {
-      "and find return the line number matching the regex" in {
+      "and return line numbers for matches" in {
         val text =
           """nothing matching here
             |this matches the regex
@@ -34,20 +34,24 @@ class RegexScannerSpec extends FreeSpec with Matchers {
         val ruleId = "rule-1"
         val rule   = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(matches)", descr)
 
-        new RegexScanner(rule).scan(text) should
+        new RegexScanner(rule).scanFileContent(text) should
           contain theSameElementsAs Seq(
           MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "this matches the regex",
             lineNumber  = 2,
             ruleId      = ruleId,
             description = descr,
-            matches     = List(Match(start = 5, end = 12, value = "matches"))),
+            matches     = List(Match(start = 5, end = 12, value = "matches"))
+          ),
           MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "this matches the regex too",
             lineNumber  = 3,
             ruleId      = ruleId,
             description = descr,
-            matches     = List(Match(start = 5, end = 12, value = "matches")))
+            matches     = List(Match(start = 5, end = 12, value = "matches"))
+          )
         )
       }
 
@@ -57,8 +61,35 @@ class RegexScannerSpec extends FreeSpec with Matchers {
 
         val rule = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(was)", "descr")
 
-        new RegexScanner(rule).scan(text) shouldBe Nil
+        new RegexScanner(rule).scanFileContent(text) shouldBe Nil
       }
     }
+  }
+
+  "scanning file names should return" - {
+    "a result if regex found a problem" in {
+      val fileName = "foo.key"
+      val ruleId   = "rule-1"
+      val descr    = "descr"
+      val rule     = Rule(ruleId, Rule.Scope.FILE_NAME, """^.*\.key$""", descr)
+
+      new RegexScanner(rule).scanFileName(fileName) shouldBe
+        Some(
+          MatchedResult(
+            scope       = Rule.Scope.FILE_NAME,
+            lineText    = fileName,
+            lineNumber  = 1,
+            ruleId      = ruleId,
+            description = descr,
+            matches     = List(Match(0, 7, fileName))
+          ))
+    }
+    "nothing if no match was found" in {
+      val fileName = "foo.key"
+      val rule     = Rule("rule-id", Rule.Scope.FILE_NAME, "doesn't match", "descr")
+
+      new RegexScanner(rule).scanFileName(fileName) shouldBe None
+    }
+
   }
 }

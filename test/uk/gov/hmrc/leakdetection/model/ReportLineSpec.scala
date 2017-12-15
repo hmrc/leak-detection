@@ -17,6 +17,7 @@
 package uk.gov.hmrc.leakdetection.model
 
 import org.scalatest.{FreeSpec, Matchers}
+import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
 
 class ReportLineSpec extends FreeSpec with Matchers {
@@ -40,11 +41,14 @@ class ReportLineSpec extends FreeSpec with Matchers {
             Result(
               urlToFile,
               MatchedResult(
-                "some matched text in the file",
-                lineNumber,
-                ruleId,
-                descr,
-                List(Match(start = 6, end = 12, value = "matched text"))))
+                scope       = Rule.Scope.FILE_CONTENT,
+                lineText    = "some matched text in the file",
+                lineNumber  = lineNumber,
+                ruleId      = ruleId,
+                description = descr,
+                matches     = List(Match(start = 6, end = 12, value = "matched text"))
+              )
+            )
           )
 
         reportLine.urlToSource shouldBe s"$repoUrl/blame/branchXyz$urlToFile#L$lineNumber"
@@ -69,11 +73,14 @@ class ReportLineSpec extends FreeSpec with Matchers {
             Result(
               urlToFile,
               MatchedResult(
-                "some matched text in the file",
-                lineNumber,
-                ruleId,
-                descr,
-                List(Match(start = 6, end = 12, value = "matched text"))))
+                scope       = Rule.Scope.FILE_CONTENT,
+                lineText    = "some matched text in the file",
+                lineNumber  = lineNumber,
+                ruleId      = ruleId,
+                description = descr,
+                matches     = List(Match(start = 6, end = 12, value = "matched text"))
+              )
+            )
           )
 
         reportLine.urlToSource shouldBe s"$repoUrl/blame/branchXyz$urlToFile#L$lineNumber"

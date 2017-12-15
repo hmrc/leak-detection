@@ -59,9 +59,12 @@
     @report.inspectionResults.map { problem =>
         <div class="card">
             <div class="card-header">@problem.description</div>
-            <div class="card-body"><p class="monospace">@highlightProblems(problem)</p></div>
+            <div class="card-body">
+                <p class="monospace">@highlightProblems(problem)</p>
+            </div>
             <div class="card-footer">
-                <a href="@problem.urlToSource">Link to source</a>
+                <a href="@problem.urlToSource" target="_blank">Link to source</a>
+                @if(problem.scope == "fileName"){ (match in file name) }
             </div>
         </div>
         <br/>

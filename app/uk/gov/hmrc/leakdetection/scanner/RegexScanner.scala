@@ -30,11 +30,27 @@ class RegexScanner(rule: Rule) {
       }
   }
 
-  def scan(text: String): Seq[MatchedResult] =
+  def scanFileName(text: String): Option[MatchedResult] =
+    text match {
+      case Extractor(_, matches) =>
+        Some(
+          MatchedResult(
+            scope       = Rule.Scope.FILE_NAME,
+            lineText    = text,
+            lineNumber  = 1,
+            ruleId      = rule.id,
+            description = rule.description,
+            matches     = matches
+          ))
+      case _ => None
+    }
+
+  def scanFileContent(text: String): Seq[MatchedResult] =
     text.lines.toSeq.zipWithIndex
       .collect {
         case (Extractor(lineText, matches), lineNumber) =>
           MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
             lineText    = lineText,
             lineNumber  = adjustForBase1Numbering(lineNumber),
             ruleId      = rule.id,

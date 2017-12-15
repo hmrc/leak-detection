@@ -90,6 +90,7 @@ object Report {
 
 final case class ReportLine(
   filePath: String,
+  scope: String,
   lineNumber: Int,
   urlToSource: String,
   description: String,
@@ -103,6 +104,7 @@ object ReportLine {
     val branch          = branchRef.replaceFirst("refs/heads/", "")
     new ReportLine(
       result.filePath,
+      result.scanResults.scope,
       result.scanResults.lineNumber,
       s"$repoUrl/blame/$branch${result.filePath}#L${result.scanResults.lineNumber}",
       result.scanResults.description,

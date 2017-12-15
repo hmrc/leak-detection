@@ -74,9 +74,8 @@ class WebhookControllerSpec
         And("Github, when called will return a zip with source code files")
         filesInTheArchive = List(
           TestZippedFile(content = "package foo \n var x = null"),
-          TestZippedFile(content = "Option(1).getOrElse(throw SadnessException)"),
-          TestZippedFile(content = "package foo \n var x = null"),
-          TestZippedFile(content = "Option(1).getOrElse(throw SadnessException)\n\n foo; throw; throw; throw")
+          TestZippedFile(content = "Option(1).getOrElse(throw SadnessException)\n\n foo; throw; throw; throw"),
+          TestZippedFile(path    = "/repo/id_rsa", content = "doesn't matter")
         )
 
         When("Leak Detection service receives a request")
@@ -87,8 +86,12 @@ class WebhookControllerSpec
 
         And("Report should include info about all found problems")
         val report = Json.parse(Helpers.contentAsString(res)).as[Report]
-        report.inspectionResults.size shouldBe 5
-
+        val expectedTotalMatches = {
+          val contentMatchesCount = 3
+          val nameMatchesCount    = 1
+          contentMatchesCount + nameMatchesCount
+        }
+        report.inspectionResults.size shouldBe expectedTotalMatches
       }
     }
   }
@@ -122,6 +125,12 @@ trait Fixtures { self: OneAppPerSuite with MongoSpecSupport =>
                    scope = "fileContent"
                    regex = "throw"
                    description = "throws exceptions!"
+                  },
+                  {
+                   id = "rule-2"
+                   scope = "fileName"
+                   regex = ".*_rsa"
+                   description = "private key"
                   }
                 ]
               }

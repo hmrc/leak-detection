@@ -25,11 +25,10 @@ import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.JsValue
 import play.api.mvc.Results
 import play.api.test.FakeRequest
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
-
 import scala.concurrent.{ExecutionContext, Future}
 
 class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
@@ -76,23 +75,29 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
           is("NA"),
           is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
         )(any[ExecutionContext]))
-        .thenReturn(
-          Future.successful(
-            Report(
-              id,
-              "repoName",
-              "someUrl",
-              "NA",
-              now,
-              "NA",
-              inspectionResults = Seq(
-                ReportLine("/some-file", 1, "some url", "a description", "the line", List(Match(0, 1, "line")))
-              ))))
+        .thenReturn(Future.successful(Report(
+          id,
+          "repoName",
+          "someUrl",
+          "NA",
+          now,
+          "NA",
+          inspectionResults = Seq(
+            ReportLine(
+              "/some-file",
+              Rule.Scope.FILE_CONTENT,
+              1,
+              "some url",
+              "a description",
+              "the line",
+              List(Match(0, 1, "line")))
+          )
+        )))
 
       val result        = controller.validatePrivate("repoName", "master")(FakeRequest())
       val json: JsValue = contentAsJson(result)
 
-      (json \ "inspectionResults").get.toString shouldBe """[{"filePath":"/some-file","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1,"value":"line"}]}]"""
+      (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1,"value":"line"}]}]"""
     }
   }
 
