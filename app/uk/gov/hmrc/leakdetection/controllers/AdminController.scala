@@ -69,10 +69,13 @@ class AdminController @Inject()(
     Action(parse.tolerantText) { implicit request =>
       logger.info(s"Checking:\n ${request.body}")
 
-      val scanners = rules.map(new RegexScanner(_))
-      val matches  = scanners.flatMap(_.scanFileContent(request.body))
+      val fileContentScanners = rules.filter(_.scope == Rule.Scope.FILE_CONTENT).map(new RegexScanner(_))
+      val fileNameScanners    = rules.filter(_.scope == Rule.Scope.FILE_NAME).map(new RegexScanner(_))
 
-      Ok(Json.toJson(matches))
+      val matchesByContent = fileContentScanners.flatMap(_.scanFileContent(request.body))
+      val matchesByName    = fileNameScanners.flatMap(_.scanFileName(request.body))
+
+      Ok(Json.toJson(matchesByContent ++ matchesByName))
     }
 
   def clearCollection() = Action.async { implicit request =>
