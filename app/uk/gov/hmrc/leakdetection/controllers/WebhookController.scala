@@ -17,6 +17,7 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import javax.inject.Inject
+import javax.inject.Singleton
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.{Action, BodyParser}
@@ -26,6 +27,7 @@ import uk.gov.hmrc.leakdetection.services.ScanningService
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
+@Singleton
 class WebhookController @Inject()(configLoader: ConfigLoader, scanningService: ScanningService) extends BaseController {
 
   val logger = Logger(classOf[WebhookController])

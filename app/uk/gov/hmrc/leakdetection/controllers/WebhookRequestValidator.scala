@@ -59,7 +59,7 @@ object WebhookRequestValidator {
       .flatMap { s =>
         if (isValidSignature(payload, s, webhookSecret)) {
           Json.parse(payload).validate[PayloadDetails] match {
-            case JsSuccess(pd, _) => pd.asRight
+            case JsSuccess(pd, _) => checkIfEventShouldBeProcessed(pd)
             case JsError(_)       => ignoreIfZenMessage(payload).asLeft
           }
         } else {
@@ -67,7 +67,8 @@ object WebhookRequestValidator {
         }
       }
       .leftMap {
-        case ZenMessage         => Ok("Zen message ignored")
+        case DeleteBranchEvent  => Ok(Json.toJson(Message("Events related to deleting branches are ignored")))
+        case ZenMessage         => Ok(Json.toJson(Message("Zen message ignored")))
         case e: ValidationError => BadRequest(errorAsJson(e.toString))
       }
   }
@@ -83,6 +84,16 @@ object WebhookRequestValidator {
       case JsError(errors) => InvalidPayload(errors.toString)
     }
 
+  def checkIfEventShouldBeProcessed(pd: PayloadDetails): Either[ValidationError, PayloadDetails] =
+    ignoreIfDeleteBranchEvent(pd)
+
+  def ignoreIfDeleteBranchEvent(pd: PayloadDetails): Either[ValidationError, PayloadDetails] =
+    if (pd.deleted) {
+      DeleteBranchEvent.asLeft
+    } else {
+      pd.asRight
+    }
+
   def isValidSignature(payload: String, ghSignature: String, secret: String): Boolean = {
     val algorithm  = "HmacSHA1"
     val secretSpec = new SecretKeySpec(secret.getBytes(), algorithm)
@@ -96,6 +107,11 @@ object WebhookRequestValidator {
     ghSignature.equalsIgnoreCase(hashOfPayload)
   }
 
+  final case class Message(details: String)
+  object Message {
+    implicit val format: Format[Message] = Json.format[Message]
+  }
+
   private def errorAsJson(errorMsg: String): JsValue =
     Json.obj("error" -> "Error parsing request", "details" -> errorMsg)
 
@@ -103,6 +119,7 @@ object WebhookRequestValidator {
   case object SignatureNotFound extends ValidationError
   case object InvalidSignature extends ValidationError
   case object ZenMessage extends ValidationError
-  case class InvalidPayload(errors: String) extends ValidationError
+  case object DeleteBranchEvent extends ValidationError
+  final case class InvalidPayload(errors: String) extends ValidationError
 
 }

@@ -25,7 +25,7 @@ import WebhookRequestValidator.isValidSignature
 
 class WebhookRequestValidatorSpec extends WordSpec with Matchers {
 
-  s"Parsing $PayloadDetails" should {
+  s"Parsing ${PayloadDetails.getClass.getName}" should {
     "succeed if all required fields are present" in {
       val expectedPayloadDetails = aPayloadDetails
       val validJson              = asJson(expectedPayloadDetails)
