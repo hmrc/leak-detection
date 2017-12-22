@@ -28,7 +28,8 @@ final case class PayloadDetails(
   branchRef: String,
   repositoryUrl: String,
   commitId: String,
-  archiveUrl: String
+  archiveUrl: String,
+  deleted: Boolean
 )
 
 object PayloadDetails {
@@ -40,7 +41,8 @@ object PayloadDetails {
       (__ \ "ref").read[String] and
       (__ \ "repository" \ "url").read[String] and
       (__ \ "after").read[String] and
-      (__ \ "repository" \ "archive_url").read[String]
+      (__ \ "repository" \ "archive_url").read[String] and
+      (__ \ "deleted").read[Boolean]
   )(PayloadDetails.apply _)
 
 }

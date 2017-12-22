@@ -45,7 +45,8 @@ object ModelFactory {
       branchRef      = aString("ref"),
       repositoryUrl  = aString("repo"),
       commitId       = aString("commitId"),
-      archiveUrl     = aString("archiveUrl")
+      archiveUrl     = aString("archiveUrl"),
+      deleted        = aBoolean
     )
 
   def aScope: String =
@@ -85,8 +86,9 @@ object ModelFactory {
       def writes(pd: PayloadDetails): JsValue = {
         import pd._
         Json.obj(
-          "ref"   -> branchRef,
-          "after" -> commitId,
+          "ref"     -> branchRef,
+          "after"   -> commitId,
+          "deleted" -> deleted,
           "repository" -> Json
             .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate),
           "pusher" -> Json.obj("name" -> authorName)
