@@ -60,7 +60,7 @@ class ArtifactService() {
           .option(HttpOptions.followRedirects(true))
           .asBytes
       if (resp.isError) {
-        val errorMessage = s"Error downloading the zip file from github:\n${new String(resp.body)}"
+        val errorMessage = s"Error downloading the zip file from $url:\n${new String(resp.body)}"
         logger.error(errorMessage)
         throw new RuntimeException(errorMessage)
       } else {
@@ -77,7 +77,6 @@ class ArtifactService() {
     Try(f) match {
       case Success(resp) => resp
       case Failure(t) =>
-        logger.warn(s"Got error: ${t.getMessage}, retrying $retryCount more times")
         if (retryCount > 0) {
           Thread.sleep(200)
           retry(retryCount - 1)(f)
