@@ -7,7 +7,7 @@ GET        /reports/repositories                        @uk.gov.hmrc.leakdetecti
 GET        /reports/repositories/:repo                  @uk.gov.hmrc.leakdetection.controllers.ReportsController.reportsForRepository(repo: String)
 GET        /reports/:id                                 @uk.gov.hmrc.leakdetection.controllers.ReportsController.showReport(id: uk.gov.hmrc.leakdetection.model.ReportId)
 
-
+GET        /assets/*file                                controllers.Assets.at(path="/public", file)
 
 
 # Admin endpoints
