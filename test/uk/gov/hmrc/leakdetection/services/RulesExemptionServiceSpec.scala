@@ -20,6 +20,7 @@ import java.io.File
 
 import ammonite.ops.{Path, tmp, write}
 import org.scalatest.{Matchers, WordSpec}
+import uk.gov.hmrc.leakdetection.config.RuleExemption
 
 import scala.util.Random
 

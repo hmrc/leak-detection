@@ -21,13 +21,11 @@ import javax.inject.Inject
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.Action
-import uk.gov.hmrc.leakdetection.config.{AllRules, ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.scanner.RegexScanner
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
-
-import scala.concurrent.Future
 
 class AdminController @Inject()(
   configLoader: ConfigLoader,
@@ -38,8 +36,6 @@ class AdminController @Inject()(
   val logger = Logger(this.getClass.getName)
 
   import configLoader.cfg.allRules._
-
-  implicit val ruleWrites = AllRules.f
 
   def rules() = Action {
     Ok(Json.toJson(configLoader.cfg.allRules))

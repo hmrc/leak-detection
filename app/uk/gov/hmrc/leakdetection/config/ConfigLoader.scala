@@ -17,6 +17,7 @@
 package uk.gov.hmrc.leakdetection.config
 
 import javax.inject.Inject
+
 import play.api.Configuration
 import play.api.libs.json.Json
 import pureconfig.syntax._
@@ -32,7 +33,8 @@ class ConfigLoader @Inject()(configuration: Configuration) {
 
 final case class Cfg(
   allRules: AllRules,
-  githubSecrets: GithubSecrets
+  githubSecrets: GithubSecrets,
+  allRuleExemptions: AllRuleExemptions
 )
 
 final case class AllRules(
@@ -48,6 +50,7 @@ final case class Rule(
 )
 
 object Rule {
+  implicit val format = Json.format[Rule]
   object Scope {
     val FILE_CONTENT = "fileContent"
     val FILE_NAME    = "fileName"
@@ -55,11 +58,25 @@ object Rule {
 }
 
 final case class GithubSecrets(
-  webhookSecretKey: String,
-  personalAccessToken: String
+  personalAccessToken: String,
+  webhookSecretKey: String
 )
 
 object AllRules {
-  implicit val rf = Json.format[Rule]
-  val f           = Json.format[AllRules]
+  implicit val format = Json.format[AllRules]
+}
+
+final case class RuleExemption(
+  ruleId: String,
+  filename: String
+)
+
+object RuleExemption {
+  implicit val format = Json.format[RuleExemption]
+}
+
+final case class AllRuleExemptions(global: List[RuleExemption])
+
+object AllRuleExemptions {
+  implicit val format = Json.format[AllRuleExemptions]
 }

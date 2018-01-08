@@ -103,6 +103,10 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
                 webhookSecretKey = "a secret"
                 personalAccessToken = pat
               }
+
+              allRuleExemptions {
+                global = []
+              }
             """
       ))
 

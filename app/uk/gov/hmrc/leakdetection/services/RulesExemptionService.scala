@@ -20,6 +20,7 @@ import java.io.File
 import java.{util => ju}
 
 import org.yaml.snakeyaml.Yaml
+import uk.gov.hmrc.leakdetection.config.RuleExemption
 
 import scala.collection.JavaConverters._
 import scala.io.Source
@@ -62,8 +63,3 @@ class RulesExemptionService {
   }.getOrElse(Nil)
 
 }
-
-final case class RuleExemption(
-  ruleId: String,
-  filename: String
-)

@@ -163,6 +163,10 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
                 webhookSecretKey = $secret
                 personalAccessToken = pat
               }
+
+              allRuleExemptions {
+                global = []
+              }
             """
           ))
       )
