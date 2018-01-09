@@ -13,7 +13,8 @@ GET        /assets/*file                                controllers.Assets.at(pa
 # Admin endpoints
 
 GET        /admin/rules                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.rules
-GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetection.controllers.AdminController.validatePrivate(repository, branch)
+GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository, branch, isPrivate: Boolean = true)
+GET        /admin/validate/public/:repository/:branch   @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository, branch, isPrivate: Boolean = false)
 
 POST       /admin/test-public-rules                     @uk.gov.hmrc.leakdetection.controllers.AdminController.testPublicRules
 POST       /admin/test-private-rules                    @uk.gov.hmrc.leakdetection.controllers.AdminController.testPrivateRules

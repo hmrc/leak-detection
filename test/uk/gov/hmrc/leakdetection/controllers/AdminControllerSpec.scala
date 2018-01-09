@@ -35,69 +35,72 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
 
   import play.api.test.Helpers._
 
-  "validatePrivate" should {
+  "validate" should {
 
-    "scan the git repository and return an empty report" in new TestSetup {
+    List("private" -> true, "public" -> false) foreach {
+      case (repoType, isPrivate) =>
+        s"scan the git $repoType repository and return an empty report" in new TestSetup {
 
-      val now = new DateTime(0, DateTimeZone.UTC)
-      val id  = ReportId.random
+          val now = new DateTime(0, DateTimeZone.UTC)
+          val id  = ReportId.random
 
-      when(
-        scanningService.scanRepository(
-          is("repoName"),
-          is("master"),
-          is(true),
-          is("https://github.com/hmrc/repoName"),
-          is("NA"),
-          is("NA"),
-          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-        )(any[ExecutionContext]))
-        .thenReturn(Future.successful(Report(id, "repoName", "someUrl", "NA", now, "NA", Seq.empty)))
+          when(
+            scanningService.scanRepository(
+              is("repoName"),
+              is("master"),
+              is(isPrivate),
+              is("https://github.com/hmrc/repoName"),
+              is("NA"),
+              is("NA"),
+              is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+            )(any[ExecutionContext]))
+            .thenReturn(Future.successful(Report(id, "repoName", "someUrl", "NA", now, "NA", Seq.empty)))
 
-      val result       = controller.validatePrivate("repoName", "master")(FakeRequest())
-      val json: String = contentAsString(result)
+          val result       = controller.validate("repoName", "master", isPrivate)(FakeRequest())
+          val json: String = contentAsString(result)
 
-      json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"NA","timestamp":"1970-01-01T00:00:00.000Z","author":"NA","inspectionResults":[]}"""
-    }
+          json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"NA","timestamp":"1970-01-01T00:00:00.000Z","author":"NA","inspectionResults":[]}"""
+        }
 
-    "scan the git repository and some report" in new TestSetup {
+        s"scan the git $repoType repository and some report" in new TestSetup {
 
-      val now = new DateTime(0, DateTimeZone.UTC)
-      val id  = ReportId.random
+          val now = new DateTime(0, DateTimeZone.UTC)
+          val id  = ReportId.random
 
-      when(
-        scanningService.scanRepository(
-          is("repoName"),
-          is("master"),
-          is(true),
-          is("https://github.com/hmrc/repoName"),
-          is("NA"),
-          is("NA"),
-          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-        )(any[ExecutionContext]))
-        .thenReturn(Future.successful(Report(
-          id,
-          "repoName",
-          "someUrl",
-          "NA",
-          now,
-          "NA",
-          inspectionResults = Seq(
-            ReportLine(
-              "/some-file",
-              Rule.Scope.FILE_CONTENT,
-              1,
-              "some url",
-              "a description",
-              "the line",
-              List(Match(0, 1, "line")))
-          )
-        )))
+          when(
+            scanningService.scanRepository(
+              is("repoName"),
+              is("master"),
+              is(isPrivate),
+              is("https://github.com/hmrc/repoName"),
+              is("NA"),
+              is("NA"),
+              is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+            )(any[ExecutionContext]))
+            .thenReturn(Future.successful(Report(
+              id,
+              "repoName",
+              "someUrl",
+              "NA",
+              now,
+              "NA",
+              inspectionResults = Seq(
+                ReportLine(
+                  "/some-file",
+                  Rule.Scope.FILE_CONTENT,
+                  1,
+                  "some url",
+                  "a description",
+                  "the line",
+                  List(Match(0, 1, "line")))
+              )
+            )))
 
-      val result        = controller.validatePrivate("repoName", "master")(FakeRequest())
-      val json: JsValue = contentAsJson(result)
+          val result        = controller.validate("repoName", "master", isPrivate)(FakeRequest())
+          val json: JsValue = contentAsJson(result)
 
-      (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1,"value":"line"}]}]"""
+          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1,"value":"line"}]}]"""
+        }
     }
   }
 
