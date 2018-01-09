@@ -20,6 +20,7 @@ import java.io.File
 
 import ammonite.ops.{Path, tmp, write}
 import org.scalatest.{Matchers, WordSpec}
+import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.RuleExemption
 
 import scala.util.Random
@@ -31,17 +32,17 @@ class RulesExemptionServiceSpec extends WordSpec with Matchers {
 
       val configContent =
         """
-          |leak-detection-exemptions: 
-          |  - rule-id: '1'
-          |    file-name: foo.scala
-          |  - rule-id: 'id2'
-          |    file-name: bar.py
+          |leakDetectionExemptions:
+          |  - ruleId: '1'
+          |    filePath: foo.scala
+          |  - ruleId: 'id2'
+          |    filePath: bar.py
         """.stripMargin
 
       createFileForTest(configContent)
       val expectedRules = List(RuleExemption("1", "foo.scala"), RuleExemption("id2", "bar.py"))
 
-      val parsedRules = rulesExemptionService.parseConfig(dir.toIO)
+      val parsedRules = RulesExemptionService.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe expectedRules
 
@@ -49,7 +50,7 @@ class RulesExemptionServiceSpec extends WordSpec with Matchers {
 
     "return empty list if no configuration file exists" in new Setup {
       val nonexistentFile = new File(Random.nextString(10))
-      val parsedRules     = rulesExemptionService.parseConfig(nonexistentFile)
+      val parsedRules     = RulesExemptionService.parseServiceSpecificExemptions(nonexistentFile)
 
       parsedRules shouldBe Nil
     }
@@ -58,7 +59,7 @@ class RulesExemptionServiceSpec extends WordSpec with Matchers {
       val emptyContent = ""
       createFileForTest(emptyContent)
 
-      val parsedRules = rulesExemptionService.parseConfig(dir.toIO)
+      val parsedRules = RulesExemptionService.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe Nil
     }
@@ -70,7 +71,7 @@ class RulesExemptionServiceSpec extends WordSpec with Matchers {
         """.stripMargin
       createFileForTest(emptyContent)
 
-      val parsedRules = rulesExemptionService.parseConfig(dir.toIO)
+      val parsedRules = RulesExemptionService.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe Nil
     }
@@ -78,20 +79,32 @@ class RulesExemptionServiceSpec extends WordSpec with Matchers {
     "skip entries if incorrectly defined, e.g. misspelled" in new Setup {
       val configContent =
         """
-          |leak-detection-exemptions: 
-          |  - ruleId: '1' # camel case instead of snake case
-          |    file-name: foo.scala
-          |  - rule-id: 'id2'
-          |    file-name: bar.py
+          |leakDetectionExemptions:
+          |  - rule-id: '1' # snake case instead of camelCase
+          |    filePath: foo.scala
+          |  - ruleId: 'id2'
+          |    filePath: bar.py
         """.stripMargin
 
       createFileForTest(configContent)
       val expectedRules = List(RuleExemption("id2", "bar.py"))
 
-      val parsedRules = rulesExemptionService.parseConfig(dir.toIO)
+      val parsedRules = RulesExemptionService.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe expectedRules
 
+    }
+
+    "determine if a Result should be exempt based on rule id and file path" in new Setup {
+      val exemptedResult       = ModelFactory.aResult
+      val exemptedResultRuleId = exemptedResult.scanResults.ruleId
+
+      val ruleExemptions = List(RuleExemption(exemptedResultRuleId, exemptedResult.filePath))
+
+      val validResult = ModelFactory.aResult
+
+      RulesExemptionService.isExempt(ruleExemptions)(exemptedResult) shouldBe true
+      RulesExemptionService.isExempt(ruleExemptions)(validResult)    shouldBe false
     }
   }
 
@@ -103,7 +116,6 @@ class RulesExemptionServiceSpec extends WordSpec with Matchers {
       dir
     }
 
-    val rulesExemptionService = new RulesExemptionService
   }
 
 }

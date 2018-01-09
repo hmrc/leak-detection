@@ -47,7 +47,7 @@ class ScanningService @Inject()(
       .getZipAndExplode(configLoader.cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
     try {
       val rules   = if (isPrivate) configLoader.cfg.allRules.privateRules else configLoader.cfg.allRules.publicRules
-      val results = regexMatchingEngine.run(explodedZipDir, rules)
+      val results = regexMatchingEngine.run(explodedZipDir, rules, Nil)
       val report  = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
       reportsRepository.saveReport(report).map(_ => report)
     } finally {

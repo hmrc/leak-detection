@@ -21,14 +21,15 @@ import java.{util => ju}
 
 import org.yaml.snakeyaml.Yaml
 import uk.gov.hmrc.leakdetection.config.RuleExemption
+import uk.gov.hmrc.leakdetection.scanner.Result
 
 import scala.collection.JavaConverters._
 import scala.io.Source
 import scala.util.Try
 
-class RulesExemptionService {
+object RulesExemptionService {
 
-  def parseConfig(repoDir: File): List[RuleExemption] =
+  def parseServiceSpecificExemptions(repoDir: File): List[RuleExemption] =
     getConfigFileContents(repoDir).map(parseYamlAsRuleExemptions).getOrElse(Nil)
 
   private def getConfigFileContents(repoDir: File): Option[String] = {
@@ -46,12 +47,12 @@ class RulesExemptionService {
 
     maybeRawConfig.map { rawConfig =>
       rawConfig.asScala
-        .get("leak-detection-exemptions")
+        .get("leakDetectionExemptions")
         .map { list =>
           list.asScala.flatMap { entry =>
             for {
-              ruleId   <- entry.asScala.get("rule-id")
-              fileName <- entry.asScala.get("file-name")
+              ruleId   <- entry.asScala.get("ruleId")
+              fileName <- entry.asScala.get("filePath")
             } yield {
               RuleExemption(ruleId, fileName)
             }
@@ -62,4 +63,8 @@ class RulesExemptionService {
     }
   }.getOrElse(Nil)
 
+  def isExempt(ruleExemptions: Seq[RuleExemption])(result: Result): Boolean =
+    ruleExemptions.exists { e =>
+      e.filePath == result.filePath && e.ruleId == result.scanResults.ruleId
+    }
 }

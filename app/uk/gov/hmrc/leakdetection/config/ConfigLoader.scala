@@ -68,7 +68,7 @@ object AllRules {
 
 final case class RuleExemption(
   ruleId: String,
-  filename: String
+  filePath: String
 )
 
 object RuleExemption {

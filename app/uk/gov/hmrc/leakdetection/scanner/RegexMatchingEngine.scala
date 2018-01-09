@@ -18,10 +18,13 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import java.io.File
 import java.nio.charset.StandardCharsets
+
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.{FileFileFilter, TrueFileFilter}
+import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
+import uk.gov.hmrc.leakdetection.services.RulesExemptionService
+
 import scala.collection.JavaConverters.collectionAsScalaIterableConverter
-import uk.gov.hmrc.leakdetection.config.Rule
 
 case class Result(filePath: String, scanResults: MatchedResult)
 
@@ -29,7 +32,7 @@ class RegexMatchingEngine() {
 
   import FileAndDirectoryUtils._
 
-  def run(explodedZipDir: File, rules: Seq[Rule]): List[Result] = {
+  def run(explodedZipDir: File, rules: Seq[Rule], exemptions: Seq[RuleExemption]): List[Result] = {
     val fileContentScanners = createFileContentScanners(rules)
     val fileNameScanners    = createFileNameScanners(rules)
 
@@ -48,6 +51,7 @@ class RegexMatchingEngine() {
         contentResults ++ fileNameResult
       }
       .toList
+      .filterNot(RulesExemptionService.isExempt(exemptions))
 
     results
   }
