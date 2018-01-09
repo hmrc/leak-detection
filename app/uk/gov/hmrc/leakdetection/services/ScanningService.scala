@@ -22,7 +22,7 @@ import org.apache.commons.io.FileUtils
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
+import uk.gov.hmrc.leakdetection.scanner.{FileAndDirectoryUtils, RegexMatchingEngine}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -45,9 +45,18 @@ class ScanningService @Inject()(
 
     val explodedZipDir = artifactService
       .getZipAndExplode(configLoader.cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
+
     try {
-      val rules   = if (isPrivate) configLoader.cfg.allRules.privateRules else configLoader.cfg.allRules.publicRules
-      val results = regexMatchingEngine.run(explodedZipDir, rules, Nil)
+      val rules = if (isPrivate) configLoader.cfg.allRules.privateRules else configLoader.cfg.allRules.publicRules
+
+      val allRuleExemptions = {
+        val repoDir                  = FileAndDirectoryUtils.getSubdirName(explodedZipDir)
+        val serviceDefinedExemptions = RulesExemptionService.parseServiceSpecificExemptions(repoDir)
+        val globalExemptions         = configLoader.cfg.allRuleExemptions.global
+        serviceDefinedExemptions ++ globalExemptions
+      }
+
+      val results = regexMatchingEngine.run(explodedZipDir, rules, allRuleExemptions)
       val report  = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
       reportsRepository.saveReport(report).map(_ => report)
     } finally {

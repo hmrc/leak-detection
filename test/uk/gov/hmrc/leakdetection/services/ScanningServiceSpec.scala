@@ -16,9 +16,9 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import java.io.PrintWriter
+import java.io.{File, PrintWriter}
 import java.nio.file.Files
-import com.typesafe.config.ConfigFactory
+
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.Matchers.{any, eq => is}
 import org.mockito.Mockito.when
@@ -27,12 +27,13 @@ import org.mockito.stubbing.Answer
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
-import play.api.Configuration
 import play.api.mvc.Results
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.leakdetection.scanner.{Match, RegexMatchingEngine}
+import uk.gov.hmrc.leakdetection.scanner.FileAndDirectoryUtils._
+import uk.gov.hmrc.leakdetection.scanner.{FileAndDirectoryUtils, Match, RegexMatchingEngine}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -40,14 +41,14 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
   "scanRepository" should {
 
-    "scan the git repository and return an empty report" in new TestSetup {
+    "scan the git repository and return a report with found violations" in new TestSetup {
 
       val now = new DateTime(0, DateTimeZone.UTC)
       val id  = ReportId.random
 
       when(
         artifactService.getZipAndExplode(
-          is("pat"),
+          is(githubSecrets.personalAccessToken),
           is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
           is("master"))).thenReturn(unzippedTmpDirectory.toFile)
 
@@ -69,10 +70,10 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
       report.inspectionResults shouldBe
         Seq(
           ReportLine(
-            s"/${fileInProject.getName}",
+            s"/${file1.getName}",
             Rule.Scope.FILE_CONTENT,
             2,
-            s"https://github.com/hmrc/repoName/blame/master/${fileInProject.getName}#L2",
+            s"https://github.com/hmrc/repoName/blame/master/${file1.getName}#L2",
             "uses nulls!",
             " var x = null",
             List(Match(9, 13, "null"))
@@ -80,35 +81,89 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     }
 
+    "scan a git repository and don't include exempted violations" in new TestSetup {
+      val now = new DateTime(0, DateTimeZone.UTC)
+      val id  = ReportId.random
+
+      override val config = {
+
+        def relativePath(file: File) =
+          getFilePathRelativeToProjectRoot(explodedZipDir = unzippedTmpDirectory.toFile, file)
+
+        val pathOfFile1 = relativePath(file1)
+        val pathOfFile2 = relativePath(file2)
+
+        Cfg(
+          AllRules(publicRules = Nil, privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)),
+          githubSecrets,
+          allRuleExemptions =
+            AllRuleExemptions(List(RuleExemption("rule-1", pathOfFile1), RuleExemption("rule-2", pathOfFile2)))
+        )
+      }
+
+      when(
+        artifactService.getZipAndExplode(
+          is("pat"),
+          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+          is("master"))).thenReturn(unzippedTmpDirectory.toFile)
+
+      val report = scanningService
+        .scanRepository(
+          "repoName",
+          "master",
+          true,
+          "https://github.com/hmrc/repoName",
+          "some commit id",
+          "me",
+          "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+        .futureValue
+
+      report.inspectionResults shouldBe Nil
+    }
+
   }
 
   trait TestSetup {
 
-    val config = Configuration(
-      ConfigFactory.parseString(
-        s"""
-              allRules {
-                publicRules = []
-                privateRules = [
-                  {
-                   id = "rule-1"
-                   scope = "fileContent"
-                   regex = "null"
-                   description = "uses nulls!"
-                  }
-                ]
-              }
+    val githubSecrets =
+      GithubSecrets(
+        personalAccessToken = "pat",
+        webhookSecretKey    = "a secret"
+      )
 
-              githubSecrets {
-                webhookSecretKey = "a secret"
-                personalAccessToken = pat
-              }
+    object rules {
+      val usesNulls =
+        Rule(
+          id          = "rule-1",
+          scope       = "fileContent",
+          regex       = "null",
+          description = "uses nulls!"
+        )
 
-              allRuleExemptions {
-                global = []
-              }
-            """
-      ))
+      val checksInPrivateKeys =
+        Rule(
+          id          = "rule-2",
+          scope       = "fileName",
+          regex       = "id_rsa",
+          description = "checks-in private key!"
+        )
+
+    }
+
+    val allRules = AllRules(
+      publicRules  = Nil,
+      privateRules = List(rules.usesNulls)
+    )
+
+    val config = Cfg(
+      allRules          = allRules,
+      githubSecrets     = githubSecrets,
+      allRuleExemptions = AllRuleExemptions(Nil)
+    )
+
+    lazy val configLoader = new ConfigLoader {
+      val cfg = config
+    }
 
     val artifactService = mock[ArtifactService]
 
@@ -120,13 +175,14 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
     val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
-    val fileInProject        = Files.createTempFile(projectDirectory, "test", ".txt").toFile
-    new PrintWriter(fileInProject) {
+    val file1                = Files.createTempFile(projectDirectory, "test1", ".txt").toFile
+    val file2                = Files.createTempFile(projectDirectory, "test2", "id_rsa").toFile
+    new PrintWriter(file1) {
       write("package foo \n var x = null"); close()
     }
 
-    val scanningService =
-      new ScanningService(artifactService, new RegexMatchingEngine(), new ConfigLoader(config), reportRepository)
+    lazy val scanningService =
+      new ScanningService(artifactService, new RegexMatchingEngine(), configLoader, reportRepository)
   }
 
 }

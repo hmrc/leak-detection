@@ -18,12 +18,18 @@ package uk.gov.hmrc.leakdetection.config
 
 import javax.inject.Inject
 
+import com.google.inject.ImplementedBy
 import play.api.Configuration
 import play.api.libs.json.Json
 import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 
-class ConfigLoader @Inject()(configuration: Configuration) {
+@ImplementedBy(classOf[PlayConfigLoader])
+trait ConfigLoader {
+  val cfg: Cfg
+}
+
+class PlayConfigLoader @Inject()(configuration: Configuration) extends ConfigLoader {
 
   implicit def hint[T]: ProductHint[T] =
     ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))

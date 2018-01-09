@@ -43,7 +43,7 @@ class RegexMatchingEngine() {
       .par
       .flatMap { file =>
         val fileContent                 = getFileContents(file)
-        def toResult(mr: MatchedResult) = Result(getPath(explodedZipDir, file), mr)
+        def toResult(mr: MatchedResult) = Result(getFilePathRelativeToProjectRoot(explodedZipDir, file), mr)
 
         val contentResults = fileContentScanners.flatMap { _.scanFileContent(fileContent).map(toResult) }
         val fileNameResult = fileNameScanners.flatMap { _.scanFileName(file.getName).map(toResult) }
@@ -65,12 +65,6 @@ class RegexMatchingEngine() {
   private def createScanners(rules: Seq[Rule], ruleScope: String): Seq[RegexScanner] =
     rules.filter(_.scope == ruleScope).map(new RegexScanner(_))
 
-  private def getPath(explodedZipDir: File, file: File): String = {
-    val strippedTmpDir   = file.getAbsolutePath.stripPrefix(explodedZipDir.getAbsolutePath)
-    val strippedRepoName = strippedTmpDir.substring(strippedTmpDir.indexOf('/', 1))
-
-    strippedRepoName
-  }
 }
 
 object FileAndDirectoryUtils {
@@ -83,6 +77,17 @@ object FileAndDirectoryUtils {
       )
       .asScala
 
-  def getFileContents(file: File) =
+  def getFileContents(file: File): String =
     FileUtils.readFileToString(file, StandardCharsets.UTF_8)
+
+  def getFilePathRelativeToProjectRoot(explodedZipDir: File, file: File): String = {
+    val strippedTmpDir   = file.getAbsolutePath.stripPrefix(explodedZipDir.getAbsolutePath)
+    val strippedRepoName = strippedTmpDir.stripPrefix(File.separator + getSubdirName(explodedZipDir).getName)
+
+    strippedRepoName
+  }
+
+  def getSubdirName(parentDir: File): File =
+    parentDir.listFiles().filter(_.isDirectory).head
+
 }
