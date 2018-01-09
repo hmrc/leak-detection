@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/hmrc/leak-detection.svg)](https://travis-ci.org/hmrc/leak-detection) [ ![Download](https://api.bintray.com/packages/hmrc/releases/leak-detection/images/download.svg) ](https://bintray.com/hmrc/releases/leak-detection/_latestVersion)
 
-This is a placeholder README.md for a new repository
+Service used to find leaks in other git repositories, using regular expressions
 
 ### License
 
