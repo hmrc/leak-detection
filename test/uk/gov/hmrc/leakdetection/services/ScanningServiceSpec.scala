@@ -239,8 +239,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
         is("master"))).thenReturn(unzippedTmpDirectory.toFile)
 
-    lazy val scanningService =
-      new ScanningService(artifactService, new RegexMatchingEngine(), configLoader, reportRepository)
+    lazy val scanningService = new ScanningService(artifactService, configLoader, reportRepository)
   }
 
   def write(content: String, destination: File) =

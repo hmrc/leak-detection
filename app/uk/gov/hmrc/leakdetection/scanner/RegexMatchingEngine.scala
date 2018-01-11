@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import java.io.File
-import java.nio.charset.StandardCharsets
+import java.nio.charset.{CodingErrorAction, StandardCharsets}
 
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.{FileFileFilter, TrueFileFilter}
@@ -25,16 +25,35 @@ import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
 import uk.gov.hmrc.leakdetection.services.RulesExemptionService
 
 import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+import scala.io.{Codec, Source}
 
 case class Result(filePath: String, scanResults: MatchedResult)
 
-class RegexMatchingEngine() {
+class RegexMatchingEngine(rules: List[Rule]) {
 
   import FileAndDirectoryUtils._
 
-  def run(explodedZipDir: File, rules: Seq[Rule], exemptions: Seq[RuleExemption]): List[Result] = {
-    val fileContentScanners = createFileContentScanners(rules)
-    val fileNameScanners    = createFileNameScanners(rules)
+  val fileContentScanners = createFileContentScanners(rules)
+  val fileNameScanners    = createFileNameScanners(rules)
+  val globalExemptions: List[RuleExemption] =
+    for {
+      rule        <- rules
+      ignoredFile <- rule.ignoredFiles
+    } yield {
+      RuleExemption(rule.id, ignoredFile)
+    }
+
+  implicit val codec = Codec("UTF-8")
+  codec.onMalformedInput(CodingErrorAction.IGNORE)
+  codec.onUnmappableCharacter(CodingErrorAction.IGNORE)
+
+  def run(explodedZipDir: File): List[Result] = {
+
+    val exemptions = {
+      val repoDir                  = FileAndDirectoryUtils.getSubdirName(explodedZipDir)
+      val serviceDefinedExemptions = RulesExemptionService.parseServiceSpecificExemptions(repoDir)
+      serviceDefinedExemptions ++ globalExemptions
+    }
 
     val filesAndDirs: Iterable[File] = getFiles(explodedZipDir)
 
@@ -42,13 +61,25 @@ class RegexMatchingEngine() {
       .filterNot(_.isDirectory)
       .par
       .flatMap { file =>
-        val fileContent                 = getFileContents(file)
         def toResult(mr: MatchedResult) = Result(getFilePathRelativeToProjectRoot(explodedZipDir, file), mr)
 
-        val contentResults = fileContentScanners.flatMap { _.scanFileContent(fileContent).map(toResult) }
-        val fileNameResult = fileNameScanners.flatMap { _.scanFileName(file.getName).map(toResult) }
+        val contentResults: Seq[Result] = Source
+          .fromFile(file)
+          .getLines
+          .foldLeft(1 -> Seq.empty[Result]) {
+            case ((lineNumber, acc), line) =>
+              lineNumber + 1 -> (acc ++ fileContentScanners.flatMap {
+                _.scanLine(line, lineNumber).map(toResult)
+              })
+          }
+          ._2
+
+        val fileNameResult: Seq[Result] = fileNameScanners.flatMap {
+          _.scanFileName(file.getName).map(toResult)
+        }
 
         contentResults ++ fileNameResult
+
       }
       .toList
       .filterNot(RulesExemptionService.isExempt(exemptions))

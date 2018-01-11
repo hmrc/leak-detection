@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.scanner
 import ammonite.ops.{tmp, write}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FreeSpec, Matchers}
-import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
+import uk.gov.hmrc.leakdetection.config.Rule
 
 class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
 
@@ -35,16 +35,15 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
   "run" - {
     "should scan all the files in all subdirectories and return a report with correct file paths" in {
       val rootDir = createFilesForTest()
+      val rules = List(
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1"),
+        Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
+        Rule("rule-3", Rule.Scope.FILE_CONTENT, "secretC", "descr 3"),
+        Rule("rule-4", Rule.Scope.FILE_NAME, "fileC", "file with secrets")
+      )
 
-      val results = new RegexMatchingEngine().run(
-        explodedZipDir = rootDir.toNIO.toFile,
-        rules = Seq(
-          Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1"),
-          Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
-          Rule("rule-3", Rule.Scope.FILE_CONTENT, "secretC", "descr 3"),
-          Rule("rule-4", Rule.Scope.FILE_NAME, "fileC", "file with secrets")
-        ),
-        exemptions = Nil
+      val results = new RegexMatchingEngine(rules).run(
+        explodedZipDir = rootDir.toNIO.toFile
       )
 
       results should have size 7
@@ -146,17 +145,14 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
 
     "should filter out results that match exemptions rules" in {
       val rootDir = createFilesForTest()
-
-      val results = new RegexMatchingEngine().run(
-        explodedZipDir = rootDir.toNIO.toFile,
-        rules = Seq(
-          Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1"),
-          Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
-          Rule("rule-3", Rule.Scope.FILE_NAME, "fileA", "file with some secrets"),
-          Rule("rule-4", Rule.Scope.FILE_NAME, "fileB", "file with more secrets")
-        ),
-        exemptions = List(RuleExemption("rule-1", "/dir1/fileA"), RuleExemption("rule-4", "/dir2/fileB"))
+      val rules = List(
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1", List("/dir1/fileA")),
+        Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
+        Rule("rule-3", Rule.Scope.FILE_NAME, "fileA", "file with some secrets"),
+        Rule("rule-4", Rule.Scope.FILE_NAME, "fileB", "file with more secrets", List("/dir2/fileB"))
       )
+
+      val results = new RegexMatchingEngine(rules).run(explodedZipDir = rootDir.toNIO.toFile)
 
       results should have size 3
 

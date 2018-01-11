@@ -34,8 +34,6 @@ import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetai
 
 object WebhookRequestValidator {
 
-  val logger = Logger(this.getClass.getName)
-
   def parser(webhookSecret: String): BodyParser[PayloadDetails] =
     BodyParser { rh =>
       implicit val hc: HeaderCarrier =

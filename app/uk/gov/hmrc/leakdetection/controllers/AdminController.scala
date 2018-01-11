@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
 import play.api.libs.json.Json
@@ -27,6 +27,7 @@ import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
+@Singleton
 class AdminController @Inject()(
   configLoader: ConfigLoader,
   scanningService: ScanningService,
