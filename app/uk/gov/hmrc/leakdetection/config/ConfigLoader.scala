@@ -17,12 +17,19 @@
 package uk.gov.hmrc.leakdetection.config
 
 import javax.inject.Inject
+
+import com.google.inject.ImplementedBy
 import play.api.Configuration
 import play.api.libs.json.Json
 import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 
-class ConfigLoader @Inject()(configuration: Configuration) {
+@ImplementedBy(classOf[PlayConfigLoader])
+trait ConfigLoader {
+  val cfg: Cfg
+}
+
+class PlayConfigLoader @Inject()(configuration: Configuration) extends ConfigLoader {
 
   implicit def hint[T]: ProductHint[T] =
     ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
@@ -44,10 +51,12 @@ final case class Rule(
   id: String,
   scope: String,
   regex: String,
-  description: String
+  description: String,
+  ignoredFiles: List[String] = Nil
 )
 
 object Rule {
+  implicit val format = Json.format[Rule]
   object Scope {
     val FILE_CONTENT = "fileContent"
     val FILE_NAME    = "fileName"
@@ -55,11 +64,19 @@ object Rule {
 }
 
 final case class GithubSecrets(
-  webhookSecretKey: String,
-  personalAccessToken: String
+  personalAccessToken: String,
+  webhookSecretKey: String
 )
 
 object AllRules {
-  implicit val rf = Json.format[Rule]
-  val f           = Json.format[AllRules]
+  implicit val format = Json.format[AllRules]
+}
+
+final case class RuleExemption(
+  ruleId: String,
+  filePath: String
+)
+
+object RuleExemption {
+  implicit val format = Json.format[RuleExemption]
 }

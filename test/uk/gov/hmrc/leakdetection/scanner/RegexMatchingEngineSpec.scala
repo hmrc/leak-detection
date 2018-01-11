@@ -16,16 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.scanner
 
-import ammonite.ops.{Path, rm, tmp, write}
+import ammonite.ops.{tmp, write}
 import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{BeforeAndAfterAll, FreeSpec, Matchers}
-import uk.gov.hmrc.leakdetection.config.Rule
+import org.scalatest.{FreeSpec, Matchers}
+import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
 
-class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers with BeforeAndAfterAll {
-
-  val wd: Path = tmp.dir()
+class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
 
   def createFilesForTest() = {
+    val wd = tmp.dir()
     write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
     write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again")
     write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again")
@@ -33,26 +32,24 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
     wd
   }
 
-  override protected def afterAll(): Unit =
-    rm ! wd
-
   "run" - {
     "should scan all the files in all subdirectories and return a report with correct file paths" in {
       val rootDir = createFilesForTest()
 
-      val matches = new RegexMatchingEngine().run(
+      val results = new RegexMatchingEngine().run(
         explodedZipDir = rootDir.toNIO.toFile,
         rules = Seq(
           Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1"),
           Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
           Rule("rule-3", Rule.Scope.FILE_CONTENT, "secretC", "descr 3"),
           Rule("rule-4", Rule.Scope.FILE_NAME, "fileC", "file with secrets")
-        )
+        ),
+        exemptions = Nil
       )
 
-      matches should have size 7
+      results should have size 7
 
-      matches should contain(
+      results should contain(
         Result(
           filePath = "/dir1/fileA",
           scanResults = MatchedResult(
@@ -65,7 +62,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
           )
         )
       )
-      matches should contain(
+      results should contain(
         Result(
           filePath = "/dir1/fileA",
           scanResults = MatchedResult(
@@ -79,7 +76,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
         )
       )
 
-      matches should contain(
+      results should contain(
         Result(
           filePath = "/dir2/fileB",
           scanResults = MatchedResult(
@@ -92,7 +89,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
           )
         )
       )
-      matches should contain(
+      results should contain(
         Result(
           filePath = "/dir2/fileB",
           scanResults = MatchedResult(
@@ -106,7 +103,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
         )
       )
 
-      matches should contain(
+      results should contain(
         Result(
           filePath = "/dir2/dir3/fileC",
           scanResults = MatchedResult(
@@ -119,7 +116,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
           )
         )
       )
-      matches should contain(
+      results should contain(
         Result(
           filePath = "/dir2/dir3/fileC",
           scanResults = MatchedResult(
@@ -132,7 +129,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
           )
         )
       )
-      matches should contain(
+      results should contain(
         Result(
           filePath = "/dir2/dir3/fileC",
           scanResults = MatchedResult(
@@ -147,6 +144,63 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers w
       )
     }
 
+    "should filter out results that match exemptions rules" in {
+      val rootDir = createFilesForTest()
+
+      val results = new RegexMatchingEngine().run(
+        explodedZipDir = rootDir.toNIO.toFile,
+        rules = Seq(
+          Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1"),
+          Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
+          Rule("rule-3", Rule.Scope.FILE_NAME, "fileA", "file with some secrets"),
+          Rule("rule-4", Rule.Scope.FILE_NAME, "fileB", "file with more secrets")
+        ),
+        exemptions = List(RuleExemption("rule-1", "/dir1/fileA"), RuleExemption("rule-4", "/dir2/fileB"))
+      )
+
+      results should have size 3
+
+      results should contain(
+        Result(
+          filePath = "/dir2/fileB",
+          scanResults = MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
+            lineText    = "matching on: secretB",
+            lineNumber  = 2,
+            ruleId      = "rule-2",
+            description = "descr 2",
+            matches     = List(Match(start = 13, end = 20, value = "secretB"))
+          )
+        )
+      )
+      results should contain(
+        Result(
+          filePath = "/dir2/fileB",
+          scanResults = MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
+            lineText    = "matching on: secretB again",
+            lineNumber  = 3,
+            ruleId      = "rule-2",
+            description = "descr 2",
+            matches     = List(Match(start = 13, end = 20, value = "secretB"))
+          )
+        )
+      )
+
+      results should contain(
+        Result(
+          filePath = "/dir1/fileA",
+          scanResults = MatchedResult(
+            scope       = Rule.Scope.FILE_NAME,
+            lineText    = "fileA",
+            lineNumber  = 1,
+            ruleId      = "rule-3",
+            description = "file with some secrets",
+            matches     = List(Match(start = 0, end = 5, value = "fileA"))
+          )
+        )
+      )
+    }
   }
 
 }
