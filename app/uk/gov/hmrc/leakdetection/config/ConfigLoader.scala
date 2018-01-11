@@ -39,8 +39,7 @@ class PlayConfigLoader @Inject()(configuration: Configuration) extends ConfigLoa
 
 final case class Cfg(
   allRules: AllRules,
-  githubSecrets: GithubSecrets,
-  allRuleExemptions: AllRuleExemptions
+  githubSecrets: GithubSecrets
 )
 
 final case class AllRules(
@@ -52,7 +51,8 @@ final case class Rule(
   id: String,
   scope: String,
   regex: String,
-  description: String
+  description: String,
+  ignoredFiles: List[String] = Nil
 )
 
 object Rule {
@@ -79,10 +79,4 @@ final case class RuleExemption(
 
 object RuleExemption {
   implicit val format = Json.format[RuleExemption]
-}
-
-final case class AllRuleExemptions(global: List[RuleExemption])
-
-object AllRuleExemptions {
-  implicit val format = Json.format[AllRuleExemptions]
 }

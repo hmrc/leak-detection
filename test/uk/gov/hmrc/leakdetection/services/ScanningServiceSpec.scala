@@ -19,6 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import java.io.{File, PrintWriter}
 import java.nio.file.Files
 
+import ammonite.ops.Path
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.Matchers.{any, eq => is}
 import org.mockito.Mockito.when
@@ -32,7 +33,7 @@ import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.scanner.FileAndDirectoryUtils._
-import uk.gov.hmrc.leakdetection.scanner.{FileAndDirectoryUtils, Match, RegexMatchingEngine}
+import uk.gov.hmrc.leakdetection.scanner.{Match, RegexMatchingEngine}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -43,31 +44,17 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     "scan the git repository and return a report with found violations" in new TestSetup {
 
-      val now = new DateTime(0, DateTimeZone.UTC)
-      val id  = ReportId.random
+      override val privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)
 
-      when(
-        artifactService.getZipAndExplode(
-          is(githubSecrets.personalAccessToken),
-          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          is("master"))).thenReturn(unzippedTmpDirectory.toFile)
+      val startIndex = file2.getName.indexOf("id_rsa")
 
-      val report = scanningService
-        .scanRepository(
-          "repoName",
-          "master",
-          true,
-          "https://github.com/hmrc/repoName",
-          "some commit id",
-          "me",
-          "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-        .futureValue
+      val report = generateReport
 
-      report.author   shouldBe "me"
-      report.repoName shouldBe "repoName"
-      report.commitId shouldBe "some commit id"
-      report.repoUrl  shouldBe "https://github.com/hmrc/repoName"
-      report.inspectionResults shouldBe
+      report.author            shouldBe "me"
+      report.repoName          shouldBe "repoName"
+      report.commitId          shouldBe "some commit id"
+      report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
+      report.inspectionResults should contain theSameElementsAs
         Seq(
           ReportLine(
             s"/${file1.getName}",
@@ -77,37 +64,74 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             "uses nulls!",
             " var x = null",
             List(Match(9, 13, "null"))
-          ))
+          ),
+          ReportLine(
+            s"/${file2.getName}",
+            Rule.Scope.FILE_NAME,
+            1,
+            s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
+            "checks-in private key!",
+            s"${file2.getName}",
+            List(Match(startIndex, startIndex + 6, "id_rsa"))
+          )
+        )
 
     }
 
-    "scan a git repository and don't include exempted violations" in new TestSetup {
-      val now = new DateTime(0, DateTimeZone.UTC)
-      val id  = ReportId.random
+    "scan a git repository and ignore a rule with the filename included in the ignoredFiles property" in new TestSetup {
 
-      override val config = {
+      override val privateRules = List(rules.checksInPrivateKeysExempted, rules.usesNullExempted)
 
-        def relativePath(file: File) =
-          getFilePathRelativeToProjectRoot(explodedZipDir = unzippedTmpDirectory.toFile, file)
+      val report = generateReport
 
-        val pathOfFile1 = relativePath(file1)
-        val pathOfFile2 = relativePath(file2)
+      report.author            shouldBe "me"
+      report.repoName          shouldBe "repoName"
+      report.commitId          shouldBe "some commit id"
+      report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
+      report.inspectionResults shouldBe Nil
+    }
 
-        Cfg(
-          AllRules(publicRules = Nil, privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)),
-          githubSecrets,
-          allRuleExemptions =
-            AllRuleExemptions(List(RuleExemption("rule-1", pathOfFile1), RuleExemption("rule-2", pathOfFile2)))
-        )
-      }
+    "scan a git repository and ignore a rule in multiple files included in the ignoredFiles property" in new TestSetup {
 
-      when(
-        artifactService.getZipAndExplode(
-          is("pat"),
-          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          is("master"))).thenReturn(unzippedTmpDirectory.toFile)
+      override val privateRules = List(rules.checksInPrivateKeysExempted, rules.usesUnencryptedKey)
 
-      val report = scanningService
+      val report = generateReport
+
+      report.author            shouldBe "me"
+      report.repoName          shouldBe "repoName"
+      report.commitId          shouldBe "some commit id"
+      report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
+      report.inspectionResults shouldBe Nil
+    }
+
+    "scan a git repository and don't include project specific exempted violations" in new TestSetup {
+
+      override val privateRules = List(rules.checksInPrivateKeys)
+      override lazy val projectConfigurationYamlContent: String =
+        s"""
+          |leakDetectionExemptions:
+          |  - ruleId: 'rule-2'
+          |    filePath: ${relativePath(file2)}
+        """.stripMargin
+
+      val report = generateReport
+
+      report.author            shouldBe "me"
+      report.repoName          shouldBe "repoName"
+      report.commitId          shouldBe "some commit id"
+      report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
+      report.inspectionResults shouldBe Nil
+    }
+
+  }
+
+  trait TestSetup {
+
+    val now = new DateTime(0, DateTimeZone.UTC)
+    val id  = ReportId.random
+
+    def generateReport() =
+      scanningService
         .scanRepository(
           "repoName",
           "master",
@@ -117,13 +141,6 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
           "me",
           "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
         .futureValue
-
-      report.inspectionResults shouldBe Nil
-    }
-
-  }
-
-  trait TestSetup {
 
     val githubSecrets =
       GithubSecrets(
@@ -140,6 +157,15 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
           description = "uses nulls!"
         )
 
+      val usesNullExempted =
+        Rule(
+          id           = "rule-1",
+          scope        = "fileContent",
+          regex        = "null",
+          description  = "uses nulls!",
+          ignoredFiles = List(relativePath(file1))
+        )
+
       val checksInPrivateKeys =
         Rule(
           id          = "rule-2",
@@ -148,41 +174,77 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
           description = "checks-in private key!"
         )
 
+      val checksInPrivateKeysExempted =
+        Rule(
+          id           = "rule-2",
+          scope        = "fileName",
+          regex        = "id_rsa",
+          description  = "checks-in private key!",
+          ignoredFiles = List(relativePath(file2))
+        )
+
+      val usesUnencryptedKey =
+        Rule(
+          id           = "rule-3",
+          scope        = "fileContent",
+          regex        = """((?:play\.crypto\.secret(?!\s*(:|=)*\s*ENC\[)).*)""",
+          description  = "Unencrypted play.crypto.secret",
+          ignoredFiles = List("/application.conf", "/test-application.conf")
+        )
     }
 
-    val allRules = AllRules(
-      publicRules  = Nil,
-      privateRules = List(rules.usesNulls)
-    )
+    def relativePath(file: File) =
+      getFilePathRelativeToProjectRoot(explodedZipDir = unzippedTmpDirectory.toFile, file)
 
-    val config = Cfg(
-      allRules          = allRules,
-      githubSecrets     = githubSecrets,
-      allRuleExemptions = AllRuleExemptions(Nil)
+    val privateRules: List[Rule] = Nil
+
+    lazy val config = Cfg(
+      allRules      = AllRules(Nil, privateRules),
+      githubSecrets = githubSecrets
     )
 
     lazy val configLoader = new ConfigLoader {
       val cfg = config
     }
 
-    val artifactService = mock[ArtifactService]
-
+    val artifactService  = mock[ArtifactService]
     val reportRepository = mock[ReportsRepository]
+
+    val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
+    val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
+
+    val applicationConf = Files.createFile(Path(s"$projectDirectory/application.conf").toNIO).toFile
+    write("""play.crypto.secret="Htt5cyxh8"""", applicationConf)
+
+    val testApplicationConf = Files.createFile(Path(s"$projectDirectory/test-application.conf").toNIO).toFile
+    write("""play.crypto.secret="Htt5cyxh8"""", testApplicationConf)
+
+    val file1 = Files.createTempFile(projectDirectory, "test1", ".txt").toFile
+    write("package foo \n var x = null", file1)
+
+    val file2 = Files.createTempFile(projectDirectory, "test2", "id_rsa").toFile
+
+    val projectConfigurationYaml             = Files.createFile(Path(s"$projectDirectory/repository.yaml").toNIO).toFile
+    lazy val projectConfigurationYamlContent = ""
+    write(projectConfigurationYamlContent, projectConfigurationYaml)
+
     when(reportRepository.saveReport(any())).thenAnswer(new Answer[Future[Report]] {
       override def answer(invocation: InvocationOnMock): Future[Report] =
         Future(invocation.getArgumentAt(0, classOf[Report]))
     })
 
-    val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
-    val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
-    val file1                = Files.createTempFile(projectDirectory, "test1", ".txt").toFile
-    val file2                = Files.createTempFile(projectDirectory, "test2", "id_rsa").toFile
-    new PrintWriter(file1) {
-      write("package foo \n var x = null"); close()
-    }
+    when(
+      artifactService.getZipAndExplode(
+        is(githubSecrets.personalAccessToken),
+        is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+        is("master"))).thenReturn(unzippedTmpDirectory.toFile)
 
     lazy val scanningService =
       new ScanningService(artifactService, new RegexMatchingEngine(), configLoader, reportRepository)
   }
 
+  def write(content: String, destination: File) =
+    new PrintWriter(destination) {
+      write(content); close()
+    }
 }
