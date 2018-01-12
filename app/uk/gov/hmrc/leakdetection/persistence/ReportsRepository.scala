@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import javax.inject.Singleton
+
 import com.google.inject.Inject
 import play.api.libs.json.{JsArray, Json}
 import play.api.libs.json.Reads._
@@ -23,11 +25,13 @@ import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.play.json.ImplicitBSONHandlers
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
 
+@Singleton
 class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent)(implicit ec: ExecutionContext)
     extends ReactiveRepository[Report, ReportId](
       collectionName = "reports",

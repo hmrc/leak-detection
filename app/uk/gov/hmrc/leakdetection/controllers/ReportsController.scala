@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
+import javax.inject.Singleton
+
 import com.google.inject.Inject
 import play.api.libs.json.Json
 import play.api.mvc.Action
@@ -25,6 +27,7 @@ import uk.gov.hmrc.leakdetection.views.html
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
+@Singleton
 class ReportsController @Inject()(reportsService: ReportsService) extends BaseController {
 
   def repositories = Action.async { implicit request =>

@@ -59,6 +59,21 @@ class RegexScanner(rule: Rule) {
           )
       }
 
+  def scanLine(line: String, lineNumber: Int): Option[MatchedResult] =
+    line match {
+      case (Extractor(lineText, matches)) =>
+        Some(
+          MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
+            lineText    = lineText,
+            lineNumber  = lineNumber,
+            ruleId      = rule.id,
+            description = rule.description,
+            matches     = matches
+          ))
+      case _ => None
+    }
+
   def adjustForBase1Numbering(i: Int): Int = i + 1
 
 }

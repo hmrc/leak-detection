@@ -19,20 +19,21 @@ package uk.gov.hmrc.leakdetection.services
 import javax.inject.{Inject, Singleton}
 
 import org.apache.commons.io.FileUtils
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule, RuleExemption}
+import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.leakdetection.scanner.{FileAndDirectoryUtils, RegexMatchingEngine}
+import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ScanningService @Inject()(
   artifactService: ArtifactService,
-  regexMatchingEngine: RegexMatchingEngine,
   configLoader: ConfigLoader,
   reportsRepository: ReportsRepository
 ) {
+  lazy val privateMatchingEngine: RegexMatchingEngine = new RegexMatchingEngine(configLoader.cfg.allRules.privateRules)
+  lazy val publicMatchingEngine: RegexMatchingEngine  = new RegexMatchingEngine(configLoader.cfg.allRules.publicRules)
 
   def scanRepository(
     repository: String,
@@ -47,29 +48,14 @@ class ScanningService @Inject()(
       .getZipAndExplode(configLoader.cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
 
     try {
-      val rules = if (isPrivate) configLoader.cfg.allRules.privateRules else configLoader.cfg.allRules.publicRules
-
-      val allRuleExemptions = {
-        val repoDir                  = FileAndDirectoryUtils.getSubdirName(explodedZipDir)
-        val serviceDefinedExemptions = RulesExemptionService.parseServiceSpecificExemptions(repoDir)
-        serviceDefinedExemptions ++ getGlobalExemptions(rules)
-      }
-
-      val results = regexMatchingEngine.run(explodedZipDir, rules, allRuleExemptions)
-      val report  = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
+      val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
+      val results             = regexMatchingEngine.run(explodedZipDir)
+      val report              = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
       reportsRepository.saveReport(report).map(_ => report)
     } finally {
       FileUtils.deleteDirectory(explodedZipDir)
     }
   }
-
-  def getGlobalExemptions(rules: List[Rule]): List[RuleExemption] =
-    for {
-      rule        <- rules
-      ignoredFile <- rule.ignoredFiles
-    } yield {
-      RuleExemption(rule.id, ignoredFile)
-    }
 
   def scanCodeBaseFromGit(p: PayloadDetails)(implicit ec: ExecutionContext): Future[Report] =
     scanRepository(p.repositoryName, p.branchRef, p.isPrivate, p.repositoryUrl, p.commitId, p.authorName, p.archiveUrl)

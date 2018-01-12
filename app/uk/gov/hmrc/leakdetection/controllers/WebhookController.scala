@@ -30,8 +30,6 @@ import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetai
 @Singleton
 class WebhookController @Inject()(configLoader: ConfigLoader, scanningService: ScanningService) extends BaseController {
 
-  val logger = Logger(classOf[WebhookController])
-
   def processGithubWebhook() =
     Action.async(validateAndParse) { implicit request =>
       scanningService.scanCodeBaseFromGit(request.body).map { report =>
