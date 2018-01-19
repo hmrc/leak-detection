@@ -58,7 +58,7 @@ class RegexMatchingEngine(rules: List[Rule]) {
         def applicableScanners(scanners: Seq[RegexScanner]) =
           scanners.filterNot { scanner =>
             scanner.rule.ignoredExtensions.contains(fileExtension) ||
-            scanner.rule.ignoredFiles.contains(filePath) ||
+            scanner.rule.ignoredFiles.exists(pattern => filePath.matches(pattern)) ||
             serviceDefinedExemptions
               .find(_.ruleId == scanner.rule.id)
               .fold(false)(exemption => exemption.filePath == filePath)

@@ -104,6 +104,19 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
       report.inspectionResults shouldBe Nil
     }
 
+    "scan a git repository and ignore a file matching a regex included in the ignoredFiles property" in new TestSetup {
+
+      override val privateRules = List(rules.checksInPrivateKeysExempted, rules.usesUnencryptedKeyRegex)
+
+      val report = generateReport
+
+      report.author            shouldBe "me"
+      report.repoName          shouldBe "repoName"
+      report.commitId          shouldBe "some commit id"
+      report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
+      report.inspectionResults shouldBe Nil
+    }
+
     "scan a git repository and don't include project specific exempted violations" in new TestSetup {
 
       override val privateRules = List(rules.checksInPrivateKeys)
@@ -219,9 +232,18 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
           ignoredFiles = List(relativePath(file2))
         )
 
-      val usesUnencryptedKey =
+      val usesUnencryptedKeyRegex =
         Rule(
           id           = "rule-3",
+          scope        = "fileContent",
+          regex        = """((?:play\.crypto\.secret(?!\s*(:|=)*\s*ENC\[)).*)""",
+          description  = "Unencrypted play.crypto.secret",
+          ignoredFiles = List("^\\/.*application.conf")
+        )
+
+      val usesUnencryptedKey =
+        Rule(
+          id           = "rule-4",
           scope        = "fileContent",
           regex        = """((?:play\.crypto\.secret(?!\s*(:|=)*\s*ENC\[)).*)""",
           description  = "Unencrypted play.crypto.secret",
