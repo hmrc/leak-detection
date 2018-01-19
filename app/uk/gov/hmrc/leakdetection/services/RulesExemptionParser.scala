@@ -21,13 +21,12 @@ import java.{util => ju}
 
 import org.yaml.snakeyaml.Yaml
 import uk.gov.hmrc.leakdetection.config.RuleExemption
-import uk.gov.hmrc.leakdetection.scanner.Result
 
 import scala.collection.JavaConverters._
 import scala.io.Source
 import scala.util.Try
 
-object RulesExemptionService {
+object RulesExemptionParser {
 
   def parseServiceSpecificExemptions(repoDir: File): List[RuleExemption] =
     getConfigFileContents(repoDir).map(parseYamlAsRuleExemptions).getOrElse(Nil)
@@ -63,8 +62,4 @@ object RulesExemptionService {
     }
   }.getOrElse(Nil)
 
-  def isExempt(ruleExemptions: Seq[RuleExemption])(result: Result): Boolean =
-    ruleExemptions.exists { e =>
-      e.filePath == result.filePath && e.ruleId == result.scanResults.ruleId
-    }
 }
