@@ -54,12 +54,12 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
               is("NA"),
               is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
             )(any[ExecutionContext]))
-            .thenReturn(Future.successful(Report(id, "repoName", "someUrl", "NA", now, "NA", Seq.empty)))
+            .thenReturn(Future.successful(Report(id, "repoName", "someUrl", "NA", "master", now, "NA", Seq.empty)))
 
           val result       = controller.validate("repoName", "master", isPrivate)(FakeRequest())
           val json: String = contentAsString(result)
 
-          json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"NA","timestamp":"1970-01-01T00:00:00.000Z","author":"NA","inspectionResults":[]}"""
+          json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"NA","branch":"master","timestamp":"1970-01-01T00:00:00.000Z","author":"NA","inspectionResults":[]}"""
         }
 
         s"scan the git $repoType repository and some report" in new TestSetup {
@@ -82,6 +82,7 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
               "repoName",
               "someUrl",
               "NA",
+              "master",
               now,
               "NA",
               inspectionResults = Seq(
