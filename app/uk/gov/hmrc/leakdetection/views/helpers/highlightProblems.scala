@@ -24,17 +24,15 @@ object highlightProblems extends (ReportLine => Html) {
   def apply(r: ReportLine): Html = {
     val spanOpening = "<span class='highlighted'>"
     val spanEnd     = "</span>"
-    val overhead    = spanOpening.length + spanEnd.length
 
-    val (highlightedErrors, _) = r.matches.foldLeft((HtmlFormat.escape(r.lineText).toString, 0)) {
-      case ((acc, n), m) =>
-        val beforeMatch      = acc.substring(0, m.start + n * overhead)
-        val highlightedMatch = spanOpening + m.value + spanEnd
-        val restOfLine       = acc.substring(m.end + n * overhead)
+    val (highlightedErrors, _, lastCursor) = r.matches.foldLeft(("", r.lineText.toString, 0)) {
+      case ((acc, line, cursor), m) =>
+        val beforeMatch      = HtmlFormat.escape(line.substring(cursor, m.start))
+        val highlightedMatch = spanOpening + HtmlFormat.escape(m.value) + spanEnd
 
-        (beforeMatch + highlightedMatch + restOfLine, n + 1)
+        (acc + beforeMatch + highlightedMatch, line, m.end)
     }
-    HtmlFormat.raw(highlightedErrors)
+    HtmlFormat.raw(highlightedErrors + HtmlFormat.escape(r.lineText.toString.substring(lastCursor)))
   }
 
 }

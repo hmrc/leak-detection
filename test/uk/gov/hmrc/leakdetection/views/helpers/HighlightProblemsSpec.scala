@@ -41,6 +41,17 @@ class HighlightProblemsSpec extends WordSpec with Matchers {
 
       res shouldBe expected
     }
+
+    "escapes html characters" in {
+      val line = "abc <h1>foo</h1> bar; baz null; xyz"
+      val rl   = createReportLine(line, Match(8, 11, "foo"), Match(26, 30, "null"))
+      val res  = highlightProblems(rl).body
+
+      val expected = "abc &lt;h1&gt;<span class='highlighted'>foo</span>&lt;/h1&gt; bar; baz " +
+        "<span class='highlighted'>null</span>; xyz"
+
+      res shouldBe expected
+    }
   }
 
   def createReportLine(lineText: String, matches: Match*) =
