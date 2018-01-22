@@ -28,6 +28,7 @@
     <table class="table table-striped">
         <thead>
         <tr>
+            <th>Branch</th>
             <th>Commid Id</th>
             <th>Timestamp</th>
             <th>Author</th>
@@ -37,6 +38,7 @@
         <tbody>
             @reports.map { r =>
             <tr>
+                <td>@r.branch</td>
                 <td>@r.commitId</td>
                 <td>@r.timestamp</td>
                 <td>@r.author</td>

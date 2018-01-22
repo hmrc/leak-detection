@@ -51,6 +51,7 @@ final case class Report(
   repoName: String,
   repoUrl: String,
   commitId: String,
+  branch: String,
   timestamp: DateTime,
   author: String,
   inspectionResults: Seq[ReportLine]
@@ -70,6 +71,7 @@ object Report {
       repositoryName,
       repositoryUrl,
       commitId,
+      branch.replaceFirst("refs/heads/", ""),
       DateTimeUtils.now,
       authorName,
       results.map(r => ReportLine.build(repositoryUrl, branch, r))

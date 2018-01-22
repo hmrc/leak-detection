@@ -21,8 +21,8 @@ import java.nio.charset.{CodingErrorAction, StandardCharsets}
 
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.{FileFileFilter, TrueFileFilter}
-import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
-import uk.gov.hmrc.leakdetection.services.RulesExemptionService
+import uk.gov.hmrc.leakdetection.config.Rule
+import uk.gov.hmrc.leakdetection.services.RulesExemptionParser
 
 import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 import scala.io.{Codec, Source}
@@ -35,13 +35,7 @@ class RegexMatchingEngine(rules: List[Rule]) {
 
   val fileContentScanners = createFileContentScanners(rules)
   val fileNameScanners    = createFileNameScanners(rules)
-  val globalExemptions: List[RuleExemption] =
-    for {
-      rule        <- rules
-      ignoredFile <- rule.ignoredFiles
-    } yield {
-      RuleExemption(rule.id, ignoredFile)
-    }
+  val fileExtensionR      = """\.[A-Za-z0-9]+$""".r
 
   implicit val codec = Codec("UTF-8")
   codec.onMalformedInput(CodingErrorAction.IGNORE)
@@ -49,11 +43,8 @@ class RegexMatchingEngine(rules: List[Rule]) {
 
   def run(explodedZipDir: File): List[Result] = {
 
-    val exemptions = {
-      val repoDir                  = FileAndDirectoryUtils.getSubdirName(explodedZipDir)
-      val serviceDefinedExemptions = RulesExemptionService.parseServiceSpecificExemptions(repoDir)
-      serviceDefinedExemptions ++ globalExemptions
-    }
+    val serviceDefinedExemptions =
+      RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(explodedZipDir))
 
     val filesAndDirs: Iterable[File] = getFiles(explodedZipDir)
 
@@ -61,28 +52,40 @@ class RegexMatchingEngine(rules: List[Rule]) {
       .filterNot(_.isDirectory)
       .par
       .flatMap { file =>
-        def toResult(mr: MatchedResult) = Result(getFilePathRelativeToProjectRoot(explodedZipDir, file), mr)
+        val filePath      = getFilePathRelativeToProjectRoot(explodedZipDir, file)
+        val fileExtension = fileExtensionR.findFirstIn(filePath).getOrElse("")
+
+        def applicableScanners(scanners: Seq[RegexScanner]) =
+          scanners.filterNot { scanner =>
+            scanner.rule.ignoredExtensions.contains(fileExtension) ||
+            scanner.rule.ignoredFiles.exists(pattern => filePath.matches(pattern)) ||
+            serviceDefinedExemptions
+              .find(_.ruleId == scanner.rule.id)
+              .fold(false)(exemption => exemption.filePath == filePath)
+          }
+
+        val applicableFileContentScanners = applicableScanners(fileContentScanners)
+        val applicableFileNameScanners    = applicableScanners(fileNameScanners)
 
         val contentResults: Seq[Result] = Source
           .fromFile(file)
           .getLines
           .foldLeft(1 -> Seq.empty[Result]) {
             case ((lineNumber, acc), line) =>
-              lineNumber + 1 -> (acc ++ fileContentScanners.flatMap {
-                _.scanLine(line, lineNumber).map(toResult)
+              lineNumber + 1 -> (acc ++ applicableFileContentScanners.flatMap {
+                _.scanLine(line, lineNumber).map(mr => Result(filePath, mr))
               })
           }
           ._2
 
-        val fileNameResult: Seq[Result] = fileNameScanners.flatMap {
-          _.scanFileName(file.getName).map(toResult)
+        val fileNameResult: Seq[Result] = applicableFileNameScanners.flatMap {
+          _.scanFileName(file.getName).map(mr => Result(filePath, mr))
         }
 
         contentResults ++ fileNameResult
 
       }
       .toList
-      .filterNot(RulesExemptionService.isExempt(exemptions))
 
     results
   }

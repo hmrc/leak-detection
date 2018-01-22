@@ -42,6 +42,10 @@
             <td>@report.commitId</td>
         </tr>
         <tr>
+            <th>Branch</th>
+            <td>@report.branch</td>
+        </tr>
+        <tr>
             <th>Timestamp</th>
             <td>@report.timestamp</td>
         </tr>
@@ -63,7 +67,7 @@
                 <p class="monospace">@highlightProblems(problem)</p>
             </div>
             <div class="card-footer">
-                <a href="@problem.urlToSource" target="_blank">Link to source</a>
+                Source:  <a href="@problem.urlToSource" target="_blank">@problem.filePath</a>
                 @if(problem.scope == "fileName"){ (match in file name) }
             </div>
         </div>

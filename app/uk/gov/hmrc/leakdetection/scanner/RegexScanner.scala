@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import uk.gov.hmrc.leakdetection.config.Rule
 
-class RegexScanner(rule: Rule) {
+case class RegexScanner(rule: Rule) {
 
   private val compiledRegex = rule.regex.r
 

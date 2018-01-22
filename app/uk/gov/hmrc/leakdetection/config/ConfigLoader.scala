@@ -52,7 +52,8 @@ final case class Rule(
   scope: String,
   regex: String,
   description: String,
-  ignoredFiles: List[String] = Nil
+  ignoredFiles: List[String]      = Nil,
+  ignoredExtensions: List[String] = Nil
 )
 
 object Rule {
