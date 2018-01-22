@@ -15,7 +15,7 @@ else
 
     while read repository; do
       echo "Scanning $repository"
-      LEAK_COUNT=$(curl -s "https://leak-detection.tax.service.gov.uk/admin/validate/private/$repository/master"  | jq '.inspectionResults | length')
+      LEAK_COUNT=$(curl -s "http://localhost:8855/admin/validate/private/$repository/master"  | jq '.inspectionResults | length')
       echo "$LEAK_COUNT potential problems found on $repository"
       echo ""
     done </tmp/private-repositories
