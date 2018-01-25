@@ -18,12 +18,14 @@ package uk.gov.hmrc.leakdetection.connectors
 
 import javax.inject.Inject
 
-import play.api.Configuration
 import play.api.libs.json.Json
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.util.control.NonFatal
 
 class SlackConnector @Inject()(http: HttpClient, configuration: Configuration) {
 
@@ -35,19 +37,12 @@ class SlackConnector @Inject()(http: HttpClient, configuration: Configuration) {
       throw new RuntimeException("Missing required slack.webhookUri configuration")
     )
 
-  def sendMessage(channel: String, message: String, linkToReport: String)(
-    implicit hc: HeaderCarrier,
-    ec: ExecutionContext) =
-    http
-      .POST[SlackMessage, HttpResponse](
-        slackWebHookUri,
-        SlackMessage("jakob.grunig", "Testing", "jakob.grunig", ":monkey_face:", Seq(Attachment(linkToReport))))
-      .map {
-        _.status match {
-          case 200 => true
-          case _   => false
-        }
-      }
+  def sendMessage(message: SlackMessage)(implicit hc: HeaderCarrier): Future[HttpResponse] =
+    try { http.POST[SlackMessage, HttpResponse](slackWebHookUri, message) } catch {
+      case NonFatal(ex) =>
+        Logger.error(s"Unable to notify ${message.channel} on Slack", ex)
+        Future.failed(ex)
+    }
 
 }
 

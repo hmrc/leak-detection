@@ -28,7 +28,9 @@ import org.mockito.stubbing.Answer
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
+import play.api.Configuration
 import play.api.mvc.Results
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
@@ -163,12 +165,23 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     }
 
+    "send a generic slack notification to a configurable channel" in new TestSetup {
+
+      override val privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)
+
+      val startIndex = file2.getName.indexOf("id_rsa")
+
+      generateReport.inspectionResults.size shouldBe 2
+
+    }
+
   }
 
   trait TestSetup {
 
-    val now = new DateTime(0, DateTimeZone.UTC)
-    val id  = ReportId.random
+    val now         = new DateTime(0, DateTimeZone.UTC)
+    val id          = ReportId.random
+    implicit val hc = HeaderCarrier()
 
     def generateReport =
       scanningService
@@ -297,7 +310,13 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
         is("master"))).thenReturn(unzippedTmpDirectory.toFile)
 
-    lazy val scanningService = new ScanningService(artifactService, configLoader, reportRepository)
+    val alertingService = mock[AlertingService]
+    when(alertingService.alert(any())(any())).thenReturn(Future.successful(true))
+
+    val configuration = Configuration()
+
+    lazy val scanningService =
+      new ScanningService(configuration, artifactService, configLoader, reportRepository, alertingService)
   }
 
   def write(content: String, destination: File) =

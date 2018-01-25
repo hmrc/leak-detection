@@ -53,7 +53,7 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
               is("NA"),
               is("NA"),
               is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-            )(any[ExecutionContext]))
+            )(any()))
             .thenReturn(Future.successful(Report(id, "repoName", "someUrl", "NA", "master", now, "NA", Seq.empty)))
 
           val result       = controller.validate("repoName", "master", isPrivate)(FakeRequest())
@@ -76,7 +76,7 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
               is("NA"),
               is("NA"),
               is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-            )(any[ExecutionContext]))
+            )(any()))
             .thenReturn(Future.successful(Report(
               id,
               "repoName",

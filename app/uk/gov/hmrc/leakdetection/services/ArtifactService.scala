@@ -18,7 +18,9 @@ package uk.gov.hmrc.leakdetection.services
 
 import java.io.File
 import java.nio.file.Files
+import javax.inject.Inject
 
+import com.kenshoo.play.metrics.Metrics
 import org.apache.commons.io.FileUtils
 import org.zeroturnaround.zip.ZipUtil
 import play.api.Logger
@@ -27,8 +29,10 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 import scalaj.http._
 
-class ArtifactService() {
+class ArtifactService @Inject()(metrics: Metrics) {
   val logger = Logger("ArtifactManager")
+
+  private lazy val registry = metrics.defaultRegistry
 
   def getZipAndExplode(githubPersonalAccessToken: String, archiveUrl: String, branchRef: String): File = {
     logger.info("starting zip process....")
@@ -60,10 +64,12 @@ class ArtifactService() {
           .option(HttpOptions.followRedirects(true))
           .asBytes
       if (resp.isError) {
+        registry.counter(s"github.open.zip.failure").inc()
         val errorMessage = s"Error downloading the zip file from $url:\n${new String(resp.body)}"
         logger.error(errorMessage)
         throw new RuntimeException(errorMessage)
       } else {
+        registry.counter(s"github.open.zip.success").inc()
         logger.info(s"Response code: ${resp.code}")
         logger.debug(s"Got ${resp.body.size} bytes from $url... saving it to $filename")
         val file = new File(filename)

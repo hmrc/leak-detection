@@ -19,18 +19,23 @@ package uk.gov.hmrc.leakdetection.services
 import javax.inject.{Inject, Singleton}
 
 import org.apache.commons.io.FileUtils
+import play.api.Configuration
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ScanningService @Inject()(
+  configuration: Configuration,
   artifactService: ArtifactService,
   configLoader: ConfigLoader,
-  reportsRepository: ReportsRepository
+  reportsRepository: ReportsRepository,
+  alertingService: AlertingService
 ) {
   lazy val privateMatchingEngine: RegexMatchingEngine = new RegexMatchingEngine(configLoader.cfg.allRules.privateRules)
   lazy val publicMatchingEngine: RegexMatchingEngine  = new RegexMatchingEngine(configLoader.cfg.allRules.publicRules)
@@ -42,7 +47,7 @@ class ScanningService @Inject()(
     repositoryUrl: String,
     commitId: String,
     authorName: String,
-    archiveUrl: String)(implicit ec: ExecutionContext): Future[Report] = {
+    archiveUrl: String)(implicit hc: HeaderCarrier): Future[Report] = {
 
     val explodedZipDir = artifactService
       .getZipAndExplode(configLoader.cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
@@ -51,12 +56,16 @@ class ScanningService @Inject()(
       val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
       val results             = regexMatchingEngine.run(explodedZipDir)
       val report              = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
-      reportsRepository.saveReport(report).map(_ => report)
+      for {
+        report <- reportsRepository.saveReport(report)
+        _ <- if (configuration.getBoolean("alerts.slack.enabled").getOrElse(false)) alertingService.alert(report)
+            else Future.successful()
+      } yield report
     } finally {
       FileUtils.deleteDirectory(explodedZipDir)
     }
   }
 
-  def scanCodeBaseFromGit(p: PayloadDetails)(implicit ec: ExecutionContext): Future[Report] =
+  def scanCodeBaseFromGit(p: PayloadDetails)(implicit hc: HeaderCarrier): Future[Report] =
     scanRepository(p.repositoryName, p.branchRef, p.isPrivate, p.repositoryUrl, p.commitId, p.authorName, p.archiveUrl)
 }
