@@ -32,9 +32,9 @@ class SlackConnector @Inject()(http: HttpClient, configuration: Configuration) {
   implicit val smf = SlackMessage.format
 
   lazy val slackWebHookUri = configuration
-    .getString("slack.webhookUri")
+    .getString("alerts.slack.webhook.uri")
     .getOrElse(
-      throw new RuntimeException("Missing required slack.webhookUri configuration")
+      throw new RuntimeException("Missing required alerts.slack.webhook.uri configuration")
     )
 
   def sendMessage(message: SlackMessage)(implicit hc: HeaderCarrier): Future[HttpResponse] =

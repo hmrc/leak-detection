@@ -34,7 +34,7 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
     val slackUsername = getConfigOrFail("alerts.slack.user.name")
     val slackIcon     = getConfigOrFail("alerts.slack.user.icon")
     val reportUri     = getConfigOrFail("leakDetection.uri")
-    val alertMessage  = getConfigOrFail("alerts.slack.message.text")
+    val alertMessage  = getConfigOrFail("alerts.slack.message.text").replace("{0}", report.repoName)
 
     val message =
       SlackMessage(
