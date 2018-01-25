@@ -22,7 +22,7 @@ import java.nio.file.Files
 import ammonite.ops.Path
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.Matchers.{any, eq => is}
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{verify, when}
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 import org.scalatest.concurrent.ScalaFutures
@@ -165,13 +165,13 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     }
 
-    "send a generic slack notification to a configurable channel" in new TestSetup {
+    "trigger alerts" in new TestSetup {
 
       override val privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)
 
       val startIndex = file2.getName.indexOf("id_rsa")
-
       generateReport.inspectionResults.size shouldBe 2
+      verify(alertingService).alert(any[Report])(any())
 
     }
 

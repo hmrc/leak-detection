@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import javax.inject.Inject
 
-import play.api.Configuration
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors.{Attachment, SlackConnector, SlackMessage}
 import uk.gov.hmrc.leakdetection.model.Report
@@ -28,24 +28,36 @@ import scala.concurrent.Future
 
 class AlertingService @Inject()(configuration: Configuration, slackConnector: SlackConnector) {
 
-  def alert(report: Report)(implicit hc: HeaderCarrier): Future[Boolean] = {
+  def alert(report: Report)(implicit hc: HeaderCarrier): Future[Boolean] =
+    if (!configuration.getBoolean("alerts.slack.enabled").getOrElse(false)) {
+      Logger.debug("Slack alerts are disabled... not sending a notification")
+      Future.successful(true)
 
-    val slackChannel  = getConfigOrFail("alerts.slack.defaultAlertChannel.name")
-    val slackUsername = getConfigOrFail("alerts.slack.user.name")
-    val slackIcon     = getConfigOrFail("alerts.slack.user.icon")
-    val reportUri     = getConfigOrFail("leakDetection.uri")
-    val alertMessage  = getConfigOrFail("alerts.slack.message.text").replace("{0}", report.repoName)
+    } else if (report.inspectionResults.isEmpty) {
+      Logger.debug("Slack alerts are disabled... not sending a notification")
+      Future.successful(true)
 
-    val message =
-      SlackMessage(
-        channel     = slackChannel,
-        text        = alertMessage,
-        username    = slackUsername,
-        icon_emoji  = slackIcon,
-        attachments = Seq(Attachment(s"$reportUri/reports/${report._id}")))
+    } else {
 
-    slackConnector.sendMessage(message).map(_.status == 200)
-  }
+      val slackChannel  = getConfigOrFail("alerts.slack.defaultAlertChannel.name")
+      val slackUsername = getConfigOrFail("alerts.slack.user.name")
+      val slackIcon     = getConfigOrFail("alerts.slack.user.icon")
+      val reportUri     = getConfigOrFail("leakDetection.uri")
+      val alertMessage =
+        getConfigOrFail("alerts.slack.message.text")
+          .replace("{repo}", report.repoName)
+          .replace("{branch}", report.branch)
+
+      val message =
+        SlackMessage(
+          channel     = slackChannel,
+          text        = alertMessage,
+          username    = slackUsername,
+          icon_emoji  = slackIcon,
+          attachments = Seq(Attachment(s"$reportUri/reports/${report._id}")))
+
+      slackConnector.sendMessage(message).map(_.status == 200)
+    }
 
   private def getConfigOrFail(key: String): String =
     configuration

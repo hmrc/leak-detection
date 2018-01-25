@@ -58,8 +58,7 @@ class ScanningService @Inject()(
       val report              = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
       for {
         report <- reportsRepository.saveReport(report)
-        _ <- if (configuration.getBoolean("alerts.slack.enabled").getOrElse(false)) alertingService.alert(report)
-            else Future.successful()
+        _      <- alertingService.alert(report)
       } yield report
     } finally {
       FileUtils.deleteDirectory(explodedZipDir)
