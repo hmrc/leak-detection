@@ -311,7 +311,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         is("master"))).thenReturn(unzippedTmpDirectory.toFile)
 
     val alertingService = mock[AlertingService]
-    when(alertingService.alert(any())(any())).thenReturn(Future.successful(true))
+    when(alertingService.alert(any())(any())).thenReturn(Future.successful(()))
 
     val configuration = Configuration()
 

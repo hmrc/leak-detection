@@ -24,11 +24,10 @@ import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.leakdetection.config.Rule
-import uk.gov.hmrc.leakdetection.connectors.{Attachment, SlackConnector, SlackMessage}
+import uk.gov.hmrc.leakdetection.connectors.{Attachment, ChannelLookup, MessageDetails, SlackNotification, SlackNotificationsConnector}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.time.DateTimeUtils
-
 import scala.concurrent.Future
 
 class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar {
@@ -36,9 +35,10 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
   "The alerting service" should {
     "send an alert to a configurable slack channel if leaks are in the report" in new Fixtures {
 
+      val repoName = "a-repo"
       val report = Report(
         _id       = ReportId.random,
-        repoName  = "a-repo",
+        repoName  = repoName,
         repoUrl   = "https://github.com/hmrc/a-repo",
         commitId  = "123",
         branch    = "master",
@@ -58,19 +58,31 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
       service.alert(report).futureValue
 
-      val expectedSlackMessage = SlackMessage(
-        channel     = "#the-channel",
+      val messageDetails = MessageDetails(
         text        = "Do not panic, but there is a leak!",
         username    = "leak-detection",
-        icon_emoji  = ":closed_lock_with_key:",
+        iconEmoji   = ":closed_lock_with_key:",
         attachments = Seq(Attachment(s"https://somewhere/reports/${report._id}"))
       )
-      verify(slackConnector).sendMessage(is(expectedSlackMessage))(any())
+
+      val expectedMessageToAlertChannel = SlackNotification(
+        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+        messageDetails = messageDetails
+      )
+
+      val expectedMessageToTeamChannel = SlackNotification(
+        channelLookup  = ChannelLookup.GithubRepository(repoName),
+        messageDetails = messageDetails
+      )
+
+      verify(slackConnector).sendMessage(is(expectedMessageToAlertChannel))(any())
+      verify(slackConnector).sendMessage(is(expectedMessageToTeamChannel))(any())
     }
 
     "not send alerts to slack if not enabled" in new Fixtures {
 
-      override val configuration = Configuration("alerts.slack.enabled" -> false)
+      override val configuration =
+        defaultConfiguration ++ Configuration("alerts.slack.enabled" -> false)
 
       val report = Report(
         _id       = ReportId.random,
@@ -121,17 +133,21 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     implicit val hc = HeaderCarrier()
 
-    val slackConnector = mock[SlackConnector]
+    val slackConnector = mock[SlackNotificationsConnector]
     when(slackConnector.sendMessage(any())(any())).thenReturn(Future.successful(HttpResponse(200)))
 
-    val configuration = Configuration(
-      "leakDetection.uri"                     -> "https://somewhere",
-      "alerts.slack.enabled"                  -> true,
-      "alerts.slack.defaultAlertChannel.name" -> "#the-channel",
-      "alerts.slack.message.text"             -> "Do not panic, but there is a leak!",
-      "alerts.slack.user.name"                -> "leak-detection",
-      "alerts.slack.user.icon"                -> ":closed_lock_with_key:"
+    val defaultConfiguration = Configuration(
+      "alerts.slack.leakDetectionUri"    -> "https://somewhere",
+      "alerts.slack.enabled"             -> true,
+      "alerts.slack.defaultAlertChannel" -> "#the-channel",
+      "alerts.slack.messageText"         -> "Do not panic, but there is a leak!",
+      "alerts.slack.username"            -> "leak-detection",
+      "alerts.slack.iconEmoji"           -> ":closed_lock_with_key:",
+      "alerts.slack.sendToTeamChannels"  -> true,
+      "alerts.slack.sendToAlertChannel"  -> true
     )
+
+    val configuration = defaultConfiguration
 
     lazy val service = new AlertingService(configuration, slackConnector)
 

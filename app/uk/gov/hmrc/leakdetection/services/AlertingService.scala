@@ -16,51 +16,104 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import javax.inject.Inject
-
+import javax.inject.{Inject, Singleton}
 import play.api.{Configuration, Logger}
-import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.leakdetection.connectors.{Attachment, SlackConnector, SlackMessage}
+import pureconfig.syntax._
+import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
+import scala.concurrent.Future
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.Report
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
-import scala.concurrent.Future
+@Singleton
+class AlertingService @Inject()(configuration: Configuration, slackConnector: SlackNotificationsConnector) {
 
-class AlertingService @Inject()(configuration: Configuration, slackConnector: SlackConnector) {
+  private val slackConfig: SlackConfig = {
+    implicit def hint[T]: ProductHint[T] =
+      ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
 
-  def alert(report: Report)(implicit hc: HeaderCarrier): Future[Boolean] =
-    if (!configuration.getBoolean("alerts.slack.enabled").getOrElse(false)) {
-      Logger.debug("Slack alerts are disabled... not sending a notification")
-      Future.successful(true)
+    configuration.underlying
+      .getConfig("alerts.slack")
+      .toOrThrow[SlackConfig]
+  }
 
-    } else if (report.inspectionResults.isEmpty) {
-      Logger.debug("Slack alerts are disabled... not sending a notification")
-      Future.successful(true)
+  import slackConfig._
 
+  def alert(report: Report)(implicit hc: HeaderCarrier): Future[Unit] =
+    if (!enabled || report.inspectionResults.isEmpty) {
+      Future.successful(())
     } else {
-
-      val slackChannel  = getConfigOrFail("alerts.slack.defaultAlertChannel.name")
-      val slackUsername = getConfigOrFail("alerts.slack.user.name")
-      val slackIcon     = getConfigOrFail("alerts.slack.user.icon")
-      val reportUri     = getConfigOrFail("leakDetection.uri")
-      val alertMessage =
-        getConfigOrFail("alerts.slack.message.text")
-          .replace("{repo}", report.repoName)
-          .replace("{branch}", report.branch)
-
-      val message =
-        SlackMessage(
-          channel     = slackChannel,
-          text        = alertMessage,
-          username    = slackUsername,
-          icon_emoji  = slackIcon,
-          attachments = Seq(Attachment(s"$reportUri/reports/${report._id}")))
-
-      slackConnector.sendMessage(message).map(_.status == 200)
+      val slackNotificationRequests = prepareSlackNotifications(report)
+      Future.traverse(slackNotificationRequests)(sendSlackMessage).map(_ => ())
     }
 
-  private def getConfigOrFail(key: String): String =
-    configuration
-      .getString(key)
-      .getOrElse(throw new RuntimeException("Unable to send an alert to slack. Missing configuration: " + key))
+  private def prepareSlackNotifications(report: Report): Seq[SlackNotificationRequest] = {
+    val alertMessage =
+      messageText
+        .replace("{repo}", report.repoName)
+        .replace("{branch}", report.branch)
+
+    val messageDetails =
+      MessageDetails(
+        text        = alertMessage,
+        username    = username,
+        iconEmoji   = iconEmoji,
+        attachments = Seq(Attachment(s"$leakDetectionUri/reports/${report._id}")))
+
+    val defaultChannelNotification =
+      if (sendToAlertChannel) Some(notificationRequestForSlackChannel(messageDetails)) else None
+
+    val teamChannelNotifications =
+      if (sendToTeamChannels) Some(notificationRequestForGitHubRepo(report, messageDetails)) else None
+
+    List(defaultChannelNotification, teamChannelNotifications).flatten
+
+  }
+
+  private def notificationRequestForGitHubRepo(report: Report, messageDetails: MessageDetails) = {
+    val slackNotification =
+      SlackNotification(
+        channelLookup  = ChannelLookup.GithubRepository(report.repoName),
+        messageDetails = messageDetails)
+
+    SlackNotificationRequest(
+      slackNotification = slackNotification,
+      errorMsg          = s"Error sending message to team channels for repository: '${report.repoName}'")
+  }
+
+  private def notificationRequestForSlackChannel(messageDetails: MessageDetails) = {
+    val slackNotification =
+      SlackNotification(
+        channelLookup  = ChannelLookup.SlackChannel(slackChannels = List(defaultAlertChannel)),
+        messageDetails = messageDetails)
+
+    SlackNotificationRequest(
+      slackNotification = slackNotification,
+      errorMsg          = s"Error sending message to default alert channel: '$defaultAlertChannel'")
+  }
+
+  private def sendSlackMessage(slackNotificationRequest: SlackNotificationRequest)(
+    implicit hc: HeaderCarrier): Future[Unit] =
+    slackConnector.sendMessage(slackNotificationRequest.slackNotification).map {
+      case HttpResponse(200, _, _, _) => ()
+      case _                          => Logger.error(slackNotificationRequest.errorMsg)
+    }
+
 }
+
+final case class SlackNotificationRequest(
+  slackNotification: SlackNotification,
+  errorMsg: String
+)
+
+final case class SlackConfig(
+  enabled: Boolean,
+  defaultAlertChannel: String,
+  username: String,
+  iconEmoji: String,
+  sendToAlertChannel: Boolean,
+  sendToTeamChannels: Boolean,
+  messageText: String,
+  leakDetectionUri: String
+)
