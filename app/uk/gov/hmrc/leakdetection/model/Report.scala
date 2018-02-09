@@ -17,7 +17,6 @@
 package uk.gov.hmrc.leakdetection.model
 
 import java.util.UUID
-
 import org.joda.time.DateTime
 import play.api.libs.json._
 import play.api.mvc.PathBindable
@@ -67,14 +66,14 @@ object Report {
     branch: String,
     results: Seq[Result]): Report =
     Report(
-      ReportId.random,
-      repositoryName,
-      repositoryUrl,
-      commitId,
-      branch.replaceFirst("refs/heads/", ""),
-      DateTimeUtils.now,
-      authorName,
-      results.map(r => ReportLine.build(repositoryUrl, branch, r))
+      _id               = ReportId.random,
+      repoName          = repositoryName,
+      repoUrl           = repositoryUrl,
+      commitId          = commitId,
+      branch            = branch.replaceFirst("refs/heads/", ""),
+      timestamp         = DateTimeUtils.now,
+      author            = authorName,
+      inspectionResults = results.map(r => ReportLine.build(repositoryUrl, branch, r))
     )
 
   implicit val format: Format[Report] = {

@@ -17,10 +17,10 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import javax.inject.Singleton
-
 import com.google.inject.Inject
 import play.api.libs.json.Json
 import play.api.mvc.Action
+import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.ReportId
 import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.leakdetection.views.html
@@ -28,7 +28,7 @@ import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
 @Singleton
-class ReportsController @Inject()(reportsService: ReportsService) extends BaseController {
+class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: ReportsService) extends BaseController {
 
   def repositories = Action.async { implicit request =>
     reportsService.getRepositories.map { repoNames =>
@@ -50,7 +50,7 @@ class ReportsController @Inject()(reportsService: ReportsService) extends BaseCo
     reportsService.getReport(reportId).map { maybeReport =>
       maybeReport
         .map { r =>
-          Ok(html.report(r))
+          Ok(html.report(r, configLoader.cfg.leakResolutionSteps))
         }
         .getOrElse(NotFound(Json.obj("msg" -> s"Report w/id $reportId not found")))
     }

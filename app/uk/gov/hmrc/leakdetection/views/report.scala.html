@@ -17,7 +17,8 @@
 @import uk.gov.hmrc.leakdetection.model.Report
 @import uk.gov.hmrc.leakdetection.views.helpers.highlightProblems
 
-@(report: Report)
+@import uk.gov.hmrc.leakdetection.config.LeakResolutionSteps
+@(report: Report, leakResolutionSteps: LeakResolutionSteps)
 
 @main {
 
@@ -53,6 +54,13 @@
             <th>Author</th>
             <td>@report.author</td>
         </tr>
+        <tr>
+            <th>Resolution Steps</th>
+            <td>
+                <a href="@leakResolutionSteps.url">Click here to find out how to resolve the leaks</a>
+            </td>
+        </tr>
+
         </tbody>
     </table>
 

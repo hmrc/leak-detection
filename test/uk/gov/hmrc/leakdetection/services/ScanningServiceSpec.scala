@@ -201,6 +201,9 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         webhookSecretKey    = "a secret"
       )
 
+    val leakResolutionSteps =
+      LeakResolutionSteps(url = "someUrl")
+
     object rules {
       val usesNulls =
         Rule(
@@ -270,8 +273,9 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     val privateRules: List[Rule] = Nil
 
     lazy val config = Cfg(
-      allRules      = AllRules(Nil, privateRules),
-      githubSecrets = githubSecrets
+      allRules            = AllRules(Nil, privateRules),
+      githubSecrets       = githubSecrets,
+      leakResolutionSteps = leakResolutionSteps
     )
 
     lazy val configLoader = new ConfigLoader {
