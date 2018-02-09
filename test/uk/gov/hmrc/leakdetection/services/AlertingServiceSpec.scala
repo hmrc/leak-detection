@@ -22,13 +22,13 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import scala.concurrent.Future
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.Rule
-import uk.gov.hmrc.leakdetection.connectors.{Attachment, ChannelLookup, MessageDetails, SlackNotification, SlackNotificationsConnector}
+import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.time.DateTimeUtils
-import scala.concurrent.Future
 
 class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar {
 
@@ -65,12 +65,12 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         attachments = Seq(Attachment(s"https://somewhere/reports/${report._id}"))
       )
 
-      val expectedMessageToAlertChannel = SlackNotification(
+      val expectedMessageToAlertChannel = SlackNotificationRequest(
         channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
         messageDetails = messageDetails
       )
 
-      val expectedMessageToTeamChannel = SlackNotification(
+      val expectedMessageToTeamChannel = SlackNotificationRequest(
         channelLookup  = ChannelLookup.GithubRepository(repoName),
         messageDetails = messageDetails
       )
@@ -134,7 +134,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     implicit val hc = HeaderCarrier()
 
     val slackConnector = mock[SlackNotificationsConnector]
-    when(slackConnector.sendMessage(any())(any())).thenReturn(Future.successful(HttpResponse(200)))
+    when(slackConnector.sendMessage(any())(any())).thenReturn(Future.successful(SlackNotificationResponse(Nil)))
 
     val defaultConfiguration = Configuration(
       "alerts.slack.leakDetectionUri"    -> "https://somewhere",
