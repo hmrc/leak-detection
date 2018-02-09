@@ -17,14 +17,15 @@
 package uk.gov.hmrc.leakdetection.connectors
 
 import javax.inject.{Inject, Singleton}
+import play.api.Mode.Mode
 import play.api.libs.json.{Json, OFormat, OWrites, Writes}
 import play.api.{Configuration, Environment, Logger}
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import scala.concurrent.Future
 import scala.util.control.NonFatal
+import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException}
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.config.ServicesConfig
+import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
 @Singleton
 class SlackNotificationsConnector @Inject()(
@@ -33,18 +34,24 @@ class SlackNotificationsConnector @Inject()(
   environment: Environment)
     extends ServicesConfig {
 
-  val mode = environment.mode
-  val url  = baseUrl("slack-notifications")
+  val mode: Mode  = environment.mode
+  val url: String = baseUrl("slack-notifications")
 
-  def sendMessage(message: SlackNotification)(implicit hc: HeaderCarrier): Future[HttpResponse] =
-    try {
-      http.POST[SlackNotification, HttpResponse](s"$url/slack-notifications/notification", message)
-    } catch {
-      case NonFatal(ex) =>
-        Logger.error(s"Unable to notify ${message.channelLookup} on Slack", ex)
-        Future.failed(ex)
-    }
+  def sendMessage(message: SlackNotificationRequest)(implicit hc: HeaderCarrier): Future[SlackNotificationResponse] =
+    http
+      .POST[SlackNotificationRequest, SlackNotificationResponse](s"$url/slack-notifications/notification", message)
+      .recoverWith {
+        case NonFatal(ex) =>
+          Logger.error(s"Unable to notify ${message.channelLookup} on Slack", ex)
+          Future.failed(ex)
+      }
 
+}
+
+final case class SlackNotificationResponse(errors: List[String])
+
+object SlackNotificationResponse {
+  implicit val format: OFormat[SlackNotificationResponse] = Json.format[SlackNotificationResponse]
 }
 
 sealed trait ChannelLookup {
@@ -86,11 +93,11 @@ object MessageDetails {
   implicit val writes: OWrites[MessageDetails] = Json.writes[MessageDetails]
 }
 
-final case class SlackNotification(
+final case class SlackNotificationRequest(
   channelLookup: ChannelLookup,
   messageDetails: MessageDetails
 )
 
-object SlackNotification {
-  implicit val writes: OWrites[SlackNotification] = Json.writes[SlackNotification]
+object SlackNotificationRequest {
+  implicit val writes: OWrites[SlackNotificationRequest] = Json.writes[SlackNotificationRequest]
 }

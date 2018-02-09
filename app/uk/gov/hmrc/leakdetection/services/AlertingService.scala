@@ -21,7 +21,7 @@ import play.api.{Configuration, Logger}
 import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 import scala.concurrent.Future
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.Report
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
@@ -44,11 +44,11 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
     if (!enabled || report.inspectionResults.isEmpty) {
       Future.successful(())
     } else {
-      val slackNotificationRequests = prepareSlackNotifications(report)
-      Future.traverse(slackNotificationRequests)(sendSlackMessage).map(_ => ())
+      val slackNotifications = prepareSlackNotifications(report)
+      Future.traverse(slackNotifications)(sendSlackMessage).map(_ => ())
     }
 
-  private def prepareSlackNotifications(report: Report): Seq[SlackNotificationRequest] = {
+  private def prepareSlackNotifications(report: Report): Seq[SlackNotificationAndErrorMessage] = {
     val alertMessage =
       messageText
         .replace("{repo}", report.repoName)
@@ -62,48 +62,50 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
         attachments = Seq(Attachment(s"$leakDetectionUri/reports/${report._id}")))
 
     val defaultChannelNotification =
-      if (sendToAlertChannel) Some(notificationRequestForSlackChannel(messageDetails)) else None
+      if (sendToAlertChannel) Some(notificationForSlackChannel(messageDetails)) else None
 
     val teamChannelNotifications =
-      if (sendToTeamChannels) Some(notificationRequestForGitHubRepo(report, messageDetails)) else None
+      if (sendToTeamChannels) Some(notificationForGitHubRepo(report, messageDetails)) else None
 
     List(defaultChannelNotification, teamChannelNotifications).flatten
 
   }
 
-  private def notificationRequestForGitHubRepo(report: Report, messageDetails: MessageDetails) = {
-    val slackNotification =
-      SlackNotification(
+  private def notificationForGitHubRepo(report: Report, messageDetails: MessageDetails) = {
+    val request =
+      SlackNotificationRequest(
         channelLookup  = ChannelLookup.GithubRepository(report.repoName),
         messageDetails = messageDetails)
 
-    SlackNotificationRequest(
-      slackNotification = slackNotification,
-      errorMsg          = s"Error sending message to team channels for repository: '${report.repoName}'")
+    SlackNotificationAndErrorMessage(
+      request  = request,
+      errorMsg = s"Error sending message to team channels for repository: '${report.repoName}'")
   }
 
-  private def notificationRequestForSlackChannel(messageDetails: MessageDetails) = {
-    val slackNotification =
-      SlackNotification(
+  private def notificationForSlackChannel(messageDetails: MessageDetails) = {
+    val request =
+      SlackNotificationRequest(
         channelLookup  = ChannelLookup.SlackChannel(slackChannels = List(defaultAlertChannel)),
         messageDetails = messageDetails)
 
-    SlackNotificationRequest(
-      slackNotification = slackNotification,
-      errorMsg          = s"Error sending message to default alert channel: '$defaultAlertChannel'")
+    SlackNotificationAndErrorMessage(
+      request  = request,
+      errorMsg = s"Error sending message to default alert channel: '$defaultAlertChannel'")
   }
 
-  private def sendSlackMessage(slackNotificationRequest: SlackNotificationRequest)(
+  private def sendSlackMessage(slackNotificationAndErrorMessage: SlackNotificationAndErrorMessage)(
     implicit hc: HeaderCarrier): Future[Unit] =
-    slackConnector.sendMessage(slackNotificationRequest.slackNotification).map {
-      case HttpResponse(200, _, _, _) => ()
-      case _                          => Logger.error(slackNotificationRequest.errorMsg)
+    slackConnector.sendMessage(slackNotificationAndErrorMessage.request).map {
+      case SlackNotificationResponse(errors) if errors.isEmpty => ()
+      case SlackNotificationResponse(errors) =>
+        Logger.error(s"Errors sending notification: ${errors.mkString("[", ",", "]")}")
+      case _ => Logger.error(slackNotificationAndErrorMessage.errorMsg)
     }
 
 }
 
-final case class SlackNotificationRequest(
-  slackNotification: SlackNotification,
+final case class SlackNotificationAndErrorMessage(
+  request: SlackNotificationRequest,
   errorMsg: String
 )
 
