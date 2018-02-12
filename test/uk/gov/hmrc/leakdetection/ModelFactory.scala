@@ -19,8 +19,9 @@ package uk.gov.hmrc.leakdetection
 import play.api.libs.json.{JsValue, Json, Writes}
 import scala.util.Random
 import uk.gov.hmrc.leakdetection.config.Rule
-import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.model.{LeakResolution, PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
+import uk.gov.hmrc.time.DateTimeUtils
 
 object ModelFactory {
 
@@ -78,7 +79,14 @@ object ModelFactory {
       commitId       = aString("commitId"),
       authorName     = aString("author"),
       branch         = aString("ref"),
-      results        = few(() => aResult)
+      results        = few(() => aResult),
+      leakResolution = maybe(aLeakResolution)
+    )
+
+  def aLeakResolution: LeakResolution =
+    LeakResolution(
+      timestamp = DateTimeUtils.now,
+      commitId  = aString("commitId")
     )
 
   implicit val payloadDetailsWrites: Writes[PayloadDetails] =

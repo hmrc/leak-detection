@@ -17,17 +17,36 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
-import scala.concurrent.ExecutionContext
-import uk.gov.hmrc.leakdetection.model.ReportId
+import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.leakdetection.model.{LeakResolution, Report, ReportId}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
+import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 
 class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 
-  def getReports(repoName: String) = reportsRepository.findByRepoName(repoName)
+  def getReports(repoName: String) = reportsRepository.findReportsWithProblems(repoName)
 
   def getReport(reportId: ReportId) = reportsRepository.findByReportId(reportId)
 
   def clearCollection() = reportsRepository.removeAll()
+
+  def saveReport(report: Report): Future[Unit] = {
+    def markPreviousReportsAsResolved = {
+      val leakResolution      = LeakResolution(timestamp = report.timestamp, commitId = report.commitId)
+      val outstandingProblems = reportsRepository.findUnresolved(report.repoName, report.branch)
+      outstandingProblems.flatMap { reports =>
+        val resolvedReports = reports.map(_.copy(leakResolution = Some(leakResolution)))
+        traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport)
+      }
+    }
+
+    for {
+      _ <- reportsRepository.saveReport(report)
+      _ <- markPreviousReportsAsResolved
+    } yield ()
+
+  }
+
 }

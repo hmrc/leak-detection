@@ -45,6 +45,15 @@ object ReportId {
     new SimpleObjectBinder[ReportId](ReportId.apply, _.value)
 }
 
+final case class LeakResolution(
+  timestamp: DateTime,
+  commitId: String
+)
+
+object LeakResolution {
+  implicit val format: Format[LeakResolution] = Json.format[LeakResolution]
+}
+
 final case class Report(
   _id: ReportId,
   repoName: String,
@@ -53,7 +62,8 @@ final case class Report(
   branch: String,
   timestamp: DateTime,
   author: String,
-  inspectionResults: Seq[ReportLine]
+  inspectionResults: Seq[ReportLine],
+  leakResolution: Option[LeakResolution]
 )
 
 object Report {
@@ -64,7 +74,8 @@ object Report {
     commitId: String,
     authorName: String,
     branch: String,
-    results: Seq[Result]): Report =
+    results: Seq[Result],
+    leakResolution: Option[LeakResolution] = None): Report =
     Report(
       _id               = ReportId.random,
       repoName          = repositoryName,
@@ -73,7 +84,8 @@ object Report {
       branch            = branch.replaceFirst("refs/heads/", ""),
       timestamp         = DateTimeUtils.now,
       author            = authorName,
-      inspectionResults = results.map(r => ReportLine.build(repositoryUrl, branch, r))
+      inspectionResults = results.map(r => ReportLine.build(repositoryUrl, branch, r)),
+      leakResolution    = leakResolution
     )
 
   implicit val format: Format[Report] = {
@@ -84,7 +96,8 @@ object Report {
 
   val mongoFormat: OFormat[Report] = {
 
-    implicit val mf = ReactiveMongoFormats.dateTimeFormats
+    implicit val mf                   = ReactiveMongoFormats.dateTimeFormats
+    implicit val leakResolutionFormat = Json.format[LeakResolution]
     Json.format[Report]
   }
 }

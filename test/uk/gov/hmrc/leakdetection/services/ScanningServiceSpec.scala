@@ -303,10 +303,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     lazy val projectConfigurationYamlContent = ""
     write(projectConfigurationYamlContent, projectConfigurationYaml)
 
-    when(reportRepository.saveReport(any())).thenAnswer(new Answer[Future[Report]] {
-      override def answer(invocation: InvocationOnMock): Future[Report] =
-        Future(invocation.getArgumentAt(0, classOf[Report]))
-    })
+    when(reportRepository.saveReport(any())).thenReturn(Future.successful(()))
 
     when(
       artifactService.getZipAndExplode(

@@ -19,9 +19,8 @@ package uk.gov.hmrc.leakdetection.persistence
 import concurrent.duration._
 import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest._
 import play.modules.reactivemongo.ReactiveMongoComponent
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 import uk.gov.hmrc.leakdetection.ModelFactory._
@@ -64,7 +63,7 @@ class ReportsRepositorySpec
 
       repo.bulkInsert(Random.shuffle(reports)).futureValue
 
-      val foundReports: Seq[Report] = repo.findByRepoName(repoName).futureValue
+      val foundReports: Seq[Report] = repo.findReportsWithProblems(repoName).futureValue
 
       foundReports shouldBe reports.reverse
     }
@@ -77,7 +76,7 @@ class ReportsRepositorySpec
 
       repo.bulkInsert(reportsWithProblems ::: reportsWithoutProblems).futureValue
 
-      val foundReports = repo.findByRepoName(repoName).futureValue
+      val foundReports = repo.findReportsWithProblems(repoName).futureValue
 
       foundReports should contain theSameElementsAs (reportsWithProblems)
     }
