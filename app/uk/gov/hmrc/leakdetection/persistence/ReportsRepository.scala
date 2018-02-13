@@ -77,14 +77,18 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
         }
       }
 
+  private val hasUnresolvedErrorsSelector =
+    Json.obj(
+      "inspectionResults" -> Json.obj("$gt" -> JsArray()),
+      "leakResolution"    -> JsNull
+    )
+
   def findUnresolvedWithProblems(repoName: String, branch: Option[String] = None): Future[List[Report]] =
     collection
       .find(
-        Json.obj(
-          "repoName"          -> repoName,
-          "inspectionResults" -> Json.obj("$gt" -> JsArray()),
-          "leakResolution"    -> JsNull
-        ) ++ branch.fold(Json.obj())(b => Json.obj("branch" -> b))
+        hasUnresolvedErrorsSelector ++
+          Json.obj("repoName" -> repoName) ++
+          branch.fold(Json.obj())(b => Json.obj("branch" -> b))
       )
       .sort(Json.obj("timestamp" -> -1))
       .cursor[Report](ReadPreference.primaryPreferred)
@@ -97,7 +101,7 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
     collection
       .distinct[String, List](
         "repoName",
-        Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()), "leakResolution" -> JsNull))
+        Some(hasUnresolvedErrorsSelector)
       )
       .map(_.sorted)
 }

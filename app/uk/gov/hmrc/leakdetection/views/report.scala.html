@@ -59,9 +59,20 @@
     </table>
 
 
-    <div class="alert alert-warning">
-        Please click <a href="@leakResolutionSteps.url">here</a> to find out how to resolve the problems.
-    </div>
+    @report.leakResolution.map { leakRes =>
+
+        <div class="alert alert-success">
+            <strong>Thank you! </strong>
+            All problems in this report were already solved by commit: @leakRes.commitId
+        </div>
+
+    }.getOrElse {
+
+        <div class="alert alert-warning">
+            Please click <a href="@leakResolutionSteps.url">here</a> to find out how to resolve the problems.
+        </div>
+
+    }
 
     <br/>
     <h2>Problems detected</h2>
