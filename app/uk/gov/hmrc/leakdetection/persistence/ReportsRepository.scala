@@ -17,15 +17,13 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import javax.inject.Singleton
-
 import com.google.inject.Inject
-import play.api.libs.json.{JsArray, Json}
+import play.api.libs.json.{JsArray, JsNull, Json}
 import play.api.libs.json.Reads._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.play.json.ImplicitBSONHandlers
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
@@ -53,17 +51,45 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
     collection.indexesManager
       .ensure(Index(Seq("field" -> indexType), name = Some(s"$field-idx")))
 
-  def saveReport(report: Report): Future[Report] = insert(report).map { writeResult =>
-    if (writeResult.ok && writeResult.n == 1) {
-      report
-    } else {
-      throw new Exception(s"Error saving following report in db: $report")
+  def saveReport(report: Report): Future[Unit] =
+    insert(report).map { writeResult =>
+      val savedSuccessfully = writeResult.ok && writeResult.n == 1
+      if (savedSuccessfully) {
+        ()
+      } else {
+        throw new Exception(s"Error saving following report in db: $report")
+      }
     }
-  }
 
-  def findByRepoName(repoName: String): Future[List[Report]] =
+  def updateReport(report: Report): Future[Unit] =
     collection
-      .find(Json.obj("repoName" -> repoName, "inspectionResults" -> Json.obj("$gt" -> JsArray())))
+      .update(
+        _id(report._id),
+        Report.mongoFormat.writes(report),
+        upsert = false
+      )
+      .map { res =>
+        val updatedSuccessfully = res.ok && res.nModified == 1
+        if (updatedSuccessfully) {
+          ()
+        } else {
+          throw new Exception(s"Error saving following report in db: $report")
+        }
+      }
+
+  private val hasUnresolvedErrorsSelector =
+    Json.obj(
+      "inspectionResults" -> Json.obj("$gt" -> JsArray()),
+      "leakResolution"    -> JsNull
+    )
+
+  def findUnresolvedWithProblems(repoName: String, branch: Option[String] = None): Future[List[Report]] =
+    collection
+      .find(
+        hasUnresolvedErrorsSelector ++
+          Json.obj("repoName" -> repoName) ++
+          branch.fold(Json.obj())(b => Json.obj("branch" -> b))
+      )
       .sort(Json.obj("timestamp" -> -1))
       .cursor[Report](ReadPreference.primaryPreferred)
       .collect[List]()
@@ -73,6 +99,9 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
 
   def getDistinctRepoNames: Future[List[String]] =
     collection
-      .distinct[String, List]("repoName", Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
+      .distinct[String, List](
+        "repoName",
+        Some(hasUnresolvedErrorsSelector)
+      )
       .map(_.sorted)
 }

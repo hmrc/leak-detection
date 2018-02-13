@@ -53,7 +53,8 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13, "null"))
-          ))
+          )),
+        None
       )
 
       service.alert(report).futureValue
@@ -101,7 +102,8 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13, "null"))
-          ))
+          )),
+        None
       )
 
       service.alert(report).futureValue
@@ -119,7 +121,8 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         branch            = "master",
         timestamp         = DateTimeUtils.now,
         author            = "me",
-        inspectionResults = Nil
+        inspectionResults = Nil,
+        None
       )
 
       service.alert(report).futureValue

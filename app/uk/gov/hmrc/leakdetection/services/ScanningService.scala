@@ -17,24 +17,21 @@
 package uk.gov.hmrc.leakdetection.services
 
 import javax.inject.{Inject, Singleton}
-
 import org.apache.commons.io.FileUtils
 import play.api.Configuration
+import scala.concurrent.Future
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
-import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
-
-import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ScanningService @Inject()(
   configuration: Configuration,
   artifactService: ArtifactService,
   configLoader: ConfigLoader,
-  reportsRepository: ReportsRepository,
+  reportsService: ReportsService,
   alertingService: AlertingService
 ) {
   lazy val privateMatchingEngine: RegexMatchingEngine = new RegexMatchingEngine(configLoader.cfg.allRules.privateRules)
@@ -57,9 +54,11 @@ class ScanningService @Inject()(
       val results             = regexMatchingEngine.run(explodedZipDir)
       val report              = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
       for {
-        report <- reportsRepository.saveReport(report)
-        _      <- alertingService.alert(report)
-      } yield report
+        _ <- reportsService.saveReport(report)
+        _ <- alertingService.alert(report)
+      } yield {
+        report
+      }
     } finally {
       FileUtils.deleteDirectory(explodedZipDir)
     }

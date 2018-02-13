@@ -19,8 +19,9 @@ package uk.gov.hmrc.leakdetection
 import play.api.libs.json.{JsValue, Json, Writes}
 import scala.util.Random
 import uk.gov.hmrc.leakdetection.config.Rule
-import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.model.{LeakResolution, PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
+import uk.gov.hmrc.time.DateTimeUtils
 
 object ModelFactory {
 
@@ -71,14 +72,30 @@ object ModelFactory {
     scanResults = aMatchedResult
   )
 
-  def aReport: Report =
+  def aReportWithProblems(repoName: String = aString("repositoryName")): Report =
     Report.create(
-      repositoryName = aString("repositoryName"),
+      repositoryName = repoName,
       repositoryUrl  = aString("repo"),
       commitId       = aString("commitId"),
       authorName     = aString("author"),
       branch         = aString("ref"),
-      results        = few(() => aResult)
+      results        = few(() => aResult),
+      leakResolution = maybe(aLeakResolution)
+    )
+
+  def aReportWithUnresolvedProblems(repoName: String = aString("repositoryName")): Report =
+    aReportWithProblems(repoName).copy(leakResolution = None)
+
+  def aReportWithResolvedProblems(repoName: String = aString("repositoryName")): Report =
+    aReportWithProblems(repoName).copy(leakResolution = Some(aLeakResolution))
+
+  def aReportWithoutProblems(repoName: String = aString("repositoryName")): Report =
+    aReportWithProblems(repoName).copy(leakResolution = None, inspectionResults = Nil)
+
+  def aLeakResolution: LeakResolution =
+    LeakResolution(
+      timestamp = DateTimeUtils.now,
+      commitId  = aString("commitId")
     )
 
   implicit val payloadDetailsWrites: Writes[PayloadDetails] =

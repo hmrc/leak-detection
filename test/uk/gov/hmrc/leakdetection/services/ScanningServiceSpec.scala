@@ -201,6 +201,9 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         webhookSecretKey    = "a secret"
       )
 
+    val leakResolutionUrl =
+      LeakResolutionUrl(value = "someUrl")
+
     object rules {
       val usesNulls =
         Rule(
@@ -270,16 +273,17 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     val privateRules: List[Rule] = Nil
 
     lazy val config = Cfg(
-      allRules      = AllRules(Nil, privateRules),
-      githubSecrets = githubSecrets
+      allRules          = AllRules(Nil, privateRules),
+      githubSecrets     = githubSecrets,
+      leakResolutionUrl = leakResolutionUrl
     )
 
     lazy val configLoader = new ConfigLoader {
       val cfg = config
     }
 
-    val artifactService  = mock[ArtifactService]
-    val reportRepository = mock[ReportsRepository]
+    val artifactService = mock[ArtifactService]
+    val reportsService  = mock[ReportsService]
 
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
     val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
@@ -299,10 +303,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     lazy val projectConfigurationYamlContent = ""
     write(projectConfigurationYamlContent, projectConfigurationYaml)
 
-    when(reportRepository.saveReport(any())).thenAnswer(new Answer[Future[Report]] {
-      override def answer(invocation: InvocationOnMock): Future[Report] =
-        Future(invocation.getArgumentAt(0, classOf[Report]))
-    })
+    when(reportsService.saveReport(any())).thenReturn(Future.successful(()))
 
     when(
       artifactService.getZipAndExplode(
@@ -316,7 +317,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     val configuration = Configuration()
 
     lazy val scanningService =
-      new ScanningService(configuration, artifactService, configLoader, reportRepository, alertingService)
+      new ScanningService(configuration, artifactService, configLoader, reportsService, alertingService)
   }
 
   def write(content: String, destination: File) =

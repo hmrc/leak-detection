@@ -17,17 +17,44 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
-import scala.concurrent.ExecutionContext
-import uk.gov.hmrc.leakdetection.model.ReportId
+import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
+import uk.gov.hmrc.leakdetection.model.{LeakResolution, Report, ReportId}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 
 class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 
-  def getReports(repoName: String) = reportsRepository.findByRepoName(repoName)
+  def getLatestReportsForEachBranch(repoName: String): Future[List[Report]] =
+    reportsRepository
+      .findUnresolvedWithProblems(repoName)
+      .map(_.groupBy(_.branch).map {
+        case (_, reports) => reports.head
+      }.toList)
 
   def getReport(reportId: ReportId) = reportsRepository.findByReportId(reportId)
 
   def clearCollection() = reportsRepository.removeAll()
+
+  def saveReport(report: Report): Future[Unit] = {
+    def markPreviousReportsAsResolved(): Future[Unit] = {
+      val leakResolution      = LeakResolution(report.timestamp, report.commitId)
+      val outstandingProblems = reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch))
+      outstandingProblems.flatMap { reports =>
+        val resolvedReports = reports.map(_.copy(leakResolution = Some(leakResolution)))
+        traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => ())
+      }
+    }
+
+    def ifReportSolvesProblems(f: => Future[Unit]): Future[Unit] =
+      if (report.inspectionResults.isEmpty) f else Future.successful(())
+
+    for {
+      _ <- reportsRepository.saveReport(report)
+      _ <- ifReportSolvesProblems(markPreviousReportsAsResolved())
+    } yield ()
+
+  }
+
 }

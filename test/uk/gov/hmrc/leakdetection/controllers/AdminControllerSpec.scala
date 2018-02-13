@@ -54,7 +54,8 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
               is("NA"),
               is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
             )(any()))
-            .thenReturn(Future.successful(Report(id, "repoName", "someUrl", "NA", "master", now, "NA", Seq.empty)))
+            .thenReturn(
+              Future.successful(Report(id, "repoName", "someUrl", "NA", "master", now, "NA", Seq.empty, None)))
 
           val result       = controller.validate("repoName", "master", isPrivate)(FakeRequest())
           val json: String = contentAsString(result)
@@ -94,7 +95,8 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
                   "a description",
                   "the line",
                   List(Match(0, 1, "line")))
-              )
+              ),
+              None
             )))
 
           val result        = controller.validate("repoName", "master", isPrivate)(FakeRequest())

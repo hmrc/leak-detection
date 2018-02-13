@@ -17,7 +17,8 @@
 @import uk.gov.hmrc.leakdetection.model.Report
 @import uk.gov.hmrc.leakdetection.views.helpers.highlightProblems
 
-@(report: Report)
+@import uk.gov.hmrc.leakdetection.config.LeakResolutionUrl
+@(report: Report, leakResolutionUrl: LeakResolutionUrl)
 
 @main {
 
@@ -53,8 +54,25 @@
             <th>Author</th>
             <td>@report.author</td>
         </tr>
+
         </tbody>
     </table>
+
+
+    @report.leakResolution.map { leakRes =>
+
+        <div class="alert alert-success">
+            <strong>Thank you! </strong>
+            All problems in this report were already solved by commit: @leakRes.commitId
+        </div>
+
+    }.getOrElse {
+
+        <div class="alert alert-warning">
+            Please click <a href="@leakResolutionUrl.value">here</a> to find out how to resolve the problems.
+        </div>
+
+    }
 
     <br/>
     <h2>Problems detected</h2>
