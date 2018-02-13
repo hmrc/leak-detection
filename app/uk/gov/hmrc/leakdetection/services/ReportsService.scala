@@ -18,15 +18,20 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.model.{LeakResolution, Report, ReportId}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 
 class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 
-  def getReports(repoName: String) = reportsRepository.findReportsWithProblems(repoName)
+  def getLatestReportsForEachBranch(repoName: String): Future[List[Report]] =
+    reportsRepository
+      .findReportsWithProblems(repoName)
+      .map(_.groupBy(_.branch).map {
+        case (_, reports) => reports.head
+      }.toList)
 
   def getReport(reportId: ReportId) = reportsRepository.findByReportId(reportId)
 

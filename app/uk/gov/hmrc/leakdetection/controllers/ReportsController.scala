@@ -37,7 +37,7 @@ class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: Re
   }
 
   def reportsForRepository(repoName: String) = Action.async { implicit request =>
-    reportsService.getReports(repoName).map { reports =>
+    reportsService.getLatestReportsForEachBranch(repoName).map { reports =>
       Ok(html.reports_for_repo(repoName, reports))
     }
   }

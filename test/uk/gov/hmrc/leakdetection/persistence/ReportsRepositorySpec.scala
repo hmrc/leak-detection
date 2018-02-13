@@ -23,6 +23,7 @@ import org.scalatest._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
+import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.Report
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
@@ -32,7 +33,8 @@ class ReportsRepositorySpec
     with Matchers
     with MongoSpecSupport
     with ScalaFutures
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with IncreasingTimestamps {
 
   "Reports repository" should {
     "provide a distinct list of repository names only if there were problems" in {
@@ -47,15 +49,6 @@ class ReportsRepositorySpec
     }
 
     "return reports by repository in inverse chronological order" in {
-      val increasingTimestamp: () => DateTime = {
-        var t = DateTime.now(DateTimeZone.UTC)
-        () =>
-          {
-            t = t.plusSeconds(1)
-            t
-          }
-      }
-
       val repoName = "repo"
       val reports: Seq[Report] = few(() => {
         aReport.copy(repoName = repoName, timestamp = increasingTimestamp())

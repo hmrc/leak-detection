@@ -18,7 +18,8 @@ object MicroServiceBuild extends Build with MicroService {
     "org.scalaj"            %% "scalaj-http"        % "2.3.0",
     "org.typelevel"         %% "cats-core"          % "0.9.0",
     "uk.gov.hmrc"           %% "play-ui"            % "7.10.0",
-    "org.yaml"              % "snakeyaml"           % "1.17"
+    "org.yaml"              % "snakeyaml"           % "1.17",
+    "com.lihaoyi"           %% "pprint"             % "0.5.3"
   )
 
   val test: Seq[ModuleID] = Seq(

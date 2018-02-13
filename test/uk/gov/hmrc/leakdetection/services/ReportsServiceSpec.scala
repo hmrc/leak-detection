@@ -22,7 +22,7 @@ import org.scalatest.{BeforeAndAfterEach, GivenWhenThen, Matchers, WordSpec}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import uk.gov.hmrc.leakdetection.ModelFactory
+import uk.gov.hmrc.leakdetection.{IncreasingTimestamps, ModelFactory}
 import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, few}
 import uk.gov.hmrc.leakdetection.model.LeakResolution
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
@@ -35,7 +35,8 @@ class ReportsServiceSpec
     with MockitoSugar
     with MongoSpecSupport
     with BeforeAndAfterEach
-    with GivenWhenThen {
+    with GivenWhenThen
+    with IncreasingTimestamps {
 
   "Reports service" should {
     "resolve previous problems if the new report contains no leaks" in {
@@ -109,6 +110,23 @@ class ReportsServiceSpec
 
       And("new report is saved")
       assert(reportsAfterUpdates.contains(reportStillWithProblems))
+    }
+
+    "provide a list of reports for a repo showing only the latest one per branch" in {
+      val repoName = "repo"
+      val branch1  = "master"
+      val branch2  = "another-branch"
+
+      def genReports(branchName: String) =
+        List.fill(2)(aReport.copy(repoName = repoName, branch = branchName, timestamp = increasingTimestamp()))
+
+      val reportsBranch1 = genReports(branch1)
+      val reportsBranch2 = genReports(branch2)
+
+      repo.bulkInsert(reportsBranch1 ::: reportsBranch2).futureValue
+
+      val expectedResult = reportsBranch1.last :: reportsBranch2.last :: Nil
+      reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
     }
 
   }
