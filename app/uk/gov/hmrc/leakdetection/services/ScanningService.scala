@@ -23,7 +23,6 @@ import scala.concurrent.Future
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
-import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
@@ -32,7 +31,7 @@ class ScanningService @Inject()(
   configuration: Configuration,
   artifactService: ArtifactService,
   configLoader: ConfigLoader,
-  reportsRepository: ReportsRepository,
+  reportsService: ReportsService,
   alertingService: AlertingService
 ) {
   lazy val privateMatchingEngine: RegexMatchingEngine = new RegexMatchingEngine(configLoader.cfg.allRules.privateRules)
@@ -55,7 +54,7 @@ class ScanningService @Inject()(
       val results             = regexMatchingEngine.run(explodedZipDir)
       val report              = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
       for {
-        _ <- reportsRepository.saveReport(report)
+        _ <- reportsService.saveReport(report)
         _ <- alertingService.alert(report)
       } yield {
         report

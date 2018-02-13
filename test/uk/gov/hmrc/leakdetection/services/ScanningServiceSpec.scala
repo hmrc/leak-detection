@@ -282,8 +282,8 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
       val cfg = config
     }
 
-    val artifactService  = mock[ArtifactService]
-    val reportRepository = mock[ReportsRepository]
+    val artifactService = mock[ArtifactService]
+    val reportsService  = mock[ReportsService]
 
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
     val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
@@ -303,7 +303,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     lazy val projectConfigurationYamlContent = ""
     write(projectConfigurationYamlContent, projectConfigurationYaml)
 
-    when(reportRepository.saveReport(any())).thenReturn(Future.successful(()))
+    when(reportsService.saveReport(any())).thenReturn(Future.successful(()))
 
     when(
       artifactService.getZipAndExplode(
@@ -317,7 +317,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     val configuration = Configuration()
 
     lazy val scanningService =
-      new ScanningService(configuration, artifactService, configLoader, reportRepository, alertingService)
+      new ScanningService(configuration, artifactService, configLoader, reportsService, alertingService)
   }
 
   def write(content: String, destination: File) =
