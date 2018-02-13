@@ -72,9 +72,9 @@ object ModelFactory {
     scanResults = aMatchedResult
   )
 
-  def aReport: Report =
+  def aReportWithProblems(repoName: String = aString("repositoryName")): Report =
     Report.create(
-      repositoryName = aString("repositoryName"),
+      repositoryName = repoName,
       repositoryUrl  = aString("repo"),
       commitId       = aString("commitId"),
       authorName     = aString("author"),
@@ -82,6 +82,15 @@ object ModelFactory {
       results        = few(() => aResult),
       leakResolution = maybe(aLeakResolution)
     )
+
+  def aReportWithUnresolvedProblems(repoName: String = aString("repositoryName")): Report =
+    aReportWithProblems(repoName).copy(leakResolution = None)
+
+  def aReportWithResolvedProblems(repoName: String = aString("repositoryName")): Report =
+    aReportWithProblems(repoName).copy(leakResolution = Some(aLeakResolution))
+
+  def aReportWithoutProblems(repoName: String = aString("repositoryName")): Report =
+    aReportWithProblems(repoName).copy(leakResolution = None, inspectionResults = Nil)
 
   def aLeakResolution: LeakResolution =
     LeakResolution(

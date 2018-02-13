@@ -77,21 +77,14 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
         }
       }
 
-  def findReportsWithProblems(repoName: String): Future[List[Report]] =
-    collection
-      .find(Json.obj("repoName" -> repoName, "inspectionResults" -> Json.obj("$gt" -> JsArray())))
-      .sort(Json.obj("timestamp" -> -1))
-      .cursor[Report](ReadPreference.primaryPreferred)
-      .collect[List]()
-
-  def findUnresolved(repoName: String, branch: String): Future[List[Report]] =
+  def findUnresolvedWithProblems(repoName: String, branch: Option[String] = None): Future[List[Report]] =
     collection
       .find(
         Json.obj(
           "repoName"          -> repoName,
-          "branch"            -> branch,
           "inspectionResults" -> Json.obj("$gt" -> JsArray()),
-          "leakResolution"    -> JsNull)
+          "leakResolution"    -> JsNull
+        ) ++ branch.fold(Json.obj())(b => Json.obj("branch" -> b))
       )
       .sort(Json.obj("timestamp" -> -1))
       .cursor[Report](ReadPreference.primaryPreferred)
@@ -102,6 +95,9 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
 
   def getDistinctRepoNames: Future[List[String]] =
     collection
-      .distinct[String, List]("repoName", Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
+      .distinct[String, List](
+        "repoName",
+        Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()), "leakResolution" -> JsNull))
+      )
       .map(_.sorted)
 }

@@ -28,7 +28,7 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
 
   def getLatestReportsForEachBranch(repoName: String): Future[List[Report]] =
     reportsRepository
-      .findReportsWithProblems(repoName)
+      .findUnresolvedWithProblems(repoName)
       .map(_.groupBy(_.branch).map {
         case (_, reports) => reports.head
       }.toList)
@@ -40,7 +40,7 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
   def saveReport(report: Report): Future[Unit] = {
     def markPreviousReportsAsResolved(): Future[Unit] = {
       val leakResolution      = LeakResolution(report.timestamp, report.commitId)
-      val outstandingProblems = reportsRepository.findUnresolved(report.repoName, report.branch)
+      val outstandingProblems = reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch))
       outstandingProblems.flatMap { reports =>
         val resolvedReports = reports.map(_.copy(leakResolution = Some(leakResolution)))
         traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => ())

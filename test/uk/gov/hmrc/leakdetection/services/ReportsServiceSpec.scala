@@ -23,7 +23,7 @@ import play.modules.reactivemongo.ReactiveMongoComponent
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import uk.gov.hmrc.leakdetection.{IncreasingTimestamps, ModelFactory}
-import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, few}
+import uk.gov.hmrc.leakdetection.ModelFactory.{aLeakResolution, aReportWithProblems, few}
 import uk.gov.hmrc.leakdetection.model.LeakResolution
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
@@ -44,7 +44,7 @@ class ReportsServiceSpec
       val branchName    = "master"
       val anotherBranch = "another-branch"
 
-      def genReports() = few(() => aReport.copy(repoName = repoName, branch = branchName))
+      def genReports() = few(() => aReportWithProblems(repoName).copy(branch = branchName))
 
       Given("LDS repo contains some outstanding problems for a given branch")
       val outstandingProblems = genReports().map(_.copy(leakResolution = None))
@@ -87,7 +87,7 @@ class ReportsServiceSpec
       val repoName   = "repo"
       val branchName = "master"
 
-      def genReports() = few(() => aReport.copy(repoName = repoName, branch = branchName))
+      def genReports() = few(() => aReportWithProblems(repoName).copy(branch = branchName))
 
       Given("LDS repo contains some outstanding problems for a given branch")
       val outstandingProblems = genReports().map(_.copy(leakResolution = None))
@@ -117,15 +117,23 @@ class ReportsServiceSpec
       val branch1  = "master"
       val branch2  = "another-branch"
 
-      def genReports(branchName: String) =
-        List.fill(2)(aReport.copy(repoName = repoName, branch = branchName, timestamp = increasingTimestamp()))
+      def genReport(branchName: String) =
+        aReportWithProblems(repoName).copy(branch = branchName, timestamp = increasingTimestamp())
 
-      val reportsBranch1 = genReports(branch1)
-      val reportsBranch2 = genReports(branch2)
+      val reportsBranch1 =
+        List(
+          genReport(branch1).copy(leakResolution = None),
+          genReport(branch1).copy(leakResolution = None)
+        )
+
+      val reportsBranch2 =
+        List(
+          genReport(branch2).copy(leakResolution = Some(aLeakResolution))
+        )
 
       repo.bulkInsert(reportsBranch1 ::: reportsBranch2).futureValue
 
-      val expectedResult = reportsBranch1.last :: reportsBranch2.last :: Nil
+      val expectedResult = reportsBranch1.last :: Nil
       reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
     }
 

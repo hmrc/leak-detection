@@ -37,41 +37,48 @@ class ReportsRepositorySpec
     with IncreasingTimestamps {
 
   "Reports repository" should {
-    "provide a distinct list of repository names only if there were problems" in {
-      val reportsWithProblems    = few(() => aReport)
-      val reportsWithoutProblems = few(() => aReport).map(_.copy(inspectionResults = Nil))
-      val withSomeDuplicates     = reportsWithProblems ::: reportsWithProblems ::: reportsWithoutProblems
+    "provide a distinct list of repository names only if there were unresolved problems" in {
+      val reportsWithUnresolvedProblems = few(() => aReportWithUnresolvedProblems())
+      val reportsWithResolvedProblems   = few(() => aReportWithResolvedProblems())
+      val reportsWithoutProblems        = few(() => aReportWithProblems()).map(_.copy(inspectionResults = Nil))
+      val withSomeDuplicates =
+        reportsWithResolvedProblems :::
+          reportsWithUnresolvedProblems :::
+          reportsWithUnresolvedProblems :::
+          reportsWithoutProblems
 
       repo.bulkInsert(withSomeDuplicates).futureValue
 
       val foundNames = repo.getDistinctRepoNames.futureValue
-      foundNames should contain theSameElementsAs reportsWithProblems.map(_.repoName)
+      foundNames should contain theSameElementsAs reportsWithUnresolvedProblems.map(_.repoName)
     }
 
     "return reports by repository in inverse chronological order" in {
       val repoName = "repo"
       val reports: Seq[Report] = few(() => {
-        aReport.copy(repoName = repoName, timestamp = increasingTimestamp())
+        aReportWithUnresolvedProblems(repoName).copy(timestamp = increasingTimestamp())
       })
 
       repo.bulkInsert(Random.shuffle(reports)).futureValue
 
-      val foundReports: Seq[Report] = repo.findReportsWithProblems(repoName).futureValue
+      val foundReports: Seq[Report] = repo.findUnresolvedWithProblems(repoName).futureValue
 
       foundReports shouldBe reports.reverse
     }
 
-    "only return reports that actually had problems in them" in {
-      val repoName               = "repo"
-      def reportsForRepo         = few(() => aReport.copy(repoName = repoName))
-      val reportsWithProblems    = reportsForRepo
-      val reportsWithoutProblems = reportsForRepo.map(_.copy(inspectionResults = Nil))
+    "only return reports that actually had unresolved problems in them" in {
+      val repoName                      = "repo"
+      val reportsWithUnresolvedProblems = few(() => aReportWithUnresolvedProblems(repoName))
+      val reportsWithResolvedProblems   = few(() => aReportWithResolvedProblems(repoName))
+      val reportsWithoutProblems        = few(() => aReportWithoutProblems(repoName))
 
-      repo.bulkInsert(reportsWithProblems ::: reportsWithoutProblems).futureValue
+      val all = reportsWithUnresolvedProblems ::: reportsWithResolvedProblems ::: reportsWithoutProblems
 
-      val foundReports = repo.findReportsWithProblems(repoName).futureValue
+      repo.bulkInsert(all).futureValue
 
-      foundReports should contain theSameElementsAs (reportsWithProblems)
+      val foundReports = repo.findUnresolvedWithProblems(repoName).futureValue
+
+      foundReports should contain theSameElementsAs reportsWithUnresolvedProblems
     }
 
   }
