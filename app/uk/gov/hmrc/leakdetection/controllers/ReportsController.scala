@@ -32,7 +32,10 @@ class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: Re
 
   def repositories = Action.async { implicit request =>
     reportsService.getRepositories.map { repoNames =>
-      Ok(html.repo_list(repoNames))
+      render {
+        case Accepts.Html() => Ok(html.repo_list(repoNames))
+        case _              => Ok(Json.toJson(repoNames))
+      }
     }
   }
 

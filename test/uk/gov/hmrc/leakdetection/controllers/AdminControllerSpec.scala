@@ -25,11 +25,11 @@ import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.JsValue
 import play.api.mvc.Results
 import play.api.test.FakeRequest
+import scala.concurrent.Future
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
-import scala.concurrent.{ExecutionContext, Future}
 
 class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
 
