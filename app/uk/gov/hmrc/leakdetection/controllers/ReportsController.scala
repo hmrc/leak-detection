@@ -50,7 +50,7 @@ class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: Re
     reportsService.getReport(reportId).map { maybeReport =>
       maybeReport
         .map { r =>
-          Ok(html.report(r, configLoader.cfg.leakResolutionSteps))
+          Ok(html.report(r, configLoader.cfg.leakResolutionUrl))
         }
         .getOrElse(NotFound(Json.obj("msg" -> s"Report w/id $reportId not found")))
     }

@@ -40,7 +40,7 @@ class PlayConfigLoader @Inject()(configuration: Configuration) extends ConfigLoa
 final case class Cfg(
   allRules: AllRules,
   githubSecrets: GithubSecrets,
-  leakResolutionSteps: LeakResolutionSteps
+  leakResolutionUrl: LeakResolutionUrl
 )
 
 final case class AllRules(
@@ -70,7 +70,7 @@ final case class GithubSecrets(
   webhookSecretKey: String
 )
 
-final case class LeakResolutionSteps(url: String)
+final case class LeakResolutionUrl(value: String) extends AnyVal
 
 object AllRules {
   implicit val format = Json.format[AllRules]

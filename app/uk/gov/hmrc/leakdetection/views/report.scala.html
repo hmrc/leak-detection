@@ -17,8 +17,8 @@
 @import uk.gov.hmrc.leakdetection.model.Report
 @import uk.gov.hmrc.leakdetection.views.helpers.highlightProblems
 
-@import uk.gov.hmrc.leakdetection.config.LeakResolutionSteps
-@(report: Report, leakResolutionSteps: LeakResolutionSteps)
+@import uk.gov.hmrc.leakdetection.config.LeakResolutionUrl
+@(report: Report, leakResolutionUrl: LeakResolutionUrl)
 
 @main {
 
@@ -69,7 +69,7 @@
     }.getOrElse {
 
         <div class="alert alert-warning">
-            Please click <a href="@leakResolutionSteps.url">here</a> to find out how to resolve the problems.
+            Please click <a href="@leakResolutionUrl.value">here</a> to find out how to resolve the problems.
         </div>
 
     }
