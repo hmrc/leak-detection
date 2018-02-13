@@ -43,20 +43,20 @@ class ReportsServiceSpec
       val branchName    = "master"
       val anotherBranch = "another-branch"
 
-      def genReports = few(() => aReport.copy(repoName = repoName, branch = branchName))
+      def genReports() = few(() => aReport.copy(repoName = repoName, branch = branchName))
 
       Given("LDS repo contains some outstanding problems for a given branch")
-      val outstandingProblems = genReports.map(_.copy(leakResolution = None))
+      val outstandingProblems = genReports().map(_.copy(leakResolution = None))
 
       And("it also contains some already resolved reports")
-      val previouslyResolved = genReports.map(_.copy(leakResolution = Some(ModelFactory.aLeakResolution)))
+      val previouslyResolved = genReports().map(_.copy(leakResolution = Some(ModelFactory.aLeakResolution)))
 
       And("it also contains problems on a different branch")
-      val problemsOnAnotherBranch = genReports.map(_.copy(branch = anotherBranch))
+      val problemsOnAnotherBranch = genReports().map(_.copy(branch = anotherBranch))
 
       repo.bulkInsert(outstandingProblems ::: previouslyResolved ::: problemsOnAnotherBranch).futureValue
 
-      val reportFixingProblems = genReports.map(_.copy(inspectionResults = Nil)).head
+      val reportFixingProblems = genReports().map(_.copy(inspectionResults = Nil)).head
 
       When(s"a new report is saved that fixes problems on a given branch")
       val _ = reportsService.saveReport(reportFixingProblems).futureValue
@@ -78,8 +78,37 @@ class ReportsServiceSpec
       reportsAfterUpdates.filter(_.branch == anotherBranch) should contain theSameElementsAs problemsOnAnotherBranch
 
       And("problems already resolved are untouched")
-      reportsAfterUpdates.filter(r => previouslyResolved.exists(_._id == r._id)) shouldBe previouslyResolved
+      val alreadyResolvedAfterUpdates = reportsAfterUpdates.filter(r => previouslyResolved.exists(_._id == r._id))
+      alreadyResolvedAfterUpdates should contain theSameElementsAs previouslyResolved
+    }
 
+    "don't resolve previous problems on the same repo/branch if report still has errors" in {
+      val repoName   = "repo"
+      val branchName = "master"
+
+      def genReports() = few(() => aReport.copy(repoName = repoName, branch = branchName))
+
+      Given("LDS repo contains some outstanding problems for a given branch")
+      val outstandingProblems = genReports().map(_.copy(leakResolution = None))
+
+      repo.bulkInsert(outstandingProblems).futureValue
+
+      val reportStillWithProblems = genReports().head
+
+      When(s"a new report is saved that still indicates problems")
+      val _ = reportsService.saveReport(reportStillWithProblems).futureValue
+
+      val reportsAfterUpdates = repo.findAll().futureValue
+
+      val reportsPreviouslyWithOutstandingProblems =
+        reportsAfterUpdates.filter(r => outstandingProblems.exists(_._id == r._id))
+
+      Then(s"reports with problems are NOT resolved")
+      reportsPreviouslyWithOutstandingProblems should not be empty
+      assert(reportsPreviouslyWithOutstandingProblems.forall(_.leakResolution == None))
+
+      And("new report is saved")
+      assert(reportsAfterUpdates.contains(reportStillWithProblems))
     }
 
   }
