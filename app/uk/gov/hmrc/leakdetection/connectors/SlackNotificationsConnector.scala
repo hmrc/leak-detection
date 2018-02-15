@@ -18,11 +18,11 @@ package uk.gov.hmrc.leakdetection.connectors
 
 import javax.inject.{Inject, Singleton}
 import play.api.Mode.Mode
-import play.api.libs.json.{Json, OFormat, OWrites, Writes}
+import play.api.libs.json._
 import play.api.{Configuration, Environment, Logger}
 import scala.concurrent.Future
 import scala.util.control.NonFatal
-import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, NotFoundException}
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.config.ServicesConfig
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
@@ -39,7 +39,16 @@ class SlackNotificationsConnector @Inject()(
 
   def sendMessage(message: SlackNotificationRequest)(implicit hc: HeaderCarrier): Future[SlackNotificationResponse] =
     http
-      .POST[SlackNotificationRequest, SlackNotificationResponse](s"$url/slack-notifications/notification", message)
+      .POST[SlackNotificationRequest, HttpResponse](s"$url/slack-notifications/notification", message)
+      .map { httpResponse =>
+        val body = httpResponse.body
+        Json.parse(body).validate[SlackNotificationResponse] match {
+          case JsSuccess(slackResponse, _) => slackResponse
+          case JsError(errors) =>
+            throw new Exception(s"Error parsing response from slack-notifications: $errors, response body was: $body")
+
+        }
+      }
       .recoverWith {
         case NonFatal(ex) =>
           Logger.error(s"Unable to notify ${message.channelLookup} on Slack", ex)
