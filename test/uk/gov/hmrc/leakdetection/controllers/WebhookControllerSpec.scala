@@ -25,6 +25,7 @@ import java.io.{BufferedOutputStream, ByteArrayInputStream, ByteArrayOutputStrea
 import java.util.UUID
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import org.apache.commons.codec.digest.HmacUtils
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FeatureSpec, GivenWhenThen, Matchers, TestData}
 import org.scalatestplus.play.OneAppPerTest
 import play.api._
@@ -36,11 +37,14 @@ import play.api.routing.sird._
 import play.api.test.Helpers.{CONTENT_DISPOSITION, CONTENT_TYPE}
 import play.api.test.{FakeRequest, Helpers}
 import play.modules.reactivemongo.ReactiveMongoComponent
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import uk.gov.hmrc.leakdetection.TestServer
-import uk.gov.hmrc.leakdetection.controllers.WebhookRequestValidator.Message
 import uk.gov.hmrc.leakdetection.model.Report
+import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
+import uk.gov.hmrc.leakdetection.services.ReportsService.ClearedReportsInfo
+import uk.gov.hmrc.leakdetection.{ModelFactory, TestServer}
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 
 class WebhookControllerSpec
@@ -49,7 +53,8 @@ class WebhookControllerSpec
     with Matchers
     with OneAppPerTest
     with Fixtures
-    with MongoSpecSupport {
+    with MongoSpecSupport
+    with ScalaFutures {
 
   feature("Verifying Github commits") {
 
@@ -95,7 +100,8 @@ class WebhookControllerSpec
 
     scenario("Delete branch event") {
       Given("Github makes a request representing a delete branch event")
-      val githubRequestPayload: String = asJson(aPayloadDetails.copy(deleted = true))
+      val requestPayload               = aPayloadDetails.copy(deleted = true)
+      val githubRequestPayload: String = asJson(requestPayload)
 
       And("the request is signed using a secret known to us")
       val signedRequest =
@@ -106,15 +112,22 @@ class WebhookControllerSpec
             "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequestPayload))
           )
 
-      When("Leak Detection service receives a request")
+      And("there is already a report with problems for a given repo/branch")
+      val existingProblems = prepopulateReportWithProblems(requestPayload.repositoryName, requestPayload.branchRef)
+
+      When("LDS receives a request related to deleting a branch")
       val res = Helpers.route(app, signedRequest).get
 
-      Then("Processing should be successful")
+      Then("processing should be successful")
       Helpers.status(res) shouldBe 200
 
-      And("Response should inform that 'delete branch' events are ignored")
-      val msg = Json.parse(Helpers.contentAsString(res)).as[Message]
-      msg.details shouldBe "Events related to deleting branches are ignored"
+      And("response should inform which problem where cleared as a result of deleting a branch")
+      val msg = Json.parse(Helpers.contentAsString(res)).as[ClearedReportsInfo]
+      msg shouldBe ClearedReportsInfo(
+        repoName       = requestPayload.repositoryName,
+        branchName     = requestPayload.branchRef,
+        clearedReports = List(existingProblems._id)
+      )
 
     }
   }
@@ -219,6 +232,16 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
     }
 
     new ByteArrayInputStream(baos.toByteArray)
+  }
+
+  lazy val repo = new ReportsRepository(new ReactiveMongoComponent {
+    override def mongoConnector: MongoConnector = mongoConnectorForTest
+  })
+
+  def prepopulateReportWithProblems(repoName: String, branchName: String): Report = {
+    val report = ModelFactory.aReportWithUnresolvedProblems(repoName).copy(branch = branchName)
+    Await.result(repo.insert(report), 5.seconds)
+    report
   }
 
 }

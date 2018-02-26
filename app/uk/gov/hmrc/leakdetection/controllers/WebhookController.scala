@@ -16,28 +16,48 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import javax.inject.Inject
-import javax.inject.Singleton
-import play.api.Logger
+import javax.inject.{Inject, Singleton}
 import play.api.libs.json.Json
 import play.api.mvc.{Action, BodyParser}
+import scala.concurrent.Future
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.PayloadDetails
-import uk.gov.hmrc.leakdetection.services.ScanningService
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
+import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
 @Singleton
-class WebhookController @Inject()(configLoader: ConfigLoader, scanningService: ScanningService) extends BaseController {
+class WebhookController @Inject()(
+  configLoader: ConfigLoader,
+  scanningService: ScanningService,
+  reportsService: ReportsService
+) extends BaseController {
 
   def processGithubWebhook() =
-    Action.async(validateAndParse) { implicit request =>
-      scanningService.scanCodeBaseFromGit(request.body).map { report =>
-        Ok(Json.toJson(report))
+    Action.async(parseGithubRequest) { implicit request =>
+      request.body match {
+
+        case payloadDetails: PayloadDetails =>
+          scanningService.scanCodeBaseFromGit(payloadDetails).map { report =>
+            Ok(Json.toJson(report))
+          }
+
+        case deleteBranchEvent: DeleteBranchEvent =>
+          reportsService
+            .clearReportsAfterBranchDeleted(deleteBranchEvent)
+            .map { clearedReportsInfo =>
+              Ok(Json.toJson(clearedReportsInfo))
+            }
+
+        case ZenMessage(_) =>
+          Future.successful(
+            Ok(Json.toJson(Json.obj("details" -> "Zen message ignored")))
+          )
       }
+
     }
 
-  val validateAndParse: BodyParser[PayloadDetails] =
+  val parseGithubRequest: BodyParser[GithubRequest] =
     WebhookRequestValidator.parser(
       webhookSecret = configLoader.cfg.githubSecrets.webhookSecretKey
     )

@@ -81,7 +81,7 @@ object Report {
       repoName          = repositoryName,
       repoUrl           = repositoryUrl,
       commitId          = commitId,
-      branch            = branch.replaceFirst("refs/heads/", ""),
+      branch            = branch,
       timestamp         = DateTimeUtils.now,
       author            = authorName,
       inspectionResults = results.map(r => ReportLine.build(repositoryUrl, branch, r)),
@@ -115,7 +115,7 @@ final case class ReportLine(
 object ReportLine {
   def build(repositoryUrl: String, branchRef: String, result: Result): ReportLine = {
     val repoUrl: String = repositoryUrl
-    val branch          = branchRef.replaceFirst("refs/heads/", "")
+    val branch          = branchRef
     new ReportLine(
       result.filePath,
       result.scanResults.scope,

@@ -20,19 +20,32 @@ import uk.gov.hmrc.leakdetection.ModelFactory._
 import org.apache.commons.codec.digest.HmacUtils
 import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.Json
-import uk.gov.hmrc.leakdetection.model.PayloadDetails
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails}
 import WebhookRequestValidator.isValidSignature
 
 class WebhookRequestValidatorSpec extends WordSpec with Matchers {
 
   s"Parsing ${PayloadDetails.getClass.getName}" should {
-    "succeed if all required fields are present" in {
+    "succeed if all required fields are present and deleted field is 'false'" in {
       val expectedPayloadDetails = aPayloadDetails
       val validJson              = asJson(expectedPayloadDetails)
 
       val res = Json.parse(validJson).as[PayloadDetails](PayloadDetails.reads)
 
-      res shouldBe expectedPayloadDetails
+      res           shouldBe expectedPayloadDetails
+      res.branchRef should not startWith "refs/heads/"
+    }
+  }
+
+  s"Parsing ${DeleteBranchEvent.getClass.getName}" should {
+    "succeed if all required fields are present and deleted field is 'true'" in {
+      val expectedDeleteBranchEvent = aDeleteBranchEvent
+      val validJson                 = asJson(expectedDeleteBranchEvent)
+
+      val res = Json.parse(validJson).as[DeleteBranchEvent](DeleteBranchEvent.reads)
+
+      res           shouldBe expectedDeleteBranchEvent
+      res.branchRef should not startWith "refs/heads/"
     }
   }
 
