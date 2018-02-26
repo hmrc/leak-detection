@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection
 import play.api.libs.json.{JsValue, Json, Writes}
 import scala.util.Random
 import uk.gov.hmrc.leakdetection.config.Rule
-import uk.gov.hmrc.leakdetection.model.{LeakResolution, PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, LeakResolution, PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
 import uk.gov.hmrc.time.DateTimeUtils
 
@@ -44,10 +44,19 @@ object ModelFactory {
       isPrivate      = aBoolean,
       authorName     = aString("author"),
       branchRef      = aString("ref"),
-      repositoryUrl  = aString("repo"),
+      repositoryUrl  = aString("repo-url"),
       commitId       = aString("commitId"),
       archiveUrl     = aString("archiveUrl"),
-      deleted        = aBoolean
+      deleted        = false
+    )
+
+  def aDeleteBranchEvent =
+    DeleteBranchEvent(
+      repositoryName = aString("repositoryName"),
+      authorName     = aString("author"),
+      repositoryUrl  = aString("repo-url"),
+      branchRef      = aString("ref"),
+      deleted        = true
     )
 
   def aScope: String =
@@ -99,18 +108,27 @@ object ModelFactory {
     )
 
   implicit val payloadDetailsWrites: Writes[PayloadDetails] =
-    new Writes[PayloadDetails] {
-      def writes(pd: PayloadDetails): JsValue = {
-        import pd._
-        Json.obj(
-          "ref"     -> branchRef,
-          "after"   -> commitId,
-          "deleted" -> deleted,
-          "repository" -> Json
-            .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate),
-          "pusher" -> Json.obj("name" -> authorName)
-        )
-      }
+    Writes[PayloadDetails] { payloadDetails =>
+      import payloadDetails._
+      Json.obj(
+        "ref"     -> s"refs/heads/$branchRef",
+        "after"   -> commitId,
+        "deleted" -> deleted,
+        "repository" -> Json
+          .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate),
+        "pusher" -> Json.obj("name" -> authorName)
+      )
+    }
+
+  implicit val deleteBranchEventWrites: Writes[DeleteBranchEvent] =
+    Writes[DeleteBranchEvent] { deleteBranchEvent =>
+      import deleteBranchEvent._
+      Json.obj(
+        "ref"        -> s"refs/heads/$branchRef",
+        "pusher"     -> Json.obj("name" -> authorName),
+        "deleted"    -> deleted,
+        "repository" -> Json.obj("name" -> repositoryName, "url" -> repositoryUrl)
+      )
     }
 
   def asJson[A: Writes](a: A): String =

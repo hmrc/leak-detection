@@ -17,12 +17,15 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
+import play.api.libs.json.{Format, Json}
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
-import uk.gov.hmrc.leakdetection.model.{LeakResolution, Report, ReportId}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, LeakResolution, Report, ReportId}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 
 class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
+
+  import ReportsService._
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 
@@ -37,24 +40,55 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
 
   def clearCollection() = reportsRepository.removeAll()
 
-  def saveReport(report: Report): Future[Unit] = {
-    def markPreviousReportsAsResolved(): Future[Unit] = {
-      val leakResolution      = LeakResolution(report.timestamp, report.commitId)
-      val outstandingProblems = reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch))
-      outstandingProblems.flatMap { reports =>
-        val resolvedReports = reports.map(_.copy(leakResolution = Some(leakResolution)))
-        traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => ())
-      }
+  def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[ClearedReportsInfo] = {
+    import deleteBranchEvent._
+    markPreviousReportsAsResolved {
+      Report.create(
+        repositoryName = repositoryName,
+        repositoryUrl  = repositoryUrl,
+        commitId       = "n/a (branch was deleted)",
+        authorName     = authorName,
+        branch         = branchRef,
+        results        = Nil,
+        leakResolution = None
+      )
+    }.map { resolvedReports =>
+      ClearedReportsInfo(repositoryName, branchRef, resolvedReports.map(_._id))
     }
+  }
 
+  def saveReport(report: Report): Future[Unit] = {
     def ifReportSolvesProblems(f: => Future[Unit]): Future[Unit] =
       if (report.inspectionResults.isEmpty) f else Future.successful(())
 
     for {
       _ <- reportsRepository.saveReport(report)
-      _ <- ifReportSolvesProblems(markPreviousReportsAsResolved())
+      _ <- ifReportSolvesProblems(markPreviousReportsAsResolved(report).map(_ => ()))
     } yield ()
 
+  }
+
+  private def markPreviousReportsAsResolved(report: Report): Future[List[Report]] = {
+    val leakResolution      = LeakResolution(report.timestamp, report.commitId)
+    val outstandingProblems = reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch))
+    outstandingProblems.flatMap { reports =>
+      val resolvedReports = reports.map(_.copy(leakResolution = Some(leakResolution)))
+      traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => reports)
+    }
+  }
+
+}
+
+object ReportsService {
+
+  final case class ClearedReportsInfo(
+    repoName: String,
+    branchName: String,
+    clearedReports: List[ReportId]
+  )
+
+  object ClearedReportsInfo {
+    implicit val format: Format[ClearedReportsInfo] = Json.format[ClearedReportsInfo]
   }
 
 }

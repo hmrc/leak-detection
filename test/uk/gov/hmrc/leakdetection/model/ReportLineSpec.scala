@@ -27,7 +27,7 @@ class ReportLineSpec extends FreeSpec with Matchers {
       "should set the url to the correct line of the file" in {
 
         val repoUrl   = "http://githib.com/some-special-repo/"
-        val branch    = "refs/heads/branchXyz"
+        val branch    = "master"
         val urlToFile = "/src/main/scala/SomeClass.scala"
 
         val descr      = "some descr"
@@ -51,7 +51,7 @@ class ReportLineSpec extends FreeSpec with Matchers {
             )
           )
 
-        reportLine.urlToSource shouldBe s"$repoUrl/blame/branchXyz$urlToFile#L$lineNumber"
+        reportLine.urlToSource shouldBe s"$repoUrl/blame/master$urlToFile#L$lineNumber"
         reportLine.description shouldBe descr
 
       }
