@@ -57,10 +57,24 @@ class SlackNotificationsConnector @Inject()(
 
 }
 
-final case class SlackNotificationResponse(errors: List[String])
+final case class SlackNotificationError(
+  code: String,
+  message: String
+)
+
+object SlackNotificationError {
+  implicit val format: OFormat[SlackNotificationError] =
+    Json.format[SlackNotificationError]
+}
+
+final case class SlackNotificationResponse(
+  errors: List[SlackNotificationError]
+)
 
 object SlackNotificationResponse {
-  implicit val format: OFormat[SlackNotificationResponse] = Json.format[SlackNotificationResponse]
+
+  implicit val format: OFormat[SlackNotificationResponse] =
+    Json.format[SlackNotificationResponse]
 }
 
 sealed trait ChannelLookup {

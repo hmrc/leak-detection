@@ -99,9 +99,33 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
       case SlackNotificationResponse(errors) if errors.isEmpty => ()
       case SlackNotificationResponse(errors) =>
         Logger.error(s"Errors sending notification: ${errors.mkString("[", ",", "]")}")
+        alertAdminsIfNoSlackChannelFound(errors)
       case _ => Logger.error(slackNotificationAndErrorMessage.errorMsg)
     }
 
+  private def alertAdminsIfNoSlackChannelFound(errors: List[SlackNotificationError])(
+    implicit hc: HeaderCarrier): Future[Unit] = {
+    val errorsToAlert = errors.filter { error =>
+      error.code == "slack_channel_not_found_for_team_in_ump" || error.code == "slack_channel_not_found"
+    }
+    if (errorsToAlert.nonEmpty) {
+      slackConnector
+        .sendMessage(
+          SlackNotificationRequest(
+            channelLookup = ChannelLookup.SlackChannel(List(adminChannel)),
+            messageDetails = MessageDetails(
+              text        = "LDS failed to deliver slack message to intended channels. Errors are shown below:",
+              username    = username,
+              iconEmoji   = iconEmoji,
+              attachments = errorsToAlert.map(e => Attachment(e.message))
+            )
+          )
+        )
+        .map(_ => ())
+    } else {
+      Future.successful(())
+    }
+  }
 }
 
 final case class SlackNotificationAndErrorMessage(
@@ -111,6 +135,7 @@ final case class SlackNotificationAndErrorMessage(
 
 final case class SlackConfig(
   enabled: Boolean,
+  adminChannel: String,
   defaultAlertChannel: String,
   username: String,
   iconEmoji: String,

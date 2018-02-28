@@ -17,13 +17,14 @@
 package uk.gov.hmrc.leakdetection.services
 
 import org.mockito.Matchers.{any, eq => is}
-import org.mockito.Mockito.{verify, verifyZeroInteractions, when}
+import org.mockito.Mockito.{reset, times, verify, verifyZeroInteractions, when}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
 import scala.concurrent.Future
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
@@ -130,6 +131,28 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
       verifyZeroInteractions(slackConnector)
 
     }
+
+    "send a message to the admin channel if slack notification failed because team was not on slack" in new Fixtures {
+      val errorsRequiringAlerting =
+        List("slack_channel_not_found_for_team_in_ump", "slack_channel_not_found").map { code =>
+          SlackNotificationError(code, message = "")
+        }
+
+      errorsRequiringAlerting.foreach { error =>
+        val report = ModelFactory.aReportWithProblems()
+
+        when(slackConnector.sendMessage(any())(any()))
+          .thenReturn(Future.successful(SlackNotificationResponse(errors = List(error))))
+
+        service.alert(report).futureValue
+
+        val expectedNumberOfMessages = 4 // 1 for alert channel, 1 for team channel, since both failed 2 further for admin channel
+        verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(any())(any())
+        reset(slackConnector)
+      }
+
+    }
+
   }
 
   trait Fixtures {
@@ -143,6 +166,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
       "alerts.slack.leakDetectionUri"    -> "https://somewhere",
       "alerts.slack.enabled"             -> true,
       "alerts.slack.defaultAlertChannel" -> "#the-channel",
+      "alerts.slack.adminChannel"        -> "#the-admin-channel",
       "alerts.slack.messageText"         -> "Do not panic, but there is a leak!",
       "alerts.slack.username"            -> "leak-detection",
       "alerts.slack.iconEmoji"           -> ":closed_lock_with_key:",

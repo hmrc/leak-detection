@@ -184,6 +184,7 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
               alerts.slack {
                leakDetectionUri    = "https://somewhere"
                enabled             = false
+               adminChannel        = "#the-admin-channel"
                defaultAlertChannel = "#the-channel"
                messageText         = "Do not panic, but there is a leak!"
                username            = "leak-detection"
