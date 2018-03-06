@@ -61,28 +61,28 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
         iconEmoji   = iconEmoji,
         attachments = Seq(Attachment(s"$leakDetectionUri/reports/${report._id}")))
 
-    val defaultChannelNotification =
-      if (sendToAlertChannel) Some(notificationForSlackChannel(messageDetails)) else None
+    val alertChannelNotification =
+      if (sendToAlertChannel) Some(notificationForAlertChannel(messageDetails)) else None
 
-    val teamChannelNotifications =
-      if (sendToTeamChannels) Some(notificationForGitHubRepo(report, messageDetails)) else None
+    val teamChannelNotification =
+      if (sendToTeamChannels) Some(notificationForTeam(report, messageDetails)) else None
 
-    List(defaultChannelNotification, teamChannelNotifications).flatten
+    List(alertChannelNotification, teamChannelNotification).flatten
 
   }
 
-  private def notificationForGitHubRepo(report: Report, messageDetails: MessageDetails) = {
+  private def notificationForTeam(report: Report, messageDetails: MessageDetails) = {
     val request =
       SlackNotificationRequest(
-        channelLookup  = ChannelLookup.GithubRepository(report.repoName),
+        channelLookup  = ChannelLookup.TeamsOfGithubUser(report.author),
         messageDetails = messageDetails)
 
     SlackNotificationAndErrorMessage(
       request  = request,
-      errorMsg = s"Error sending message to team channels for repository: '${report.repoName}'")
+      errorMsg = s"Error sending message to team channels of user: '${report.author}'")
   }
 
-  private def notificationForSlackChannel(messageDetails: MessageDetails) = {
+  private def notificationForAlertChannel(messageDetails: MessageDetails) = {
     val request =
       SlackNotificationRequest(
         channelLookup  = ChannelLookup.SlackChannel(slackChannels = List(defaultAlertChannel)),
@@ -106,7 +106,7 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
   private def alertAdminsIfNoSlackChannelFound(errors: List[SlackNotificationError])(
     implicit hc: HeaderCarrier): Future[Unit] = {
     val errorsToAlert = errors.filter { error =>
-      error.code == "slack_channel_not_found_for_team_in_ump" || error.code == "slack_channel_not_found"
+      error.code == "teams_not_found_for_github_username" || error.code == "slack_channel_not_found"
     }
     if (errorsToAlert.nonEmpty) {
       slackConnector

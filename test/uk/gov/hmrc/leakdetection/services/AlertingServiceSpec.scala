@@ -34,12 +34,11 @@ import uk.gov.hmrc.time.DateTimeUtils
 class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar {
 
   "The alerting service" should {
-    "send an alert to a configurable slack channel if leaks are in the report" in new Fixtures {
+    "send alerts to both alert channel and team channel if leaks are in the report" in new Fixtures {
 
-      val repoName = "a-repo"
       val report = Report(
         _id       = ReportId.random,
-        repoName  = repoName,
+        repoName  = "repo-name",
         repoUrl   = "https://github.com/hmrc/a-repo",
         commitId  = "123",
         branch    = "master",
@@ -73,7 +72,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
       )
 
       val expectedMessageToTeamChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.GithubRepository(repoName),
+        channelLookup  = ChannelLookup.TeamsOfGithubUser(report.author),
         messageDetails = messageDetails
       )
 
@@ -134,7 +133,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     "send a message to the admin channel if slack notification failed because team was not on slack" in new Fixtures {
       val errorsRequiringAlerting =
-        List("slack_channel_not_found_for_team_in_ump", "slack_channel_not_found").map { code =>
+        List("teams_not_found_for_github_username", "slack_channel_not_found").map { code =>
           SlackNotificationError(code, message = "")
         }
 
