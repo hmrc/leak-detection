@@ -49,8 +49,8 @@ class AdminController @Inject()(
         branch        = branch,
         isPrivate     = isPrivate,
         repositoryUrl = s"https://github.com/hmrc/$repository",
-        commitId      = "NA",
-        authorName    = "NA",
+        commitId      = "n/a",
+        authorName    = "n/a",
         archiveUrl    = s"https://api.github.com/repos/hmrc/$repository/{archive_format}{/ref}"
       )
       .map { report =>
