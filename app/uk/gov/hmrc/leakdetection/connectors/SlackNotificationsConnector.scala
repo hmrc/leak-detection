@@ -82,10 +82,9 @@ sealed trait ChannelLookup {
 }
 
 object ChannelLookup {
-
-  final case class GithubRepository(
-    repositoryName: String,
-    by: String = "github-repository"
+  final case class TeamsOfGithubUser(
+    githubUsername: String,
+    by: String = "teams-of-github-user"
   ) extends ChannelLookup
 
   final case class SlackChannel(
@@ -94,8 +93,8 @@ object ChannelLookup {
   ) extends ChannelLookup
 
   implicit val writes: Writes[ChannelLookup] = Writes {
-    case g: GithubRepository => Json.toJson(g)(Json.writes[GithubRepository])
-    case s: SlackChannel     => Json.toJson(s)(Json.writes[SlackChannel])
+    case s: SlackChannel      => Json.toJson(s)(Json.writes[SlackChannel])
+    case s: TeamsOfGithubUser => Json.toJson(s)(Json.writes[TeamsOfGithubUser])
   }
 }
 
