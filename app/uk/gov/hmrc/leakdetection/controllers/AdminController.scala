@@ -16,7 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import ammonite.ops.{mkdir, tmp, write}
+import ammonite.ops.{FilePath, Path, mkdir, tmp, write}
+import java.io.File
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json.{Format, Json}
@@ -67,16 +68,24 @@ class AdminController @Inject()(
       val acceptanceTestsRequest = request.body.as[AcceptanceTestsRequest]
       logger.info(s"Checking:\n ${request.body}")
 
-      val simulatedExplodedDir = tmp.dir()
-      val repoDir              = simulatedExplodedDir / "repo_dir"
-      mkdir ! repoDir
-      write(repoDir / acceptanceTestsRequest.fileName, acceptanceTestsRequest.fileContent)
-
-      val regexMatchingEngine = new RegexMatchingEngine(rules)
-      val results             = regexMatchingEngine.run(simulatedExplodedDir.toIO).map(_.scanResults)
+      val simulatedExplodedDir = createFiles(acceptanceTestsRequest.fileName, acceptanceTestsRequest.fileContent)
+      val regexMatchingEngine  = new RegexMatchingEngine(rules)
+      val results              = regexMatchingEngine.run(simulatedExplodedDir).map(_.scanResults)
 
       Ok(Json.toJson(results))
     }
+
+  private def createFiles(fileName: String, fileContent: String): File = {
+    val simulatedExplodedDir = tmp.dir()
+    val repoDir              = simulatedExplodedDir / "repo_dir"
+    mkdir ! repoDir
+    val filePathSegments = fileName.split("/").filterNot(_.isEmpty)
+    val actualFile = filePathSegments.foldLeft(repoDir: Path) { (acc, current) =>
+      acc / current
+    }
+    write(actualFile, fileContent)
+    simulatedExplodedDir.toIO
+  }
 
   def clearCollection() = Action.async { implicit request =>
     reportsService.clearCollection().map { res =>
