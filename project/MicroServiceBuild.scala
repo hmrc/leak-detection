@@ -19,7 +19,8 @@ object MicroServiceBuild extends Build with MicroService {
     "org.typelevel"         %% "cats-core"          % "0.9.0",
     "uk.gov.hmrc"           %% "play-ui"            % "7.10.0",
     "org.yaml"              % "snakeyaml"           % "1.17",
-    "com.lihaoyi"           %% "pprint"             % "0.5.3"
+    "com.lihaoyi"           %% "pprint"             % "0.5.3",
+    "com.lihaoyi"           %% "ammonite-ops"       % "1.0.3"
   )
 
   val test: Seq[ModuleID] = Seq(
@@ -27,7 +28,6 @@ object MicroServiceBuild extends Build with MicroService {
     "org.pegdown"            % "pegdown"             % "1.6.0",
     "com.typesafe.play"      %% "play-test"          % PlayVersion.current,
     "org.mockito"            % "mockito-all"         % "1.10.19",
-    "com.lihaoyi"            %% "ammonite-ops"       % "1.0.3",
     "uk.gov.hmrc"            %% "reactivemongo-test" % "3.1.0",
     "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.1"
   ).map(_ % "test, it")

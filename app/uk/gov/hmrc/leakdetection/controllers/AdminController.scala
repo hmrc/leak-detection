@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
+import ammonite.ops.{mkdir, tmp, write}
 import javax.inject.{Inject, Singleton}
-
 import play.api.Logger
-import play.api.libs.json.Json
+import play.api.libs.json.{Format, Json}
 import play.api.mvc.Action
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
-import uk.gov.hmrc.leakdetection.scanner.RegexScanner
+import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
@@ -63,16 +63,19 @@ class AdminController @Inject()(
   def testPrivateRules() = testRules(privateRules)
 
   private def testRules(rules: List[Rule]) =
-    Action(parse.tolerantText) { implicit request =>
+    Action(parse.json) { implicit request =>
+      val acceptanceTestsRequest = request.body.as[AcceptanceTestsRequest]
       logger.info(s"Checking:\n ${request.body}")
 
-      val fileContentScanners = rules.filter(_.scope == Rule.Scope.FILE_CONTENT).map(new RegexScanner(_))
-      val fileNameScanners    = rules.filter(_.scope == Rule.Scope.FILE_NAME).map(new RegexScanner(_))
+      val simulatedExplodedDir = tmp.dir()
+      val repoDir              = simulatedExplodedDir / "repo_dir"
+      mkdir ! repoDir
+      write(repoDir / acceptanceTestsRequest.fileName, acceptanceTestsRequest.fileContent)
 
-      val matchesByContent = fileContentScanners.flatMap(_.scanFileContent(request.body))
-      val matchesByName    = fileNameScanners.flatMap(_.scanFileName(request.body))
+      val regexMatchingEngine = new RegexMatchingEngine(rules)
+      val results             = regexMatchingEngine.run(simulatedExplodedDir.toIO).map(_.scanResults)
 
-      Ok(Json.toJson(matchesByContent ++ matchesByName))
+      Ok(Json.toJson(results))
     }
 
   def clearCollection() = Action.async { implicit request =>
@@ -80,4 +83,11 @@ class AdminController @Inject()(
       Ok(s"ok=${res.ok}, errors = ${res.writeErrors}")
     }
   }
+}
+
+final case class AcceptanceTestsRequest(fileContent: String, fileName: String)
+
+object AcceptanceTestsRequest {
+  implicit val format: Format[AcceptanceTestsRequest] =
+    Json.format[AcceptanceTestsRequest]
 }
