@@ -46,4 +46,55 @@ object Match {
 
 object MatchedResult {
   implicit val format: Format[MatchedResult] = Json.format[MatchedResult]
+
+  def truncate(matchedResult: MatchedResult, limit: Int): MatchedResult =
+    if (matchedResult.lineText.length > limit && matchedResult.matches.nonEmpty) {
+
+      val (_, matchesUpToLimit) =
+        matchedResult.matches.foldLeft((0, List.empty[Match])) {
+          case ((total, matches), m @ Match(start, end, _)) =>
+            if (total + end - start <= limit) {
+              (total + end - start, matches :+ m)
+            } else {
+              (total, matches)
+            }
+        }
+
+      val joinedConsecutiveMatches =
+        matchesUpToLimit
+          .foldLeft(List.empty[Match]) {
+            case (lastAddedElement :: others, m) =>
+              if (lastAddedElement.end == m.start) {
+                lastAddedElement.copy(end = lastAddedElement.end + (m.end - m.start)) :: others
+              } else {
+                m :: lastAddedElement :: others
+              }
+            case (Nil, m) =>
+              List(m)
+          }
+          .reverse
+
+      val lineTextWithElipses = {
+        val m = joinedConsecutiveMatches
+          .map { m =>
+            matchedResult.lineText.substring(m.start, m.end)
+          }
+        if (m.nonEmpty) {
+          m.mkString("[…] ", " […] ", " […]")
+        } else {
+          ""
+        }
+      }
+
+      def preventMatchHighlighting(m: Match) = m.copy(start = 0, end = 0)
+
+      matchedResult.copy(
+        lineText = lineTextWithElipses,
+        matches  = matchedResult.matches.map(preventMatchHighlighting)
+      )
+
+    } else {
+      matchedResult
+    }
+
 }
