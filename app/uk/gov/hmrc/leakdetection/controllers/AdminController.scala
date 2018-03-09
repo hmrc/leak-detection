@@ -16,31 +16,34 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import ammonite.ops.{FilePath, Path, mkdir, tmp, write}
 import java.io.File
 import javax.inject.{Inject, Singleton}
+
+import ammonite.ops.{Path, mkdir, tmp, write}
 import play.api.Logger
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, JsValue, Json}
 import play.api.mvc.Action
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
 @Singleton
 class AdminController @Inject()(
   configLoader: ConfigLoader,
   scanningService: ScanningService,
-  reportsService: ReportsService)
+  reportsService: ReportsService,
+  httpClient: HttpClient)
     extends BaseController {
 
   val logger = Logger(this.getClass.getName)
 
-  import configLoader.cfg.allRules._
+  import configLoader.cfg
 
   def rules() = Action {
-    Ok(Json.toJson(configLoader.cfg.allRules))
+    Ok(Json.toJson(cfg.allRules))
   }
 
   def validate(repository: String, branch: String, isPrivate: Boolean) = Action.async { implicit request =>
@@ -59,9 +62,9 @@ class AdminController @Inject()(
       }
   }
 
-  def testPublicRules() = testRules(publicRules)
+  def testPublicRules() = testRules(cfg.allRules.publicRules)
 
-  def testPrivateRules() = testRules(privateRules)
+  def testPrivateRules() = testRules(cfg.allRules.privateRules)
 
   private def testRules(rules: List[Rule]) =
     Action(parse.json) { implicit request =>
@@ -69,7 +72,7 @@ class AdminController @Inject()(
       logger.info(s"Checking:\n ${request.body}")
 
       val simulatedExplodedDir = createFiles(acceptanceTestsRequest.fileName, acceptanceTestsRequest.fileContent)
-      val regexMatchingEngine  = new RegexMatchingEngine(rules, configLoader.cfg.maxLineLength)
+      val regexMatchingEngine  = new RegexMatchingEngine(rules, cfg.maxLineLength)
       val results              = regexMatchingEngine.run(simulatedExplodedDir).map(_.scanResults)
 
       Ok(Json.toJson(results))
@@ -91,6 +94,15 @@ class AdminController @Inject()(
     reportsService.clearCollection().map { res =>
       Ok(s"ok=${res.ok}, errors = ${res.writeErrors}")
     }
+  }
+
+  def checkGithubRateLimits = Action.async { implicit request =>
+    val authorizationHeader =
+      hc.withExtraHeaders("Authorization" -> s"token ${cfg.githubSecrets.personalAccessToken}")
+
+    httpClient
+      .GET[JsValue]("https://api.github.com/rate_limit")(implicitly, authorizationHeader, implicitly)
+      .map(Ok(_))
   }
 }
 
