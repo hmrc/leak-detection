@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import uk.gov.hmrc.leakdetection.config.Rule
-import MatchedResult.truncate
+import MatchedResult.ensureLengthIsBelowLimit
 
 case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
 
@@ -51,7 +51,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
     line match {
       case (Extractor(lineText, matches)) =>
         Some(
-          truncate(
+          ensureLengthIsBelowLimit(
             MatchedResult(
               scope       = Rule.Scope.FILE_CONTENT,
               lineText    = lineText,
@@ -65,7 +65,5 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
         )
       case _ => None
     }
-
-  def adjustForBase1Numbering(i: Int): Int = i + 1
 
 }

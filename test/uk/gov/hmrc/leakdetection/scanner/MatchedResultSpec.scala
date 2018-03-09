@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.scanner
 import org.scalacheck.{Gen, Shrink}
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, WordSpec}
-import uk.gov.hmrc.leakdetection.scanner.MatchedResult.truncate
+import uk.gov.hmrc.leakdetection.scanner.MatchedResult.ensureLengthIsBelowLimit
 
 class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
   implicit val noShrink: Shrink[Int] = Shrink.shrinkAny
@@ -28,7 +28,7 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
     "have lineText with length up to the configured limit" in {
       forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
         case (initialResult, limit) =>
-          val truncated       = truncate(initialResult, limit)
+          val truncated       = ensureLengthIsBelowLimit(initialResult, limit)
           val strippedElipses = truncated.lineText.stripPrefix("[…] ").stripSuffix(" […]").replaceAll(" \\[…\\] ", "")
           strippedElipses.length should be <= limit
       }
@@ -40,7 +40,7 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
           val initialTotalLengthOfAllMatches =
             initialResult.matches.map(m => initialResult.lineText.substring(m.start, m.end).length).sum
           if (initialTotalLengthOfAllMatches <= limit) {
-            val truncated = truncate(initialResult, limit)
+            val truncated = ensureLengthIsBelowLimit(initialResult, limit)
             initialResult.matches.foreach { m =>
               val leakValue = initialResult.lineText.substring(m.start, m.end)
               assert(truncated.lineText.contains(leakValue))
@@ -55,7 +55,7 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
         matches  = List(Match(4, 6), Match(6, 8))
       )
 
-      truncate(initialResult, 4).lineText shouldBe "[…] XXFF […]"
+      ensureLengthIsBelowLimit(initialResult, 4).lineText shouldBe "[…] XXFF […]"
     }
 
     "contain as many matches as still below limit" in {
@@ -72,14 +72,14 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
 
       val limit = "AABB".length
 
-      truncate(initialResult, limit).lineText shouldBe "[…] AA […] BB […]"
+      ensureLengthIsBelowLimit(initialResult, limit).lineText shouldBe "[…] AA […] BB […]"
     }
 
     "be idempotent" in {
       forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
         case (initialResult, limit) =>
-          val truncatedOnce  = truncate(initialResult, limit)
-          val truncatedAgain = truncate(truncatedOnce, limit)
+          val truncatedOnce  = ensureLengthIsBelowLimit(initialResult, limit)
+          val truncatedAgain = ensureLengthIsBelowLimit(truncatedOnce, limit)
 
           truncatedOnce shouldBe truncatedAgain
       }
@@ -88,10 +88,10 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
     "include a flag if text was truncated (to show info in the UI)" in {
       forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
         case (initialResult, limit) =>
-          val res = truncate(initialResult, limit)
-          if (initialResult.lineText.length > limit) {
-            assert(res.isTruncated)
-          }
+          val res                     = ensureLengthIsBelowLimit(initialResult, limit)
+          val isExpectedToBeTruncated = initialResult.lineText.length > limit
+
+          res.isTruncated shouldBe isExpectedToBeTruncated
       }
     }
   }
@@ -118,7 +118,7 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
     }).retryUntil(m => m.start != m.end)
 
   def genConsecutiveMatches(lineText: String): Gen[List[Match]] = {
-    def keepConsecutive(acc: List[Match], m: Match): List[Match] =
+    def keepConsecutive(m: Match, acc: List[Match]): List[Match] =
       if (acc.exists(_.end >= m.start)) {
         acc
       } else {
@@ -127,7 +127,7 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
     Gen
       .listOfN(100, genMatch(lineText))
       .map { matches =>
-        matches.sortBy(_.start).foldLeft(List.empty[Match])(keepConsecutive)
+        matches.sortBy(_.start).foldRight(List.empty[Match])(keepConsecutive)
       }
   }
 

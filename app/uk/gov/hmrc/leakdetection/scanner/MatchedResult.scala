@@ -32,7 +32,9 @@ final case class MatchedResult(
 final case class Match(
   start: Int,
   end: Int
-)
+) {
+  def length: Int = end - start
+}
 
 object Match {
   def create(regexMatch: Regex.Match): Match =
@@ -46,66 +48,70 @@ object Match {
 object MatchedResult {
   implicit val format: Format[MatchedResult] = Json.format[MatchedResult]
 
-  def truncate(matchedResult: MatchedResult, limit: Int): MatchedResult =
+  def ensureLengthIsBelowLimit(matchedResult: MatchedResult, limit: Int): MatchedResult =
     if (matchedResult.lineText.length > limit && matchedResult.matches.nonEmpty) {
-
-      val (_, matchesUpToLimit) =
-        matchedResult.matches.foldLeft((0, List.empty[Match])) {
-          case ((total, matches), m @ Match(start, end)) =>
-            if (total + end - start <= limit) {
-              (total + end - start, matches :+ m)
-            } else {
-              (total, matches)
-            }
-        }
-
-      val joinedConsecutiveMatches =
-        matchesUpToLimit
-          .foldLeft(List.empty[Match]) {
-            case (lastAddedElement :: others, m) =>
-              if (lastAddedElement.end == m.start) {
-                lastAddedElement.copy(end = lastAddedElement.end + (m.end - m.start)) :: others
-              } else {
-                m :: lastAddedElement :: others
-              }
-            case (Nil, m) =>
-              List(m)
-          }
-          .reverse
-
-      val values = joinedConsecutiveMatches.map { m =>
-        matchedResult.lineText.substring(m.start, m.end)
-      }
-
-      val (_, matchesWithReadjustedIndexes) =
-        joinedConsecutiveMatches.zip(values).zipWithIndex.foldLeft(0, List.empty[Match]) {
-          case ((totalLength, acc), ((_, value), index)) =>
-            if (index == 0) {
-              val startPos = totalLength + "[…] ".length
-              val endPos   = totalLength + "[…] ".length + value.length
-              (endPos, acc :+ Match(startPos, endPos))
-            } else {
-              val startPos = totalLength + " […] ".length
-              val endPos   = totalLength + " […] ".length + value.length
-              (endPos, acc :+ Match(startPos, endPos))
-            }
-        }
-
-      val lineTextWithElipses =
-        if (values.nonEmpty) {
-          values.mkString("[…] ", " […] ", " […]")
-        } else {
-          ""
-        }
-
-      matchedResult.copy(
-        lineText    = lineTextWithElipses,
-        matches     = matchesWithReadjustedIndexes,
-        isTruncated = true
-      )
-
+      truncate(matchedResult, limit)
     } else {
       matchedResult
     }
+
+  private def truncate(matchedResult: MatchedResult, limit: Int): MatchedResult = {
+
+    val matchesUpToLimit: List[Match] = {
+      def cumulativeSum(xs: List[Int]): List[Int] =
+        xs.scanLeft(0) { case (acc, current) => acc + current }.drop(1)
+
+      val numberOfMatchesUnderLimit =
+        cumulativeSum(matchedResult.matches.map(_.length))
+          .count(_ <= limit)
+
+      matchedResult.matches.take(numberOfMatchesUnderLimit)
+    }
+
+    val joinedConsecutiveMatches =
+      matchesUpToLimit
+        .foldLeft(List.empty[Match]) {
+          case (lastAddedElement :: others, m) =>
+            if (lastAddedElement.end == m.start) {
+              lastAddedElement.copy(end = m.end) :: others
+            } else {
+              m :: lastAddedElement :: others
+            }
+          case (Nil, m) =>
+            List(m)
+        }
+        .reverse
+
+    val (_, matchesWithReadjustedIndexes) =
+      joinedConsecutiveMatches.zipWithIndex.foldLeft(0, List.empty[Match]) {
+        case ((totalLength, acc), (m, index)) =>
+          if (index == 0) {
+            val startPos = totalLength + "[…] ".length
+            val endPos   = totalLength + "[…] ".length + m.length
+            (endPos, acc :+ Match(startPos, endPos))
+          } else {
+            val startPos = totalLength + " […] ".length
+            val endPos   = totalLength + " […] ".length + m.length
+            (endPos, acc :+ Match(startPos, endPos))
+          }
+      }
+
+    val values = joinedConsecutiveMatches.map { m =>
+      matchedResult.lineText.substring(m.start, m.end)
+    }
+
+    val lineTextWithElipses =
+      if (values.nonEmpty) {
+        values.mkString("[…] ", " […] ", " […]")
+      } else {
+        ""
+      }
+
+    matchedResult.copy(
+      lineText    = lineTextWithElipses,
+      matches     = matchesWithReadjustedIndexes,
+      isTruncated = true
+    )
+  }
 
 }
