@@ -40,7 +40,8 @@ class PlayConfigLoader @Inject()(configuration: Configuration) extends ConfigLoa
 final case class Cfg(
   allRules: AllRules,
   githubSecrets: GithubSecrets,
-  leakResolutionUrl: LeakResolutionUrl
+  leakResolutionUrl: LeakResolutionUrl,
+  maxLineLength: Int
 )
 
 final case class AllRules(

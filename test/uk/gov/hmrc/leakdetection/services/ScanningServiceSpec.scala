@@ -275,7 +275,8 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     lazy val config = Cfg(
       allRules          = AllRules(Nil, privateRules),
       githubSecrets     = githubSecrets,
-      leakResolutionUrl = leakResolutionUrl
+      leakResolutionUrl = leakResolutionUrl,
+      maxLineLength     = Int.MaxValue
     )
 
     lazy val configLoader = new ConfigLoader {

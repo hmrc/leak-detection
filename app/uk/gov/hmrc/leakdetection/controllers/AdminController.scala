@@ -69,7 +69,7 @@ class AdminController @Inject()(
       logger.info(s"Checking:\n ${request.body}")
 
       val simulatedExplodedDir = createFiles(acceptanceTestsRequest.fileName, acceptanceTestsRequest.fileContent)
-      val regexMatchingEngine  = new RegexMatchingEngine(rules)
+      val regexMatchingEngine  = new RegexMatchingEngine(rules, configLoader.cfg.maxLineLength)
       val results              = regexMatchingEngine.run(simulatedExplodedDir).map(_.scanResults)
 
       Ok(Json.toJson(results))

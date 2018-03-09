@@ -69,6 +69,26 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
 
       truncate(initialResult, limit).lineText shouldBe "[…] AA […] BB […]"
     }
+
+    "be idempotent" in {
+      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
+        case (initialResult, limit) =>
+          val truncatedOnce  = truncate(initialResult, limit)
+          val truncatedAgain = truncate(truncatedOnce, limit)
+
+          truncatedOnce shouldBe truncatedAgain
+      }
+    }
+
+    "include a flag if text was truncated (to show info in the UI)" in {
+      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
+        case (initialResult, limit) =>
+          val res = truncate(initialResult, limit)
+          if (initialResult.lineText.length > limit) {
+            assert(res.isTruncated)
+          }
+      }
+    }
   }
 
   val genMatchedResult: Gen[MatchedResult] =
@@ -93,15 +113,17 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
     }).retryUntil(m => m.start != m.end)
 
   def genConsecutiveMatches(lineText: String): Gen[List[Match]] = {
-    var soFar: List[Match] = Nil
-    def isConsecutive(m: Match): Boolean =
-      if (soFar.exists(_.end >= m.start)) {
-        false
+    def keepConsecutive(acc: List[Match], m: Match): List[Match] =
+      if (acc.exists(_.end >= m.start)) {
+        acc
       } else {
-        soFar = m :: soFar
-        true
+        m :: acc
       }
-    Gen.listOfN(100, genMatch(lineText)).map(_.sortBy(_.start).filter(isConsecutive))
+    Gen
+      .listOfN(100, genMatch(lineText))
+      .map { matches =>
+        matches.sortBy(_.start).foldLeft(List.empty[Match])(keepConsecutive)
+      }
   }
 
 }

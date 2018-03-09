@@ -42,7 +42,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
         Rule("rule-4", Rule.Scope.FILE_NAME, "fileC", "file with secrets")
       )
 
-      val results = new RegexMatchingEngine(rules).run(
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(
         explodedZipDir = rootDir.toNIO.toFile
       )
 
@@ -152,7 +152,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
         Rule("rule-4", Rule.Scope.FILE_NAME, "fileB", "file with more secrets", List("/dir2/fileB"))
       )
 
-      val results = new RegexMatchingEngine(rules).run(explodedZipDir = rootDir.toNIO.toFile)
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = rootDir.toNIO.toFile)
 
       results should have size 3
 

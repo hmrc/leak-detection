@@ -25,7 +25,8 @@ final case class MatchedResult(
   lineNumber: Int,
   ruleId: String,
   description: String,
-  matches: List[Match]
+  matches: List[Match],
+  isTruncated: Boolean = false
 )
 
 final case class Match(
@@ -74,23 +75,35 @@ object MatchedResult {
           }
           .reverse
 
-      val lineTextWithElipses = {
-        val m = joinedConsecutiveMatches
-          .map { m =>
-            matchedResult.lineText.substring(m.start, m.end)
-          }
-        if (m.nonEmpty) {
-          m.mkString("[…] ", " […] ", " […]")
+      val values = joinedConsecutiveMatches.map { m =>
+        matchedResult.lineText.substring(m.start, m.end)
+      }
+
+      val (_, matchesWithReadjustedIndexes) =
+        joinedConsecutiveMatches.zip(values).zipWithIndex.foldLeft(0, List.empty[Match]) {
+          case ((totalLength, acc), ((_, value), index)) =>
+            if (index == 0) {
+              val startPos = totalLength + "[…] ".length
+              val endPos   = totalLength + "[…] ".length + value.length
+              (endPos, acc :+ Match(startPos, endPos, ""))
+            } else {
+              val startPos = totalLength + " […] ".length
+              val endPos   = totalLength + " […] ".length + value.length
+              (endPos, acc :+ Match(startPos, endPos, ""))
+            }
+        }
+
+      val lineTextWithElipses =
+        if (values.nonEmpty) {
+          values.mkString("[…] ", " […] ", " […]")
         } else {
           ""
         }
-      }
-
-      def preventMatchHighlighting(m: Match) = m.copy(start = 0, end = 0)
 
       matchedResult.copy(
-        lineText = lineTextWithElipses,
-        matches  = matchedResult.matches.map(preventMatchHighlighting)
+        lineText    = lineTextWithElipses,
+        matches     = matchesWithReadjustedIndexes,
+        isTruncated = true
       )
 
     } else {
