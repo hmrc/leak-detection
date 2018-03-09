@@ -16,11 +16,10 @@
 
 package uk.gov.hmrc.leakdetection.scanner
 
-import org.scalacheck.Gen
+import org.scalacheck.{Gen, Shrink}
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, WordSpec}
 import uk.gov.hmrc.leakdetection.scanner.MatchedResult.truncate
-import org.scalacheck.Shrink
 
 class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
   implicit val noShrink: Shrink[Int] = Shrink.shrinkAny

@@ -55,6 +55,6 @@ class HighlightProblemsSpec extends WordSpec with Matchers {
   }
 
   def createReportLine(lineText: String, matches: Match*) =
-    ReportLine(null, null, 0, null, null, lineText, matches.toList)
+    ReportLine(null, null, 0, null, null, lineText, matches.toList, Some(false))
 
 }

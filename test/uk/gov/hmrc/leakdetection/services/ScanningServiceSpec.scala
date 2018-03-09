@@ -59,22 +59,24 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
       report.inspectionResults should contain theSameElementsAs
         Seq(
           ReportLine(
-            s"/${file1.getName}",
-            Rule.Scope.FILE_CONTENT,
-            2,
-            s"https://github.com/hmrc/repoName/blame/master/${file1.getName}#L2",
-            "uses nulls!",
-            " var x = null",
-            List(Match(9, 13, "null"))
+            filePath    = s"/${file1.getName}",
+            scope       = Rule.Scope.FILE_CONTENT,
+            lineNumber  = 2,
+            urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file1.getName}#L2",
+            description = "uses nulls!",
+            lineText    = " var x = null",
+            matches     = List(Match(9, 13, "null")),
+            isTruncated = Some(false)
           ),
           ReportLine(
-            s"/${file2.getName}",
-            Rule.Scope.FILE_NAME,
-            1,
-            s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
-            "checks-in private key!",
-            s"${file2.getName}",
-            List(Match(startIndex, startIndex + 6, "id_rsa"))
+            filePath    = s"/${file2.getName}",
+            scope       = Rule.Scope.FILE_NAME,
+            lineNumber  = 1,
+            urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
+            description = "checks-in private key!",
+            lineText    = s"${file2.getName}",
+            matches     = List(Match(startIndex, startIndex + 6, "id_rsa")),
+            isTruncated = Some(false)
           )
         )
 
@@ -153,13 +155,14 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
       report.inspectionResults should contain theSameElementsAs
         Seq(
           ReportLine(
-            s"/${file2.getName}",
-            Rule.Scope.FILE_NAME,
-            1,
-            s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
-            "checks-in private key!",
-            s"${file2.getName}",
-            List(Match(startIndex, startIndex + 6, "id_rsa"))
+            filePath    = s"/${file2.getName}",
+            scope       = Rule.Scope.FILE_NAME,
+            lineNumber  = 1,
+            urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
+            description = "checks-in private key!",
+            lineText    = s"${file2.getName}",
+            matches     = List(Match(startIndex, startIndex + 6, "id_rsa")),
+            isTruncated = Some(false)
           )
         )
 

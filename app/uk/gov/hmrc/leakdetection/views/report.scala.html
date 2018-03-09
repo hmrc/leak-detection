@@ -85,6 +85,9 @@
             <div class="card-header">@problem.description</div>
             <div class="card-body">
                 <p class="monospace">@highlightProblems(problem)</p>
+                @if(problem.isTruncated.forall(identity)) {
+                    <p class="monospace">(Line was too long to show and was truncated)</p>
+                }
             </div>
             <div class="card-footer">
                 Source:  <a href="@problem.urlToSource" target="_blank">@problem.filePath</a>

@@ -88,13 +88,15 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
               "n/a",
               inspectionResults = Seq(
                 ReportLine(
-                  "/some-file",
-                  Rule.Scope.FILE_CONTENT,
-                  1,
-                  "some url",
-                  "a description",
-                  "the line",
-                  List(Match(0, 1, "line")))
+                  filePath    = "/some-file",
+                  scope       = Rule.Scope.FILE_CONTENT,
+                  lineNumber  = 1,
+                  urlToSource = "some url",
+                  description = "a description",
+                  lineText    = "the line",
+                  matches     = List(Match(0, 1, "line")),
+                  isTruncated = Some(false)
+                )
               ),
               None
             )))
@@ -102,7 +104,7 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
           val result        = controller.validate("repoName", "master", isPrivate)(FakeRequest())
           val json: JsValue = contentAsJson(result)
 
-          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1,"value":"line"}]}]"""
+          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1,"value":"line"}],"isTruncated":false}]"""
         }
     }
   }
