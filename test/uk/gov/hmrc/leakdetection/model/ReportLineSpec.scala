@@ -46,7 +46,7 @@ class ReportLineSpec extends FreeSpec with Matchers {
                 lineNumber  = lineNumber,
                 ruleId      = ruleId,
                 description = descr,
-                matches     = List(Match(start = 6, end = 12, value = "matched text"))
+                matches     = List(Match(start = 6, end = 12))
               )
             )
           )
@@ -78,7 +78,7 @@ class ReportLineSpec extends FreeSpec with Matchers {
                 lineNumber  = lineNumber,
                 ruleId      = ruleId,
                 description = descr,
-                matches     = List(Match(start = 6, end = 12, value = "matched text"))
+                matches     = List(Match(start = 6, end = 12))
               )
             )
           )

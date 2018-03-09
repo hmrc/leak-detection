@@ -31,16 +31,14 @@ final case class MatchedResult(
 
 final case class Match(
   start: Int,
-  end: Int,
-  value: String
+  end: Int
 )
 
 object Match {
   def create(regexMatch: Regex.Match): Match =
     Match(
       start = regexMatch.start,
-      end   = regexMatch.end,
-      value = regexMatch.matched
+      end   = regexMatch.end
     )
   implicit val format: Format[Match] = Json.format[Match]
 }
@@ -53,7 +51,7 @@ object MatchedResult {
 
       val (_, matchesUpToLimit) =
         matchedResult.matches.foldLeft((0, List.empty[Match])) {
-          case ((total, matches), m @ Match(start, end, _)) =>
+          case ((total, matches), m @ Match(start, end)) =>
             if (total + end - start <= limit) {
               (total + end - start, matches :+ m)
             } else {
@@ -85,11 +83,11 @@ object MatchedResult {
             if (index == 0) {
               val startPos = totalLength + "[…] ".length
               val endPos   = totalLength + "[…] ".length + value.length
-              (endPos, acc :+ Match(startPos, endPos, ""))
+              (endPos, acc :+ Match(startPos, endPos))
             } else {
               val startPos = totalLength + " […] ".length
               val endPos   = totalLength + " […] ".length + value.length
-              (endPos, acc :+ Match(startPos, endPos, ""))
+              (endPos, acc :+ Match(startPos, endPos))
             }
         }
 

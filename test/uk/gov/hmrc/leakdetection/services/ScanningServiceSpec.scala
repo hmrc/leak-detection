@@ -65,7 +65,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file1.getName}#L2",
             description = "uses nulls!",
             lineText    = " var x = null",
-            matches     = List(Match(9, 13, "null")),
+            matches     = List(Match(9, 13)),
             isTruncated = Some(false)
           ),
           ReportLine(
@@ -75,7 +75,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
             description = "checks-in private key!",
             lineText    = s"${file2.getName}",
-            matches     = List(Match(startIndex, startIndex + 6, "id_rsa")),
+            matches     = List(Match(startIndex, startIndex + 6)),
             isTruncated = Some(false)
           )
         )
@@ -161,7 +161,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
             description = "checks-in private key!",
             lineText    = s"${file2.getName}",
-            matches     = List(Match(startIndex, startIndex + 6, "id_rsa")),
+            matches     = List(Match(startIndex, startIndex + 6)),
             isTruncated = Some(false)
           )
         )

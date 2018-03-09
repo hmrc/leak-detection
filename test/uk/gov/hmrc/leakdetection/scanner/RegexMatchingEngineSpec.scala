@@ -57,7 +57,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 1,
             ruleId      = "rule-1",
             description = "descr 1",
-            matches     = List(Match(start = 13, end = 20, value = "secretA"))
+            matches     = List(Match(start = 13, end = 20))
           )
         )
       )
@@ -70,7 +70,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 2,
             ruleId      = "rule-1",
             description = "descr 1",
-            matches     = List(Match(start = 13, end = 20, value = "secretA"))
+            matches     = List(Match(start = 13, end = 20))
           )
         )
       )
@@ -84,7 +84,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 2,
             ruleId      = "rule-2",
             description = "descr 2",
-            matches     = List(Match(start = 13, end = 20, value = "secretB"))
+            matches     = List(Match(start = 13, end = 20))
           )
         )
       )
@@ -97,7 +97,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 3,
             ruleId      = "rule-2",
             description = "descr 2",
-            matches     = List(Match(start = 13, end = 20, value = "secretB"))
+            matches     = List(Match(start = 13, end = 20))
           )
         )
       )
@@ -111,7 +111,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 1,
             ruleId      = "rule-3",
             description = "descr 3",
-            matches     = List(Match(start = 13, end = 20, value = "secretC"))
+            matches     = List(Match(start = 13, end = 20))
           )
         )
       )
@@ -124,7 +124,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 2,
             ruleId      = "rule-3",
             description = "descr 3",
-            matches     = List(Match(start = 13, end = 20, value = "secretC"))
+            matches     = List(Match(start = 13, end = 20))
           )
         )
       )
@@ -137,7 +137,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 1,
             ruleId      = "rule-4",
             description = "file with secrets",
-            matches     = List(Match(start = 0, end = 5, value = "fileC"))
+            matches     = List(Match(start = 0, end = 5))
           )
         )
       )
@@ -165,7 +165,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 2,
             ruleId      = "rule-2",
             description = "descr 2",
-            matches     = List(Match(start = 13, end = 20, value = "secretB"))
+            matches     = List(Match(start = 13, end = 20))
           )
         )
       )
@@ -178,7 +178,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 3,
             ruleId      = "rule-2",
             description = "descr 2",
-            matches     = List(Match(start = 13, end = 20, value = "secretB"))
+            matches     = List(Match(start = 13, end = 20))
           )
         )
       )
@@ -192,7 +192,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
             lineNumber  = 1,
             ruleId      = "rule-3",
             description = "file with some secrets",
-            matches     = List(Match(start = 0, end = 5, value = "fileA"))
+            matches     = List(Match(start = 0, end = 5))
           )
         )
       )

@@ -52,16 +52,22 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
     "don't put […] inbetween consecutive matches" in {
       val initialResult = genMatchedResult.sample.get.copy(
         lineText = "abc XXFF xyz",
-        matches  = List(Match(4, 6, "XX"), Match(6, 8, "FF"))
+        matches  = List(Match(4, 6), Match(6, 8))
       )
 
       truncate(initialResult, 4).lineText shouldBe "[…] XXFF […]"
     }
 
     "contain as many matches as still below limit" in {
+
       val initialResult = genMatchedResult.sample.get.copy(
         lineText = "abc AA def BB ghi CC xyz",
-        matches  = List(Match(4, 6, "AA"), Match(11, 13, "BB"), Match(18, 19, "CC"))
+        matches = {
+          val matchedAA = Match(4, 6)
+          val matchedBB = Match(11, 13)
+          val matchedCC = Match(18, 19)
+          List(matchedAA, matchedBB, matchedCC)
+        }
       )
 
       val limit = "AABB".length
@@ -108,7 +114,7 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
       start <- Gen.choose(0, lineText.length)
       end   <- Gen.choose(start, lineText.length)
     } yield {
-      Match(start, end, lineText.substring(start, end))
+      Match(start, end)
     }).retryUntil(m => m.start != m.end)
 
   def genConsecutiveMatches(lineText: String): Gen[List[Match]] = {

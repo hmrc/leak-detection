@@ -85,7 +85,7 @@
             <div class="card-header">@problem.description</div>
             <div class="card-body">
                 <p class="monospace">@highlightProblems(problem)</p>
-                @if(problem.isTruncated.forall(identity)) {
+                @if(problem.isTruncated.exists(identity)) {
                     <p class="monospace">(Line was too long to show and was truncated)</p>
                 }
             </div>

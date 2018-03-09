@@ -24,7 +24,7 @@ class HighlightProblemsSpec extends WordSpec with Matchers {
 
   "Highlighting problems" should {
     "wrap single occurrence of a detected problem in a span html tag" in {
-      val rl  = createReportLine("abc foo bar", Match(4, 7, "foo"))
+      val rl  = createReportLine("abc foo bar", Match(start = 4, end = 7))
       val res = highlightProblems(rl).body
 
       val expected = "abc <span class='highlighted'>foo</span> bar"
@@ -33,7 +33,7 @@ class HighlightProblemsSpec extends WordSpec with Matchers {
     }
     "wrap multiple occurrences of a detected problems in span html tags" in {
       val line = "abc foo bar; baz null; xyz"
-      val rl   = createReportLine(line, Match(4, 7, "foo"), Match(17, 21, "null"))
+      val rl   = createReportLine(line, Match(4, 7), Match(17, 21))
       val res  = highlightProblems(rl).body
 
       val expected = "abc <span class='highlighted'>foo</span> bar; baz " +
@@ -44,7 +44,7 @@ class HighlightProblemsSpec extends WordSpec with Matchers {
 
     "escapes html characters" in {
       val line = "abc <h1>foo</h1> bar; baz null; xyz"
-      val rl   = createReportLine(line, Match(8, 11, "foo"), Match(26, 30, "null"))
+      val rl   = createReportLine(line, Match(8, 11), Match(26, 30))
       val res  = highlightProblems(rl).body
 
       val expected = "abc &lt;h1&gt;<span class='highlighted'>foo</span>&lt;/h1&gt; bar; baz " +

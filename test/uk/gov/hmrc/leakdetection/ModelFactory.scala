@@ -73,7 +73,7 @@ object ModelFactory {
       lineNumber  = aPositiveInt,
       ruleId      = aString("ruleId"),
       description = aString("description"),
-      matches     = List(Match(10, 14, "line"))
+      matches     = List(Match(10, 14))
     )
 
   def aResult = Result(

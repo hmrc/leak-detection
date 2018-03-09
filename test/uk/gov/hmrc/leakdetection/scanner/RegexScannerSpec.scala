@@ -36,7 +36,7 @@ class RegexScannerSpec extends FreeSpec with Matchers {
             lineNumber  = 7,
             ruleId      = ruleId,
             description = descr,
-            matches     = List(Match(start = 5, end = 12, value = "matches"))
+            matches     = List(Match(start = 5, end = 12))
           )
         )
       }
@@ -58,7 +58,7 @@ class RegexScannerSpec extends FreeSpec with Matchers {
       val matchedResult = RegexScanner(rule, limit).scanLine(text, 1).get
 
       matchedResult.lineText shouldBe "[…] BB […]"
-      matchedResult.matches  shouldBe List(Match(4, 6, ""))
+      matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
     }
   }
 
@@ -77,7 +77,7 @@ class RegexScannerSpec extends FreeSpec with Matchers {
             lineNumber  = 1,
             ruleId      = ruleId,
             description = descr,
-            matches     = List(Match(0, 7, fileName))
+            matches     = List(Match(start = 0, end = 7))
           ))
     }
     "nothing if no match was found" in {
