@@ -25,11 +25,13 @@ import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.JsValue
 import play.api.mvc.Results
 import play.api.test.FakeRequest
+
 import scala.concurrent.Future
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
+import uk.gov.hmrc.play.bootstrap.http.HttpClient
 
 class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
 
@@ -88,13 +90,15 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
               "n/a",
               inspectionResults = Seq(
                 ReportLine(
-                  "/some-file",
-                  Rule.Scope.FILE_CONTENT,
-                  1,
-                  "some url",
-                  "a description",
-                  "the line",
-                  List(Match(0, 1, "line")))
+                  filePath    = "/some-file",
+                  scope       = Rule.Scope.FILE_CONTENT,
+                  lineNumber  = 1,
+                  urlToSource = "some url",
+                  description = "a description",
+                  lineText    = "the line",
+                  matches     = List(Match(0, 1)),
+                  isTruncated = Some(false)
+                )
               ),
               None
             )))
@@ -102,7 +106,7 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
           val result        = controller.validate("repoName", "master", isPrivate)(FakeRequest())
           val json: JsValue = contentAsJson(result)
 
-          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1,"value":"line"}]}]"""
+          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1}],"isTruncated":false}]"""
         }
     }
   }
@@ -112,8 +116,9 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
     val configLoader    = mock[ConfigLoader]
     val scanningService = mock[ScanningService]
     val reportService   = mock[ReportsService]
+    val httpClient      = mock[HttpClient]
 
-    val controller = new AdminController(configLoader, scanningService, reportService)
+    val controller = new AdminController(configLoader, scanningService, reportService, httpClient)
   }
 
 }

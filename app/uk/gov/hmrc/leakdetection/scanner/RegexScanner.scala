@@ -17,8 +17,9 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import uk.gov.hmrc.leakdetection.config.Rule
+import MatchedResult.ensureLengthIsBelowLimit
 
-case class RegexScanner(rule: Rule) {
+case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
 
   private val compiledRegex = rule.regex.r
 
@@ -41,39 +42,28 @@ case class RegexScanner(rule: Rule) {
             ruleId      = rule.id,
             description = rule.description,
             matches     = matches
-          ))
+          )
+        )
       case _ => None
     }
-
-  def scanFileContent(text: String): Seq[MatchedResult] =
-    text.lines.toSeq.zipWithIndex
-      .collect {
-        case (Extractor(lineText, matches), lineNumber) =>
-          MatchedResult(
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineText    = lineText,
-            lineNumber  = adjustForBase1Numbering(lineNumber),
-            ruleId      = rule.id,
-            description = rule.description,
-            matches     = matches
-          )
-      }
 
   def scanLine(line: String, lineNumber: Int): Option[MatchedResult] =
     line match {
       case (Extractor(lineText, matches)) =>
         Some(
-          MatchedResult(
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineText    = lineText,
-            lineNumber  = lineNumber,
-            ruleId      = rule.id,
-            description = rule.description,
-            matches     = matches
-          ))
+          ensureLengthIsBelowLimit(
+            MatchedResult(
+              scope       = Rule.Scope.FILE_CONTENT,
+              lineText    = lineText,
+              lineNumber  = lineNumber,
+              ruleId      = rule.id,
+              description = rule.description,
+              matches     = matches
+            ),
+            lineLengthLimit
+          )
+        )
       case _ => None
     }
-
-  def adjustForBase1Numbering(i: Int): Int = i + 1
 
 }

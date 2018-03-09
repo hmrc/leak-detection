@@ -29,7 +29,8 @@ object MicroServiceBuild extends Build with MicroService {
     "com.typesafe.play"      %% "play-test"          % PlayVersion.current,
     "org.mockito"            % "mockito-all"         % "1.10.19",
     "uk.gov.hmrc"            %% "reactivemongo-test" % "3.1.0",
-    "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.1"
+    "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.1",
+    "org.scalacheck"         %% "scalacheck"         % "1.13.4"
   ).map(_ % "test, it")
 
 }

@@ -193,6 +193,8 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
                sendToAlertChannel  = true
               }
 
+              maxLineLength = 2147483647 // Int.MaxValue
+
             """
           ))
       )

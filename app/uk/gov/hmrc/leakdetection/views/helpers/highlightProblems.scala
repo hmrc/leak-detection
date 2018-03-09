@@ -25,14 +25,14 @@ object highlightProblems extends (ReportLine => Html) {
     val spanOpening = "<span class='highlighted'>"
     val spanEnd     = "</span>"
 
-    val (highlightedErrors, _, lastCursor) = r.matches.foldLeft(("", r.lineText.toString, 0)) {
+    val (highlightedErrors, _, lastCursor) = r.matches.foldLeft(("", r.lineText, 0)) {
       case ((acc, line, cursor), m) =>
         val beforeMatch      = HtmlFormat.escape(line.substring(cursor, m.start))
-        val highlightedMatch = spanOpening + HtmlFormat.escape(m.value) + spanEnd
+        val highlightedMatch = spanOpening + HtmlFormat.escape(line.substring(m.start, m.end)) + spanEnd
 
         (acc + beforeMatch + highlightedMatch, line, m.end)
     }
-    HtmlFormat.raw(highlightedErrors + HtmlFormat.escape(r.lineText.toString.substring(lastCursor)))
+    HtmlFormat.raw(highlightedErrors + HtmlFormat.escape(r.lineText.substring(lastCursor)))
   }
 
 }

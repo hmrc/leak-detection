@@ -30,7 +30,9 @@
         <tbody>
         <tr>
             <th>Repository Name</th>
-            <td>@report.repoName</td>
+            <td>
+                <a href="/reports/repositories/@report.repoName">@report.repoName</a>
+            </td>
         </tr>
         <tr>
             <th>Repository URL</th>
@@ -83,6 +85,9 @@
             <div class="card-header">@problem.description</div>
             <div class="card-body">
                 <p class="monospace">@highlightProblems(problem)</p>
+                @if(problem.isTruncated.exists(identity)) {
+                    <p class="monospace">(Line was too long to show and was truncated)</p>
+                }
             </div>
             <div class="card-footer">
                 Source:  <a href="@problem.urlToSource" target="_blank">@problem.filePath</a>

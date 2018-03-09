@@ -24,45 +24,41 @@ class RegexScannerSpec extends FreeSpec with Matchers {
   "scanning file content" - {
     "should look for a regex in a given text" - {
       "and return line numbers for matches" in {
-        val text =
-          """nothing matching here
-            |this matches the regex
-            |this matches the regex too
-            |nothing matching here
-            |""".stripMargin
+        val text1  = "this matches the regex"
         val descr  = "descr for regex"
         val ruleId = "rule-1"
         val rule   = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(matches)", descr)
 
-        new RegexScanner(rule).scanFileContent(text) should
-          contain theSameElementsAs Seq(
+        RegexScanner(rule, Int.MaxValue).scanLine(text1, 7) shouldBe Some(
           MatchedResult(
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "this matches the regex",
-            lineNumber  = 2,
+            lineNumber  = 7,
             ruleId      = ruleId,
             description = descr,
-            matches     = List(Match(start = 5, end = 12, value = "matches"))
-          ),
-          MatchedResult(
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineText    = "this matches the regex too",
-            lineNumber  = 3,
-            ruleId      = ruleId,
-            description = descr,
-            matches     = List(Match(start = 5, end = 12, value = "matches"))
+            matches     = List(Match(start = 5, end = 12))
           )
         )
       }
 
-      "and return empty seq if text doesn't have matching lines for the given regex" in {
+      "and return None if text doesn't have matching the given regex" in {
         val text   = "this is a test"
         val ruleId = "rule-1"
 
         val rule = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(was)", "descr")
 
-        new RegexScanner(rule).scanFileContent(text) shouldBe Nil
+        RegexScanner(rule, Int.MaxValue).scanLine(text, 1) shouldBe None
       }
+    }
+    "respect max line length and truncate lineText" in {
+      val text  = "abc AA def BB ghi CC xyz"
+      val rule  = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
+      val limit = 2
+
+      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1).get
+
+      matchedResult.lineText shouldBe "[…] BB […]"
+      matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
     }
   }
 
@@ -73,7 +69,7 @@ class RegexScannerSpec extends FreeSpec with Matchers {
       val descr    = "descr"
       val rule     = Rule(ruleId, Rule.Scope.FILE_NAME, """^.*\.key$""", descr)
 
-      new RegexScanner(rule).scanFileName(fileName) shouldBe
+      RegexScanner(rule, Int.MaxValue).scanFileName(fileName) shouldBe
         Some(
           MatchedResult(
             scope       = Rule.Scope.FILE_NAME,
@@ -81,14 +77,14 @@ class RegexScannerSpec extends FreeSpec with Matchers {
             lineNumber  = 1,
             ruleId      = ruleId,
             description = descr,
-            matches     = List(Match(0, 7, fileName))
+            matches     = List(Match(start = 0, end = 7))
           ))
     }
     "nothing if no match was found" in {
       val fileName = "foo.key"
       val rule     = Rule("rule-id", Rule.Scope.FILE_NAME, "doesn't match", "descr")
 
-      new RegexScanner(rule).scanFileName(fileName) shouldBe None
+      RegexScanner(rule, Int.MaxValue).scanFileName(fileName) shouldBe None
     }
 
   }

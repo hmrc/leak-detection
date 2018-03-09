@@ -52,7 +52,8 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             urlToSource = s"https://github.com/hmrc/repoName/blame/master/README.md#L2",
             description = "uses nulls!",
             lineText    = " var x = null",
-            matches     = List(Match(9, 13, "null"))
+            matches     = List(Match(9, 13)),
+            isTruncated = Some(false)
           )),
         None
       )
@@ -101,7 +102,8 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             urlToSource = s"https://github.com/hmrc/repoName/blame/master/README.md#L2",
             description = "uses nulls!",
             lineText    = " var x = null",
-            matches     = List(Match(9, 13, "null"))
+            matches     = List(Match(9, 13)),
+            isTruncated = Some(false)
           )),
         None
       )

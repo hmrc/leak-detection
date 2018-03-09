@@ -34,8 +34,11 @@ class ScanningService @Inject()(
   reportsService: ReportsService,
   alertingService: AlertingService
 ) {
-  lazy val privateMatchingEngine: RegexMatchingEngine = new RegexMatchingEngine(configLoader.cfg.allRules.privateRules)
-  lazy val publicMatchingEngine: RegexMatchingEngine  = new RegexMatchingEngine(configLoader.cfg.allRules.publicRules)
+
+  import configLoader.cfg
+
+  lazy val privateMatchingEngine = new RegexMatchingEngine(cfg.allRules.privateRules, cfg.maxLineLength)
+  lazy val publicMatchingEngine  = new RegexMatchingEngine(cfg.allRules.publicRules, cfg.maxLineLength)
 
   def scanRepository(
     repository: String,
@@ -47,7 +50,7 @@ class ScanningService @Inject()(
     archiveUrl: String)(implicit hc: HeaderCarrier): Future[Report] = {
 
     val explodedZipDir = artifactService
-      .getZipAndExplode(configLoader.cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
+      .getZipAndExplode(cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
 
     try {
       val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine

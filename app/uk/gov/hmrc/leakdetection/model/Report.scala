@@ -109,7 +109,8 @@ final case class ReportLine(
   urlToSource: String,
   description: String,
   lineText: String,
-  matches: List[Match]
+  matches: List[Match],
+  isTruncated: Option[Boolean] // todo(konrad) Option due to backwards compatibility, remove after collection cleared
 )
 
 object ReportLine {
@@ -123,7 +124,8 @@ object ReportLine {
       s"$repoUrl/blame/$branch${result.filePath}#L${result.scanResults.lineNumber}",
       result.scanResults.description,
       result.scanResults.lineText,
-      result.scanResults.matches
+      result.scanResults.matches,
+      Some(result.scanResults.isTruncated)
     )
   }
 

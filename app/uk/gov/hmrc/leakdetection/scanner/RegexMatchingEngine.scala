@@ -29,7 +29,7 @@ import scala.io.{Codec, Source}
 
 case class Result(filePath: String, scanResults: MatchedResult)
 
-class RegexMatchingEngine(rules: List[Rule]) {
+class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
 
   import FileAndDirectoryUtils._
 
@@ -97,7 +97,7 @@ class RegexMatchingEngine(rules: List[Rule]) {
     createScanners(rules, Rule.Scope.FILE_NAME)
 
   private def createScanners(rules: Seq[Rule], ruleScope: String): Seq[RegexScanner] =
-    rules.filter(_.scope == ruleScope).map(new RegexScanner(_))
+    rules.filter(_.scope == ruleScope).map(RegexScanner(_, maxLineLength))
 
 }
 
