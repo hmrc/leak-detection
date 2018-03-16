@@ -20,16 +20,20 @@ import java.io.File
 import java.{util => ju}
 
 import org.yaml.snakeyaml.Yaml
+import play.api.Logger
 import uk.gov.hmrc.leakdetection.config.RuleExemption
 
 import scala.collection.JavaConverters._
 import scala.io.Source
-import scala.util.Try
 
 object RulesExemptionParser {
 
   def parseServiceSpecificExemptions(repoDir: File): List[RuleExemption] =
-    getConfigFileContents(repoDir).map(parseYamlAsRuleExemptions).getOrElse(Nil)
+    try { getConfigFileContents(repoDir).map(parseYamlAsRuleExemptions).getOrElse(Nil) } catch {
+      case e: RuntimeException =>
+        Logger.warn(s"Error parsing ${repoDir.getAbsolutePath}/repository.yaml. Ignoring all exemptions.", e)
+        List.empty
+    }
 
   private def getConfigFileContents(repoDir: File): Option[String] = {
     val f = new File(repoDir.getAbsolutePath + "/" + "repository.yaml")
@@ -40,26 +44,31 @@ object RulesExemptionParser {
 
   private def parseYamlAsRuleExemptions(fileContents: String): List[RuleExemption] = {
     type ExpectedConfigFormat = ju.Map[String, ju.List[ju.Map[String, String]]]
-    val maybeRawConfig = Try {
-      Option(new Yaml().load(fileContents).asInstanceOf[ExpectedConfigFormat])
-    }.toOption.flatten
 
-    maybeRawConfig.map { rawConfig =>
-      rawConfig.asScala
-        .get("leakDetectionExemptions")
-        .map { list =>
-          list.asScala.flatMap { entry =>
-            for {
-              ruleId   <- entry.asScala.get("ruleId")
-              fileName <- entry.asScala.get("filePath")
-            } yield {
-              RuleExemption(ruleId, fileName)
-            }
+    new Yaml()
+      .load(fileContents)
+      .asInstanceOf[ExpectedConfigFormat]
+      .asScala
+      .get("leakDetectionExemptions")
+      .map { entries =>
+        entries.asScala.flatMap { entry =>
+          val ruleIdO   = entry.asScala.get("ruleId")
+          val fileNameO = entry.asScala.get("filePath")
+          val fileNames =
+            entry.asScala
+              .getOrElse("filePaths", new java.util.ArrayList())
+              .asInstanceOf[java.util.ArrayList[String]]
+              .asScala
+
+          (ruleIdO, fileNames, fileNameO) match {
+            case (Some(ruleId), _, Some(fileName)) => Some(RuleExemption(ruleId, fileNames :+ fileName))
+            case (Some(ruleId), _, None)           => Some(RuleExemption(ruleId, fileNames))
+            case (None, _, _)                      => None
           }
         }
-        .getOrElse(Nil)
-        .toList
-    }
-  }.getOrElse(Nil)
+      }
+      .getOrElse(Nil)
+      .toList
+  }
 
 }

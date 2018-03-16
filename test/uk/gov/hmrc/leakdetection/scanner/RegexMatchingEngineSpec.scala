@@ -23,18 +23,14 @@ import uk.gov.hmrc.leakdetection.config.Rule
 
 class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
 
-  def createFilesForTest() = {
-    val wd = tmp.dir()
-    write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
-    write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again")
-    write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again")
-    write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD", "no match\nto be found in this file\n")
-    wd
-  }
-
   "run" - {
     "should scan all the files in all subdirectories and return a report with correct file paths" in {
-      val rootDir = createFilesForTest()
+      val wd = tmp.dir()
+      write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD", "no match\nto be found in this file\n")
+
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1"),
         Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
@@ -43,7 +39,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
       )
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(
-        explodedZipDir = rootDir.toNIO.toFile
+        explodedZipDir = wd.toNIO.toFile
       )
 
       results should have size 7
@@ -144,7 +140,12 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
     }
 
     "should filter out results that match exemptions rules" in {
-      val rootDir = createFilesForTest()
+      val wd = tmp.dir()
+      write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD", "no match\nto be found in this file\n")
+
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1", List("/dir1/fileA")),
         Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
@@ -152,7 +153,7 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
         Rule("rule-4", Rule.Scope.FILE_NAME, "fileB", "file with more secrets", List("/dir2/fileB"))
       )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = rootDir.toNIO.toFile)
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
       results should have size 3
 
@@ -196,6 +197,39 @@ class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
           )
         )
       )
+    }
+
+    "should filter out results that match exemptions in repository.yaml" in {
+      val repositoryYamlContent =
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: 'rule-1'
+          |    filePath: /dir2/file1
+          |  - ruleId: 'rule-2'
+          |    filePaths: 
+          |       - /dir2/file1
+          |       - /dir2/file2
+          |  - ruleId: 'rule-3'
+          |    filePaths: 
+          |       - /dir2/file3
+        """.stripMargin
+
+      val wd = tmp.dir()
+      write(wd / 'zip_file_name_xyz / 'dir2 / "file1", "no match to be found on: secret1 or secret2, rule 1 and 2")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "file2", "no match to be found on: secret2, rule 2")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "file3", "no match to be found in this file, rule 3\n")
+      write(wd / 'zip_file_name_xyz / "repository.yaml", repositoryYamlContent)
+
+      val rules = List(
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret1", "descr 1"),
+        Rule("rule-2", Rule.Scope.FILE_CONTENT, "secret2", "descr 2"),
+        Rule("rule-3", Rule.Scope.FILE_NAME, "file3", "file with some secrets")
+      )
+
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
+
+      results should have size 0
+
     }
   }
 

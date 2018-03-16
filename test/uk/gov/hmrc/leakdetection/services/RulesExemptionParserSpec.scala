@@ -39,7 +39,84 @@ class RulesExemptionParserSpec extends WordSpec with Matchers {
         """.stripMargin
 
       createFileForTest(configContent)
-      val expectedRules = List(RuleExemption("1", "foo.scala"), RuleExemption("id2", "bar.py"))
+      val expectedRules = List(RuleExemption("1", Seq("foo.scala")), RuleExemption("id2", Seq("bar.py")))
+
+      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+
+      parsedRules shouldBe expectedRules
+
+    }
+
+    "Support multiple paths with the same id" in new Setup {
+
+      val configContent =
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: '1'
+          |    filePath: foo.scala
+          |  - ruleId: '1'
+          |    filePath: bar.py
+        """.stripMargin
+
+      createFileForTest(configContent)
+      val expectedRules = List(RuleExemption("1", Seq("foo.scala")), RuleExemption("1", Seq("bar.py")))
+
+      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+
+      parsedRules shouldBe expectedRules
+
+    }
+
+    "Support rule exemption with multiple paths" in new Setup {
+
+      val configContent =
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: '1'
+          |    filePaths: 
+          |      - foo.scala
+          |      - bar.py
+        """.stripMargin
+
+      createFileForTest(configContent)
+      val expectedRules = List(RuleExemption("1", Seq("foo.scala", "bar.py")))
+
+      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+
+      parsedRules shouldBe expectedRules
+
+    }
+
+    "Ignore leakDetectionExemptions with bad syntax" in new Setup {
+
+      val configContent =
+        """
+          |leakDetectionExemptions: boom
+        """.stripMargin
+
+      createFileForTest(configContent)
+
+      val parsedRules: List[RuleExemption] = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+
+      parsedRules shouldBe empty
+
+    }
+    "Ignore leakDetectionExemptions with bad syntax in a rule" in new Setup {
+
+      val configContent =
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: '1'
+          |    filePath:
+          |      - boom
+          |  - ruleId: '2'
+          |    filePaths:
+          |      - foo.scala
+          |      - bar.py
+        """.stripMargin
+
+      createFileForTest(configContent)
+      val expectedRules = List()
 
       val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
@@ -86,7 +163,7 @@ class RulesExemptionParserSpec extends WordSpec with Matchers {
         """.stripMargin
 
       createFileForTest(configContent)
-      val expectedRules = List(RuleExemption("id2", "bar.py"))
+      val expectedRules = List(RuleExemption("id2", Seq("bar.py")))
 
       val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
