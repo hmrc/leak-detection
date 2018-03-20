@@ -61,7 +61,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
             scanner.rule.ignoredFiles.exists(pattern => filePath.matches(pattern)) ||
             serviceDefinedExemptions
               .find(_.ruleId == scanner.rule.id)
-              .fold(false)(exemption => exemption.filePath == filePath)
+              .fold(false)(exemption => exemption.filePaths.contains(filePath))
           }
 
         val applicableFileContentScanners = applicableScanners(fileContentScanners)
