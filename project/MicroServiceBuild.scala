@@ -10,14 +10,14 @@ object MicroServiceBuild extends Build with MicroService {
 
   val compile: Seq[ModuleID] = Seq(
     "uk.gov.hmrc"           %% "play-reactivemongo" % "6.2.0",
-    "uk.gov.hmrc"           %% "bootstrap-play-25"  % "1.0.0",
+    "uk.gov.hmrc"           %% "bootstrap-play-25"  % "1.5.0",
     "com.github.pureconfig" %% "pureconfig"         % "0.8.0",
     "org.zeroturnaround"    % "zt-zip"              % "1.10",
     "commons-lang"          % "commons-lang"        % "2.6",
     "commons-io"            % "commons-io"          % "2.5",
     "org.scalaj"            %% "scalaj-http"        % "2.3.0",
     "org.typelevel"         %% "cats-core"          % "0.9.0",
-    "uk.gov.hmrc"           %% "play-ui"            % "7.10.0",
+    "uk.gov.hmrc"           %% "play-ui"            % "7.14.0",
     "org.yaml"              % "snakeyaml"           % "1.17",
     "com.lihaoyi"           %% "pprint"             % "0.5.3",
     "com.lihaoyi"           %% "ammonite-ops"       % "1.0.3"
