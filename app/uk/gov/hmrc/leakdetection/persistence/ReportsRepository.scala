@@ -17,13 +17,16 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import javax.inject.Singleton
+
 import com.google.inject.Inject
 import play.api.libs.json.{JsArray, JsNull, Json}
 import play.api.libs.json.Reads._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.ReadPreference
+import reactivemongo.api.commands.WriteResult
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.play.json.ImplicitBSONHandlers
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
@@ -104,4 +107,6 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
         Some(hasUnresolvedErrorsSelector)
       )
       .map(_.sorted)
+
+  def removeTags(): Future[WriteResult] = collection.remove(Json.obj("branch" -> Json.obj("$regex" -> "refs/tags/.*")))
 }

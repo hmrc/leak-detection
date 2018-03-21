@@ -18,6 +18,8 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import play.api.libs.json.{Format, Json}
+import reactivemongo.api.commands.WriteResult
+
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, LeakResolution, Report, ReportId}
@@ -36,9 +38,11 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
         case (_, reports) => reports.head
       }.toList)
 
-  def getReport(reportId: ReportId) = reportsRepository.findByReportId(reportId)
+  def getReport(reportId: ReportId): Future[Option[Report]] = reportsRepository.findByReportId(reportId)
 
-  def clearCollection() = reportsRepository.removeAll()
+  def clearCollection(): Future[WriteResult] = reportsRepository.removeAll()
+
+  def clearTags(): Future[WriteResult] = reportsRepository.removeTags()
 
   def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[ClearedReportsInfo] = {
     import deleteBranchEvent._

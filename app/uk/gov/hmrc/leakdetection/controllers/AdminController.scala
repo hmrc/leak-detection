@@ -92,7 +92,13 @@ class AdminController @Inject()(
 
   def clearCollection() = Action.async { implicit request =>
     reportsService.clearCollection().map { res =>
-      Ok(s"ok=${res.ok}, errors = ${res.writeErrors}")
+      Ok(s"ok=${res.ok}, records deleted=${res.n}, errors = ${res.writeErrors}")
+    }
+  }
+
+  def clearTags() = Action.async { implicit request =>
+    reportsService.clearTags().map { res =>
+      Ok(s"ok=${res.ok}, records deleted=${res.n}, errors = ${res.writeErrors}")
     }
   }
 

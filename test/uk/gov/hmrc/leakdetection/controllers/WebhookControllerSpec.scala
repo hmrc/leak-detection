@@ -98,6 +98,35 @@ class WebhookControllerSpec
 
     }
 
+    scenario("tags") {
+
+      Given("Github makes a request where the ref indicates a tag")
+      val githubRequestPayload: String =
+        asJson(
+          aPayloadDetails
+            .copy(archiveUrl = archiveUrl, isPrivate = true, deleted = false, branchRef = "refs/tags/v6.17.0"))
+
+      And("the request is signed using a secret known to us")
+      val signedRequest =
+        FakeRequest("POST", "/validate")
+          .withBody(githubRequestPayload)
+          .withHeaders(
+            CONTENT_TYPE      -> "application/json",
+            "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequestPayload))
+          )
+
+      When("Leak Detection service receives a request")
+      val res = Helpers.route(app, signedRequest).get
+
+      Then("Processing should be skipped and return 200")
+      Helpers.status(res) shouldBe 200
+
+      And("Report should include info about why the request was skipped")
+      val details = Json.parse(Helpers.contentAsString(res)) \ "details"
+      details.as[String] shouldBe "tag commit ignored"
+
+    }
+
     scenario("Delete branch event") {
       Given("Github makes a request representing a delete branch event")
       val requestPayload               = aPayloadDetails.copy(deleted = true)

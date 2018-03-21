@@ -137,10 +137,25 @@ class ReportsServiceSpec
       reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
     }
 
+    "remove reports built on tags" in {
+      repo.insert(aReportWithProblems().copy(branch = "refs/tags/v1.0.0")).futureValue
+      repo.insert(aReportWithProblems().copy(branch = "refs/tags/v2.0.0")).futureValue
+
+      val validReport = aReportWithProblems()
+      repo.insert(validReport).futureValue
+
+      repo.count.futureValue shouldBe 3
+
+      reportsService.clearTags().futureValue
+
+      repo.count.futureValue                           shouldBe 1
+      repo.findByReportId(validReport._id).futureValue shouldBe Some(validReport)
+    }
+
   }
 
   override def beforeEach(): Unit =
-    repo.drop.futureValue
+    repo.removeAll().futureValue
 
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = 5.seconds)

@@ -37,6 +37,11 @@ class WebhookController @Inject()(
     Action.async(parseGithubRequest) { implicit request =>
       request.body match {
 
+        case payloadDetails: PayloadDetails if payloadDetails.branchRef.contains("refs/tags/") =>
+          Future.successful(
+            Ok(Json.toJson(Json.obj("details" -> "tag commit ignored")))
+          )
+
         case payloadDetails: PayloadDetails =>
           scanningService.scanCodeBaseFromGit(payloadDetails).map { report =>
             Ok(Json.toJson(report))
