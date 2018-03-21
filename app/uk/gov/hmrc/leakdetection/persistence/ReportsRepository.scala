@@ -108,5 +108,4 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
       )
       .map(_.sorted)
 
-  def removeTags(): Future[WriteResult] = collection.remove(Json.obj("branch" -> Json.obj("$regex" -> "refs/tags/.*")))
 }

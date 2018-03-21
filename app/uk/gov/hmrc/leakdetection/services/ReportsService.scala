@@ -42,8 +42,6 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
 
   def clearCollection(): Future[WriteResult] = reportsRepository.removeAll()
 
-  def clearTags(): Future[WriteResult] = reportsRepository.removeTags()
-
   def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[ClearedReportsInfo] = {
     import deleteBranchEvent._
     markPreviousReportsAsResolved {

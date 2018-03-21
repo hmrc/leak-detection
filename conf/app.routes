@@ -21,7 +21,5 @@ GET        /admin/github-rate-limits                    @uk.gov.hmrc.leakdetecti
 POST       /admin/test-public-rules                     @uk.gov.hmrc.leakdetection.controllers.AdminController.testPublicRules
 POST       /admin/test-private-rules                    @uk.gov.hmrc.leakdetection.controllers.AdminController.testPrivateRules
 
-POST       /admin/clear-tags                            @uk.gov.hmrc.leakdetection.controllers.AdminController.clearTags()
-
 POST       /admin/clear-collection                      @uk.gov.hmrc.leakdetection.controllers.AdminController.clearCollection()
 

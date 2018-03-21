@@ -96,12 +96,6 @@ class AdminController @Inject()(
     }
   }
 
-  def clearTags() = Action.async { implicit request =>
-    reportsService.clearTags().map { res =>
-      Ok(s"ok=${res.ok}, records deleted=${res.n}, errors = ${res.writeErrors}")
-    }
-  }
-
   def checkGithubRateLimits = Action.async { implicit request =>
     val authorizationHeader =
       hc.withExtraHeaders("Authorization" -> s"token ${cfg.githubSecrets.personalAccessToken}")
