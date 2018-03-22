@@ -53,7 +53,7 @@ class GithubRequestsQueueRepository @Inject()(
     val availableAt  = "receivedAt"
     val status       = "status"
     val id           = "_id"
-    val failureCount = "failures"
+    val failureCount = "failureCount"
   }
 
   def failureRetryAfterProperty: String    = "queue.retryAfter"

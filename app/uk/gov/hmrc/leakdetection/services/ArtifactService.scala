@@ -26,7 +26,6 @@ import org.zeroturnaround.zip.ZipUtil
 import play.api.Logger
 
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 import scalaj.http._
 
 class ArtifactService @Inject()(metrics: Metrics) {
