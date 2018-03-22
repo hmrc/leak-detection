@@ -57,7 +57,7 @@ class WebhookControllerSpec
     with MongoSpecSupport
     with ScalaFutures {
 
-  implicit val resposneF = Json.format[WebhookResponse]
+  implicit val responseF = Json.format[WebhookResponse]
 
   feature("Verifying Github commits") {
 

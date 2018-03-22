@@ -33,7 +33,7 @@ class WebhookController @Inject()(
   reportsService: ReportsService
 ) extends BaseController {
 
-  implicit val resposneF = Json.format[WebhookResponse]
+  implicit val responseF = Json.format[WebhookResponse]
 
   def processGithubWebhook() =
     Action.async(parseGithubRequest) { implicit request =>
