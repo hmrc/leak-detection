@@ -6,6 +6,10 @@
     background-color: #BCFF33;
 }
 
+.grey {
+    color: gray;
+}
+
 body {
     font-family: "nta", Arial, sans-serif;
 }

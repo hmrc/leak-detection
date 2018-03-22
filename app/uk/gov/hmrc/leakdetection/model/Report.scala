@@ -107,6 +107,7 @@ final case class ReportLine(
   scope: String,
   lineNumber: Int,
   urlToSource: String,
+  ruleId: Option[String],
   description: String,
   lineText: String,
   matches: List[Match],
@@ -118,14 +119,15 @@ object ReportLine {
     val repoUrl: String = repositoryUrl
     val branch          = branchRef
     new ReportLine(
-      result.filePath,
-      result.scanResults.scope,
-      result.scanResults.lineNumber,
-      s"$repoUrl/blame/$branch${result.filePath}#L${result.scanResults.lineNumber}",
-      result.scanResults.description,
-      result.scanResults.lineText,
-      result.scanResults.matches,
-      Some(result.scanResults.isTruncated)
+      filePath    = result.filePath,
+      scope       = result.scanResults.scope,
+      lineNumber  = result.scanResults.lineNumber,
+      urlToSource = s"$repoUrl/blame/$branch${result.filePath}#L${result.scanResults.lineNumber}",
+      ruleId      = Some(result.scanResults.ruleId),
+      description = result.scanResults.description,
+      lineText    = result.scanResults.lineText,
+      matches     = result.scanResults.matches,
+      isTruncated = Some(result.scanResults.isTruncated)
     )
   }
 

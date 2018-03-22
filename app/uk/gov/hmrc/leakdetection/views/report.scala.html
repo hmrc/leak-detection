@@ -82,7 +82,7 @@
 
     @report.inspectionResults.map { problem =>
         <div class="card">
-            <div class="card-header">@problem.description</div>
+            <div class="card-header">@problem.description @for(ruleId <- problem.ruleId) { <span class = 'grey'>(rule id: @ruleId)</span>}</div>
             <div class="card-body">
                 <p class="monospace">@highlightProblems(problem)</p>
                 @if(problem.isTruncated.exists(identity)) {

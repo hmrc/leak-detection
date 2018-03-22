@@ -16,16 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.model
 
-import org.scalatest.{FreeSpec, Matchers}
+import org.scalatest.{FreeSpec, Matchers, OptionValues}
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
 
-class ReportLineSpec extends FreeSpec with Matchers {
+class ReportLineSpec extends FreeSpec with Matchers with OptionValues {
 
   "ReportLine" - {
     "when creating" - {
       "should set the url to the correct line of the file" in {
-
         val repoUrl   = "http://githib.com/some-special-repo/"
         val branch    = "master"
         val urlToFile = "/src/main/scala/SomeClass.scala"
@@ -51,13 +50,13 @@ class ReportLineSpec extends FreeSpec with Matchers {
             )
           )
 
-        reportLine.urlToSource shouldBe s"$repoUrl/blame/master$urlToFile#L$lineNumber"
-        reportLine.description shouldBe descr
+        reportLine.urlToSource  shouldBe s"$repoUrl/blame/master$urlToFile#L$lineNumber"
+        reportLine.description  shouldBe descr
+        reportLine.ruleId.value shouldBe ruleId
 
       }
 
       "should set the url to the correct line of the file when the branch is without refs/heads" in {
-
         val repoUrl   = "http://githib.com/some-special-repo/"
         val branch    = "branchXyz"
         val urlToFile = "/src/main/scala/SomeClass.scala"
@@ -83,8 +82,9 @@ class ReportLineSpec extends FreeSpec with Matchers {
             )
           )
 
-        reportLine.urlToSource shouldBe s"$repoUrl/blame/branchXyz$urlToFile#L$lineNumber"
-        reportLine.description shouldBe descr
+        reportLine.urlToSource  shouldBe s"$repoUrl/blame/branchXyz$urlToFile#L$lineNumber"
+        reportLine.description  shouldBe descr
+        reportLine.ruleId.value shouldBe ruleId
 
       }
     }
