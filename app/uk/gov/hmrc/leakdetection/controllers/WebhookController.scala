@@ -33,30 +33,32 @@ class WebhookController @Inject()(
   reportsService: ReportsService
 ) extends BaseController {
 
+  implicit val resposneF = Json.format[WebhookResponse]
+
   def processGithubWebhook() =
     Action.async(parseGithubRequest) { implicit request =>
       request.body match {
 
         case payloadDetails: PayloadDetails if payloadDetails.branchRef.contains("refs/tags/") =>
           Future.successful(
-            Ok(Json.toJson(Json.obj("details" -> "tag commit ignored")))
+            Ok(Json.toJson(WebhookResponse("Tag commit ignored")))
           )
 
         case payloadDetails: PayloadDetails =>
-          scanningService.scanCodeBaseFromGit(payloadDetails).map { report =>
-            Ok(Json.toJson(report))
+          scanningService.queueRequest(payloadDetails).map { _ =>
+            Ok(Json.toJson(WebhookResponse("Request successfully queued")))
           }
 
         case deleteBranchEvent: DeleteBranchEvent =>
           reportsService
             .clearReportsAfterBranchDeleted(deleteBranchEvent)
-            .map { clearedReportsInfo =>
-              Ok(Json.toJson(clearedReportsInfo))
+            .map { reports =>
+              Ok(Json.toJson(WebhookResponse(s"${reports.size} report(s) successfully cleared")))
             }
 
         case ZenMessage(_) =>
           Future.successful(
-            Ok(Json.toJson(Json.obj("details" -> "Zen message ignored")))
+            Ok(Json.toJson(WebhookResponse("Zen message ignored")))
           )
       }
 
@@ -68,3 +70,5 @@ class WebhookController @Inject()(
     )
 
 }
+
+case class WebhookResponse(details: String)

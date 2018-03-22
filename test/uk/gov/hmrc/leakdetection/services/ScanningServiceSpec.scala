@@ -20,27 +20,35 @@ import java.io.{File, PrintWriter}
 import java.nio.file.Files
 
 import ammonite.ops.Path
-import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.{DateTime, DateTimeZone, Duration}
 import org.mockito.Matchers.{any, eq => is}
 import org.mockito.Mockito.{verify, when}
-import org.mockito.invocation.InvocationOnMock
-import org.mockito.stubbing.Answer
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
 import play.api.mvc.Results
+import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
-import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
+import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report, ReportId, ReportLine}
+import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
+import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+import uk.gov.hmrc.workitem.{Failed, ProcessingStatus}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
+class ScanningServiceSpec
+    extends WordSpec
+    with Matchers
+    with ScalaFutures
+    with MockitoSugar
+    with Results
+    with MongoSpecSupport
+    with IntegrationPatience {
 
   "scanRepository" should {
 
@@ -180,6 +188,59 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
   }
 
+  "The service" should {
+    "process all queued requests" in new TestSetup {
+      scanningService.queueRequest(request).futureValue
+      queue.count(global).futureValue shouldBe 1
+
+      Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
+
+      scanningService.scanAll.futureValue.size shouldBe 1
+      queue.count(global).futureValue          shouldBe 0
+    }
+
+    "recover from exceptions expaning the zip and mark the item as failed" in new TestSetup {
+      scanningService.queueRequest(request).futureValue
+      queue.count(global).futureValue shouldBe 1
+
+      Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
+
+      when(
+        artifactService.getZipAndExplode(
+          is(githubSecrets.personalAccessToken),
+          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+          is("master"))).thenThrow(new RuntimeException("Some error"))
+
+      scanningService.scanAll.futureValue.size shouldBe 0
+      queue.count(Failed).futureValue          shouldBe 1
+    }
+
+    "recover from exceptions saving a report and mark the item as failed" in new TestSetup {
+
+      scanningService.queueRequest(request).futureValue
+      queue.count(global).futureValue shouldBe 1
+
+      Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
+
+      when(reportsService.saveReport(any())).thenThrow(new RuntimeException("Some error"))
+
+      scanningService.scanAll.futureValue.size shouldBe 0
+      queue.count(Failed).futureValue          shouldBe 1
+    }
+
+    "recover from failures and mark the item as failed" in new TestSetup {
+      scanningService.queueRequest(request).futureValue
+      queue.count(global).futureValue shouldBe 1
+
+      Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
+
+      when(reportsService.saveReport(any())).thenReturn(Future.failed(new RuntimeException("Some error")))
+
+      scanningService.scanAll.futureValue.size shouldBe 0
+      queue.count(Failed).futureValue          shouldBe 1
+    }
+  }
+
   trait TestSetup {
 
     val now         = new DateTime(0, DateTimeZone.UTC)
@@ -189,14 +250,26 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     def generateReport =
       scanningService
         .scanRepository(
-          "repoName",
-          "master",
-          true,
-          "https://github.com/hmrc/repoName",
-          "some commit id",
-          "me",
-          "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+          repository    = "repoName",
+          branch        = "master",
+          isPrivate     = true,
+          repositoryUrl = "https://github.com/hmrc/repoName",
+          commitId      = "some commit id",
+          authorName    = "me",
+          archiveUrl    = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"
+        )
         .futureValue
+
+    val request = new PayloadDetails(
+      repositoryName = "repoName",
+      isPrivate      = true,
+      authorName     = "me",
+      branchRef      = "master",
+      repositoryUrl  = "https://github.com/hmrc/repoName",
+      commitId       = "some commit id",
+      archiveUrl     = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}",
+      deleted        = false
+    )
 
     val githubSecrets =
       GithubSecrets(
@@ -288,6 +361,14 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     val artifactService = mock[ArtifactService]
     val reportsService  = mock[ReportsService]
+    val queue = new GithubRequestsQueueRepository(null, new ReactiveMongoComponent {
+      override def mongoConnector: MongoConnector = mongoConnectorForTest
+    }) {
+      override lazy val inProgressRetryAfter: Duration = Duration.standardHours(1)
+      override lazy val retryIntervalMillis: Long      = 10000L
+    }
+
+    queue.removeAll().futureValue
 
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
     val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
@@ -321,7 +402,7 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
     val configuration = Configuration()
 
     lazy val scanningService =
-      new ScanningService(configuration, artifactService, configLoader, reportsService, alertingService)
+      new ScanningService(configuration, artifactService, configLoader, reportsService, alertingService, queue)
   }
 
   def write(content: String, destination: File) =

@@ -27,8 +27,6 @@ import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 
 class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
 
-  import ReportsService._
-
   def getRepositories = reportsRepository.getDistinctRepoNames
 
   def getLatestReportsForEachBranch(repoName: String): Future[List[Report]] =
@@ -42,7 +40,7 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
 
   def clearCollection(): Future[WriteResult] = reportsRepository.removeAll()
 
-  def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[ClearedReportsInfo] = {
+  def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[List[Report]] = {
     import deleteBranchEvent._
     markPreviousReportsAsResolved {
       Report.create(
@@ -54,8 +52,6 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
         results        = Nil,
         leakResolution = None
       )
-    }.map { resolvedReports =>
-      ClearedReportsInfo(repositoryName, branchRef, resolvedReports.map(_._id))
     }
   }
 
@@ -78,19 +74,4 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
       traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => reports)
     }
   }
-
-}
-
-object ReportsService {
-
-  final case class ClearedReportsInfo(
-    repoName: String,
-    branchName: String,
-    clearedReports: List[ReportId]
-  )
-
-  object ClearedReportsInfo {
-    implicit val format: Format[ClearedReportsInfo] = Json.format[ClearedReportsInfo]
-  }
-
 }
