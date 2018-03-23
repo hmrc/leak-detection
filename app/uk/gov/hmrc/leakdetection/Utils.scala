@@ -16,9 +16,22 @@
 
 package uk.gov.hmrc.leakdetection
 
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
+import play.api.libs.json.{JsString, JsValue, Reads, Writes}
 import scala.concurrent.{ExecutionContext, Future}
 
 object Utils {
+
+  val dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+
+  implicit val jodaDateReads: Reads[DateTime] = Reads[DateTime](js =>
+    js.validate[String].map[DateTime](dtString => DateTime.parse(dtString, DateTimeFormat.forPattern(dateFormat))))
+
+  implicit val jodaDateWrites: Writes[DateTime] = new Writes[DateTime] {
+    override def writes(o: DateTime): JsValue = JsString(o.toString())
+  }
+
   def traverseFuturesSequentially[A, B](as: Seq[A], parallelism: Int = 5)(f: A => Future[B])(
     implicit ec: ExecutionContext): Future[Seq[B]] =
     as.grouped(parallelism).foldLeft(Future.successful(List.empty[B])) { (futAcc, grouped) =>

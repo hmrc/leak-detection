@@ -77,7 +77,13 @@
     }
 
     <br/>
-    <h2>Problems detected</h2>
+    <h2>
+        @if(report.inspectionResults.nonEmpty) {
+            Problems detected
+        } else {
+            Resolved problems
+        }
+    </h2>
     <br/>
 
     @report.inspectionResults.map { problem =>

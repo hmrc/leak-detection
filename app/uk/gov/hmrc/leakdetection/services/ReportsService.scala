@@ -19,10 +19,9 @@ package uk.gov.hmrc.leakdetection.services
 import com.google.inject.Inject
 import play.api.libs.json.{Format, Json}
 import reactivemongo.api.commands.WriteResult
-
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, LeakResolution, Report, ReportId}
+import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 
 class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
@@ -71,14 +70,22 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
   }
 
   private def markPreviousReportsAsResolved(report: Report): Future[List[Report]] = {
-    val leakResolution      = LeakResolution(report.timestamp, report.commitId)
     val outstandingProblems = reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch))
-    outstandingProblems.flatMap { reports =>
-      val resolvedReports = reports.map(_.copy(leakResolution = Some(leakResolution)))
-      traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => reports)
+    outstandingProblems.flatMap { unresolvedReports =>
+      val resolvedReports = unresolvedReports.map { unresolvedReport =>
+        val leakResolution =
+          LeakResolution(
+            timestamp = report.timestamp,
+            commitId  = report.commitId,
+            resolvedLeaks = unresolvedReport.inspectionResults.map { reportLine =>
+              ResolvedLeak(ruleId = reportLine.ruleId.getOrElse(""), description = reportLine.description)
+            }
+          )
+        unresolvedReport.copy(leakResolution = Some(leakResolution), inspectionResults = Nil)
+      }
+      traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => unresolvedReports)
     }
   }
-
 }
 
 object ReportsService {

@@ -20,13 +20,13 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfterEach, GivenWhenThen, Matchers, WordSpec}
 import play.modules.reactivemongo.ReactiveMongoComponent
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-import uk.gov.hmrc.leakdetection.{IncreasingTimestamps, ModelFactory}
-import uk.gov.hmrc.leakdetection.ModelFactory.{aLeakResolution, aReportWithProblems, few}
-import uk.gov.hmrc.leakdetection.model.LeakResolution
+import uk.gov.hmrc.leakdetection.IncreasingTimestamps
+import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, aReportWithResolvedLeaks, few}
+import uk.gov.hmrc.leakdetection.model.ResolvedLeak
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 class ReportsServiceSpec
     extends WordSpec
@@ -44,72 +44,93 @@ class ReportsServiceSpec
       val branchName    = "master"
       val anotherBranch = "another-branch"
 
-      def genReports() = few(() => aReportWithProblems(repoName).copy(branch = branchName))
+      def genReports() = few(() => aReport(repoName).copy(branch = branchName))
 
       Given("LDS repo contains some outstanding problems for a given branch")
-      val outstandingProblems = genReports().map(_.copy(leakResolution = None))
+      val reportsWithLeaks = genReports().map(_.copy(leakResolution = None))
 
       And("it also contains some already resolved reports")
-      val previouslyResolved = genReports().map(_.copy(leakResolution = Some(ModelFactory.aLeakResolution)))
+      val reportsWithPreviouslyResolvedLeaks = few(() => aReportWithResolvedLeaks())
 
       And("it also contains problems on a different branch")
-      val problemsOnAnotherBranch = genReports().map(_.copy(branch = anotherBranch))
+      val reportsWithLeaksAnotherBranch = genReports().map(_.copy(branch = anotherBranch))
 
-      repo.bulkInsert(outstandingProblems ::: previouslyResolved ::: problemsOnAnotherBranch).futureValue
+      repo
+        .bulkInsert(reportsWithLeaks ::: reportsWithPreviouslyResolvedLeaks ::: reportsWithLeaksAnotherBranch)
+        .futureValue
 
-      val reportFixingProblems = genReports().map(_.copy(inspectionResults = Nil)).head
+      val reportFixingLeaks = genReports().map(_.copy(inspectionResults = Nil)).head
 
-      When(s"a new report is saved that fixes problems on a given branch")
-      val _ = reportsService.saveReport(reportFixingProblems).futureValue
+      When("a new report is saved that fixes problems on a given branch")
+      val _ = reportsService.saveReport(reportFixingLeaks).futureValue
 
       val reportsAfterUpdates = repo.findAll().futureValue
 
-      val reportsPreviouslyWithOutstandingProblems =
-        reportsAfterUpdates.filter(r => outstandingProblems.exists(_._id == r._id))
+      val reportsWithResolvedLeaks =
+        reportsAfterUpdates.filter(r => reportsWithLeaks.exists(_._id == r._id))
 
       Then(s"reports with problems are resolved")
-      reportsPreviouslyWithOutstandingProblems should not be empty
-      val expectedLeakResolution = Some(LeakResolution(reportFixingProblems.timestamp, reportFixingProblems.commitId))
-      assert(reportsPreviouslyWithOutstandingProblems.forall(_.leakResolution == expectedLeakResolution))
+      reportsWithResolvedLeaks should not be empty
+
+      And("they no longer contain secrets")
+      assert(reportsWithResolvedLeaks.forall(_.inspectionResults.isEmpty))
+
+      And("they contain the summaries (ids/descriptions) of the resolved leaks")
+      reportsWithLeaks.zip(reportsWithResolvedLeaks).foreach {
+        case (reportWithLeaks, reportWithResolvedLeaks) =>
+          reportWithResolvedLeaks.leakResolution.get.timestamp shouldBe reportFixingLeaks.timestamp
+          reportWithResolvedLeaks.leakResolution.get.commitId  shouldBe reportFixingLeaks.commitId
+
+          val originalLeaks =
+            reportWithLeaks.inspectionResults.map { reportLine =>
+              ResolvedLeak(ruleId = reportLine.ruleId.getOrElse(""), description = reportLine.description)
+            }
+
+          val resolvedLeaks = reportWithResolvedLeaks.leakResolution.toList.flatMap(_.resolvedLeaks)
+
+          originalLeaks should contain theSameElementsAs resolvedLeaks
+
+      }
 
       And("new report is saved")
-      assert(reportsAfterUpdates.contains(reportFixingProblems))
+      assert(reportsAfterUpdates.contains(reportFixingLeaks))
 
       And("problems on another branch are untouched")
-      reportsAfterUpdates.filter(_.branch == anotherBranch) should contain theSameElementsAs problemsOnAnotherBranch
+      reportsAfterUpdates.filter(_.branch == anotherBranch) should contain theSameElementsAs reportsWithLeaksAnotherBranch
 
       And("problems already resolved are untouched")
-      val alreadyResolvedAfterUpdates = reportsAfterUpdates.filter(r => previouslyResolved.exists(_._id == r._id))
-      alreadyResolvedAfterUpdates should contain theSameElementsAs previouslyResolved
+      val alreadyResolvedAfterUpdates =
+        reportsAfterUpdates.filter(r => reportsWithPreviouslyResolvedLeaks.exists(_._id == r._id))
+      alreadyResolvedAfterUpdates should contain theSameElementsAs reportsWithPreviouslyResolvedLeaks
     }
 
     "don't resolve previous problems on the same repo/branch if report still has errors" in {
       val repoName   = "repo"
       val branchName = "master"
 
-      def genReports() = few(() => aReportWithProblems(repoName).copy(branch = branchName))
+      def genReports() = few(() => aReport(repoName).copy(branch = branchName))
 
       Given("LDS repo contains some outstanding problems for a given branch")
-      val outstandingProblems = genReports().map(_.copy(leakResolution = None))
+      val reportsWithLeaks = genReports().map(_.copy(leakResolution = None))
 
-      repo.bulkInsert(outstandingProblems).futureValue
+      repo.bulkInsert(reportsWithLeaks).futureValue
 
-      val reportStillWithProblems = genReports().head
+      val reportWithLeaks = genReports().head
 
       When(s"a new report is saved that still indicates problems")
-      val _ = reportsService.saveReport(reportStillWithProblems).futureValue
+      val _ = reportsService.saveReport(reportWithLeaks).futureValue
 
       val reportsAfterUpdates = repo.findAll().futureValue
 
-      val reportsPreviouslyWithOutstandingProblems =
-        reportsAfterUpdates.filter(r => outstandingProblems.exists(_._id == r._id))
+      val reportsWithLeaksAfterUpdates =
+        reportsAfterUpdates.filter(r => reportsWithLeaks.exists(_._id == r._id))
 
       Then(s"reports with problems are NOT resolved")
-      reportsPreviouslyWithOutstandingProblems should not be empty
-      assert(reportsPreviouslyWithOutstandingProblems.forall(_.leakResolution == None))
+      reportsWithLeaksAfterUpdates should not be empty
+      assert(reportsWithLeaksAfterUpdates.forall(_.leakResolution.isEmpty))
 
       And("new report is saved")
-      assert(reportsAfterUpdates.contains(reportStillWithProblems))
+      assert(reportsAfterUpdates.contains(reportWithLeaks))
     }
 
     "provide a list of reports for a repo showing only the latest one per branch" in {
@@ -118,22 +139,22 @@ class ReportsServiceSpec
       val branch2  = "another-branch"
 
       def genReport(branchName: String) =
-        aReportWithProblems(repoName).copy(branch = branchName, timestamp = increasingTimestamp())
+        aReport(repoName).copy(branch = branchName, timestamp = increasingTimestamp())
 
-      val reportsBranch1 =
+      val reportsWithLeaksBranch1 =
         List(
           genReport(branch1).copy(leakResolution = None),
           genReport(branch1).copy(leakResolution = None)
         )
 
-      val reportsBranch2 =
+      val reportsWithResolvedLeaksBranch2 =
         List(
-          genReport(branch2).copy(leakResolution = Some(aLeakResolution))
+          aReportWithResolvedLeaks().copy(branch = branch2, timestamp = increasingTimestamp())
         )
 
-      repo.bulkInsert(reportsBranch1 ::: reportsBranch2).futureValue
+      repo.bulkInsert(reportsWithLeaksBranch1 ::: reportsWithResolvedLeaksBranch2).futureValue
 
-      val expectedResult = reportsBranch1.last :: Nil
+      val expectedResult = reportsWithLeaksBranch1.last :: Nil
       reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
     }
 

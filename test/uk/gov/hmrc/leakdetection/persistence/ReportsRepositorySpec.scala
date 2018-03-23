@@ -16,17 +16,20 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import java.util.UUID
 import concurrent.duration._
 import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest._
+import play.api.libs.json.{Format, JsArray, JsValue, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import uk.gov.hmrc.leakdetection.model.Report
-import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
+import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport, ReactiveRepository}
+import uk.gov.hmrc.time.DateTimeUtils
 
 class ReportsRepositorySpec
     extends WordSpec
@@ -38,9 +41,9 @@ class ReportsRepositorySpec
 
   "Reports repository" should {
     "provide a distinct list of repository names only if there were unresolved problems" in {
-      val reportsWithUnresolvedProblems = few(() => aReportWithUnresolvedProblems())
-      val reportsWithResolvedProblems   = few(() => aReportWithResolvedProblems())
-      val reportsWithoutProblems        = few(() => aReportWithProblems()).map(_.copy(inspectionResults = Nil))
+      val reportsWithUnresolvedProblems = few(() => aReportWithLeaks())
+      val reportsWithResolvedProblems   = few(() => aReportWithResolvedLeaks())
+      val reportsWithoutProblems        = few(() => aReportWithoutLeaks())
       val withSomeDuplicates =
         reportsWithResolvedProblems :::
           reportsWithUnresolvedProblems :::
@@ -56,7 +59,7 @@ class ReportsRepositorySpec
     "return reports by repository in inverse chronological order" in {
       val repoName = "repo"
       val reports: Seq[Report] = few(() => {
-        aReportWithUnresolvedProblems(repoName).copy(timestamp = increasingTimestamp())
+        aReportWithLeaks(repoName).copy(timestamp = increasingTimestamp())
       })
 
       repo.bulkInsert(Random.shuffle(reports)).futureValue
@@ -68,9 +71,9 @@ class ReportsRepositorySpec
 
     "only return reports that actually had unresolved problems in them" in {
       val repoName                      = "repo"
-      val reportsWithUnresolvedProblems = few(() => aReportWithUnresolvedProblems(repoName))
-      val reportsWithResolvedProblems   = few(() => aReportWithResolvedProblems(repoName))
-      val reportsWithoutProblems        = few(() => aReportWithoutProblems(repoName))
+      val reportsWithUnresolvedProblems = few(() => aReportWithLeaks(repoName))
+      val reportsWithResolvedProblems   = few(() => aReportWithResolvedLeaks(repoName))
+      val reportsWithoutProblems        = few(() => aReportWithoutLeaks(repoName))
 
       val all = reportsWithUnresolvedProblems ::: reportsWithResolvedProblems ::: reportsWithoutProblems
 
@@ -81,6 +84,43 @@ class ReportsRepositorySpec
       foundReports should contain theSameElementsAs reportsWithUnresolvedProblems
     }
 
+    "read reports with missing resolved leaks" in {
+
+      val mongoDateTimeWrites = uk.gov.hmrc.mongo.json.ReactiveMongoFormats.dateTimeWrite
+
+      object GenericRepo
+          extends ReactiveRepository[JsValue, String](
+            collectionName = "reports",
+            mongo          = reactiveMongoComponent.mongoConnector.db,
+            domainFormat   = implicitly[Format[JsValue]],
+            idFormat       = implicitly[Format[String]]
+          )
+
+      val id = "id"
+      val reportMissingResolvedLeaksFieldInLeakResolution: JsValue =
+        Json.obj(
+          "_id"               -> id,
+          "repoName"          -> "n/a",
+          "repoUrl"           -> "n/a",
+          "commitId"          -> "n/a",
+          "branch"            -> "n/a",
+          "timestamp"         -> mongoDateTimeWrites.writes(DateTimeUtils.now),
+          "author"            -> "n/a",
+          "inspectionResults" -> JsArray(Nil),
+          "leakResolution" -> Json.obj(
+            "_id"       -> "n/a",
+            "timestamp" -> mongoDateTimeWrites.writes(DateTimeUtils.now),
+            "commitId"  -> "n/a"
+          )
+        )
+
+      GenericRepo.insert(reportMissingResolvedLeaksFieldInLeakResolution).futureValue
+
+      noException shouldBe thrownBy {
+        repo.findByReportId(ReportId(id)).futureValue
+      }
+    }
+
   }
 
   override def beforeEach(): Unit =
@@ -89,8 +129,10 @@ class ReportsRepositorySpec
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = 5.seconds)
 
-  val repo = new ReportsRepository(new ReactiveMongoComponent {
-    override def mongoConnector: MongoConnector = mongoConnectorForTest
-  })
+  private val reactiveMongoComponent: ReactiveMongoComponent =
+    new ReactiveMongoComponent {
+      override def mongoConnector: MongoConnector = mongoConnectorForTest
+    }
+  val repo = new ReportsRepository(reactiveMongoComponent)
 
 }
