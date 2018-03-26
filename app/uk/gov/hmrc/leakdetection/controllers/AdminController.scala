@@ -104,12 +104,6 @@ class AdminController @Inject()(
       .GET[JsValue]("https://api.github.com/rate_limit")(implicitly, authorizationHeader, implicitly)
       .map(Ok(_))
   }
-
-  def fixPreviouslyResolvedReports() = Action { implicit request =>
-    reportsService.fixPreviousResolvedReports()
-    Ok("Fixing initiated")
-  }
-
 }
 
 final case class AcceptanceTestsRequest(fileContent: String, fileName: String)

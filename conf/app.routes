@@ -23,5 +23,3 @@ POST       /admin/test-private-rules                    @uk.gov.hmrc.leakdetecti
 
 POST       /admin/clear-collection                      @uk.gov.hmrc.leakdetection.controllers.AdminController.clearCollection()
 
-POST       /admin/fix-previously-resolved-reports       @uk.gov.hmrc.leakdetection.controllers.AdminController.fixPreviouslyResolvedReports()
-

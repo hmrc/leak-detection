@@ -16,21 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import java.util.UUID
-
-import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfterEach, GivenWhenThen, Matchers, WordSpec}
-import play.api.libs.json.{Format, JsArray, JsValue, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, aReportWithResolvedLeaks, few}
 import uk.gov.hmrc.leakdetection.model.ResolvedLeak
-import uk.gov.hmrc.leakdetection.persistence.{OldReportsRepository, ReportsRepository}
-import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport, ReactiveRepository}
-import uk.gov.hmrc.time.DateTimeUtils
-
+import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
+import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
@@ -164,94 +158,7 @@ class ReportsServiceSpec
       reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
     }
 
-    "update existing resolved reports (delete leaks, add info about ids and description" in {
-
-      val mongoDateTimeWrites = uk.gov.hmrc.mongo.json.ReactiveMongoFormats.dateTimeWrite
-
-      object GenericRepo
-          extends ReactiveRepository[JsValue, String](
-            collectionName = "reports",
-            mongo          = reactiveMongoComponent.mongoConnector.db,
-            domainFormat   = implicitly[Format[JsValue]],
-            idFormat       = implicitly[Format[String]]
-          )
-
-      def report: JsValue =
-        Json.obj(
-          "_id"       -> UUID.randomUUID().toString,
-          "repoName"  -> "n/a",
-          "repoUrl"   -> "n/a",
-          "commitId"  -> "n/a",
-          "branch"    -> "n/a",
-          "timestamp" -> mongoDateTimeWrites.writes(DateTimeUtils.now),
-          "author"    -> "n/a",
-          "inspectionResults" -> JsArray(
-            List(
-              Json.obj(
-                "filePath"    -> "filePath",
-                "scope"       -> "scope",
-                "lineNumber"  -> 1,
-                "urlToSource" -> "url",
-                "ruleId"      -> "rule-1",
-                "description" -> "descr",
-                "lineText"    -> "lineText",
-                "matches"     -> JsArray(Nil)
-              ),
-              Json.obj(
-                "filePath"    -> "filePath",
-                "scope"       -> "scope",
-                "lineNumber"  -> 1,
-                "urlToSource" -> "url",
-                "ruleId"      -> "rule-1",
-                "description" -> "descr",
-                "lineText"    -> "lineText",
-                "matches"     -> JsArray(Nil)
-              ),
-              Json.obj(
-                "filePath"    -> "filePath",
-                "scope"       -> "scope",
-                "lineNumber"  -> 1,
-                "urlToSource" -> "url",
-                "ruleId"      -> "rule-1",
-                "description" -> "descr",
-                "lineText"    -> "lineText",
-                "matches"     -> JsArray(Nil)
-              ),
-              Json.obj(
-                "filePath"    -> "filePath",
-                "scope"       -> "scope",
-                "lineNumber"  -> 1,
-                "urlToSource" -> "url",
-                "ruleId"      -> "rule-1",
-                "description" -> "descr",
-                "lineText"    -> "lineText",
-                "matches"     -> JsArray(Nil)
-              )
-            )),
-          "leakResolution" -> Json.obj(
-            "timestamp" -> mongoDateTimeWrites.writes(DateTimeUtils.now),
-            "commitId"  -> "n/a"
-          )
-        )
-
-      val toFixCount = 1000
-
-      GenericRepo.bulkInsert((1 to toFixCount).map(_ => report)).futureValue(Timeout(5.minutes))
-
-      oldRepo.countPreviouslyResolvedOldReports().futureValue shouldBe toFixCount
-
-      reportsService.fixPreviousResolvedReports().futureValue(Timeout(5.minutes))
-
-      oldRepo.countPreviouslyResolvedOldReports().futureValue shouldBe 0
-
-    }
-
   }
-
-  private val reactiveMongoComponent: ReactiveMongoComponent =
-    new ReactiveMongoComponent {
-      override def mongoConnector: MongoConnector = mongoConnectorForTest
-    }
 
   override def beforeEach(): Unit =
     repo.removeAll().futureValue
@@ -263,10 +170,6 @@ class ReportsServiceSpec
     override def mongoConnector: MongoConnector = mongoConnectorForTest
   })
 
-  val oldRepo = new OldReportsRepository(new ReactiveMongoComponent {
-    override def mongoConnector: MongoConnector = mongoConnectorForTest
-  })
-
-  val reportsService = new ReportsService(repo, oldRepo)
+  val reportsService = new ReportsService(repo)
 
 }

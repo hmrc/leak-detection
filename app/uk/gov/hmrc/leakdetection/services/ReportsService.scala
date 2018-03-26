@@ -17,22 +17,14 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
-import play.api.Logger
-import play.api.libs.iteratee.{Enumerator, Iteratee}
 import play.api.libs.json.{Format, Json}
 import reactivemongo.api.commands.WriteResult
-
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.leakdetection.persistence.OldReportsRepository
 
-import scala.util.{Failure, Success}
-import scala.util.control.NonFatal
-
-class ReportsService @Inject()(reportsRepository: ReportsRepository, oldReportsRepository: OldReportsRepository)(
-  implicit ec: ExecutionContext) {
+class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
 
   import ReportsService._
 
@@ -93,54 +85,6 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository, oldReportsR
       }
       traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => unresolvedReports)
     }
-  }
-
-  def fixPreviousResolvedReports(): Future[Unit] = {
-    val unresolvedEnumerator: Enumerator[OldReport] = oldReportsRepository.findPreviouslyResolvedOldReports()
-
-    import scala.concurrent.duration._
-
-    var c = 1
-
-    val process2 =
-      Iteratee.foreach[OldReport] { oldReport =>
-        val updatedLeakResolution = oldReport.leakResolution.map { oldLeakResolution =>
-          LeakResolution(
-            timestamp = oldLeakResolution.timestamp,
-            commitId  = oldLeakResolution.commitId,
-            resolvedLeaks = oldReport.inspectionResults.map { reportLine =>
-              ResolvedLeak(ruleId = reportLine.ruleId.getOrElse(""), description = reportLine.description)
-            }
-          )
-        }
-
-        val updatedReport = Report(
-          _id               = oldReport._id,
-          repoName          = oldReport.repoName,
-          repoUrl           = oldReport.repoUrl,
-          commitId          = oldReport.commitId,
-          branch            = oldReport.branch,
-          timestamp         = oldReport.timestamp,
-          author            = oldReport.author,
-          inspectionResults = Nil,
-          leakResolution    = updatedLeakResolution
-        )
-
-        if (c % 1000 == 0) {
-          Logger.info(
-            s"Fixing report $c, old was: $oldReport, updated is $updatedReport"
-          )
-        }
-
-        Await.result(reportsRepository.updateReport(updatedReport), 10.seconds)
-        c = c + 1
-      }
-
-    unresolvedEnumerator.run(process2).andThen {
-      case Success(_)            => Logger.info(s"All reports updated, last counter was: $c")
-      case Failure(NonFatal(ex)) => Logger.error(s"Error fixing previous reports", ex)
-    }
-
   }
 }
 
