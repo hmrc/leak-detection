@@ -114,7 +114,7 @@
                 <tbody>
                 @leakRes.resolvedLeaks.map { case ResolvedLeak(id, descr) =>
                 <tr>
-                    <td>@id</td>
+                    <td>@if(id.isEmpty) { n/a } else { @id } </td>
                     <td>@descr</td>
                 </tr>
                 }
