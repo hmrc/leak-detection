@@ -206,10 +206,6 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
                 personalAccessToken = pat
               }
 
-              allRuleExemptions {
-                global = []
-              }
-
               alerts.slack {
                leakDetectionUri    = "https://somewhere"
                enabled             = false
@@ -221,8 +217,6 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
                sendToTeamChannels  = true
                sendToAlertChannel  = true
               }
-
-              maxLineLength = 2147483647 // Int.MaxValue
 
             """
           ))

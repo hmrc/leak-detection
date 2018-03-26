@@ -17,8 +17,9 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, Json, OFormat}
 import reactivemongo.api.commands.WriteResult
+
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.model._
@@ -86,6 +87,30 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
       traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => unresolvedReports)
     }
   }
+
+  def getStats(): Future[Stats] =
+    for {
+      total    <- reportsRepository.count
+      hadLeaks <- reportsRepository.howManyHadLeaks()
+      resolved <- reportsRepository.howManyResolved()
+    } yield {
+      Stats(reports = Stats.Reports(total, hadLeaks, resolved, hadLeaks - resolved))
+    }
+}
+
+final case class Stats(
+  reports: Stats.Reports
+)
+
+object Stats {
+  case class Reports(
+    count: Int,
+    howManyHadLeaks: Int,
+    howManyGotResolved: Int,
+    howManyStillRequireFixing: Int
+  )
+  implicit val reportsFormat          = Json.format[Reports]
+  implicit val format: OFormat[Stats] = Json.format[Stats]
 }
 
 object ReportsService {

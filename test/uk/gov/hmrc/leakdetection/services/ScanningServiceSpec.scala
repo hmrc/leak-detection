@@ -278,12 +278,14 @@ class ScanningServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     val privateRules: List[Rule] = Nil
 
-    lazy val config = Cfg(
-      allRules          = AllRules(Nil, privateRules),
-      githubSecrets     = githubSecrets,
-      leakResolutionUrl = leakResolutionUrl,
-      maxLineLength     = Int.MaxValue
-    )
+    lazy val config =
+      Cfg(
+        allRules                  = AllRules(Nil, privateRules),
+        githubSecrets             = githubSecrets,
+        leakResolutionUrl         = leakResolutionUrl,
+        maxLineLength             = Int.MaxValue,
+        clearingCollectionEnabled = false
+      )
 
     lazy val configLoader = new ConfigLoader {
       val cfg = config

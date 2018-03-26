@@ -22,4 +22,5 @@ POST       /admin/test-public-rules                     @uk.gov.hmrc.leakdetecti
 POST       /admin/test-private-rules                    @uk.gov.hmrc.leakdetection.controllers.AdminController.testPrivateRules
 
 POST       /admin/clear-collection                      @uk.gov.hmrc.leakdetection.controllers.AdminController.clearCollection()
+GET        /admin/stats                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.stats
 
