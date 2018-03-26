@@ -110,17 +110,14 @@ object Report {
   }
 
   val mongoFormat: OFormat[Report] = {
-    implicit val mf = ReactiveMongoFormats.dateTimeFormats
-//    implicit val reads: Reads[LeakResolution] = (
-//      (__ \ "timestamp").read[DateTime] and
-//        (__ \ "commitId").read[String] and
-//        (__ \ "resolvedLeaks").readNullable[Seq[ResolvedLeak]].map(_.getOrElse(Seq.empty[ResolvedLeak]))
-//    )(LeakResolution.apply _)
-//
-//    implicit val writes: OWrites[LeakResolution] = Json.writes[LeakResolution]
+    implicit val mongoDateFormats = ReactiveMongoFormats.dateTimeFormats
+    implicit val reads: Reads[LeakResolution] = (
+      (__ \ "timestamp").read[DateTime] and
+        (__ \ "commitId").read[String] and
+        (__ \ "resolvedLeaks").readNullable[Seq[ResolvedLeak]].map(_.getOrElse(Seq.empty[ResolvedLeak]))
+    )(LeakResolution.apply _)
 
-    implicit val leakResolutionFormat = Json.format[LeakResolution]
-
+    implicit val writes: OWrites[LeakResolution] = Json.writes[LeakResolution]
     Json.format[Report]
   }
 }

@@ -16,20 +16,20 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import java.util.UUID
-import concurrent.duration._
-import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.concurrent.ScalaFutures
+
+import concurrent.duration._
 import org.scalatest._
 import play.api.libs.json.{Format, JsArray, JsValue, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.Random
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport, ReactiveRepository}
 import uk.gov.hmrc.time.DateTimeUtils
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Random
 
 class ReportsRepositorySpec
     extends WordSpec
