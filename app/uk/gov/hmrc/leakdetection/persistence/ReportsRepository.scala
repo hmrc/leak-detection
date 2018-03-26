@@ -106,7 +106,7 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
       )
       .map(_.sorted)
 
-  def howManyHadLeaks(): Future[Int] =
+  def howManyStillHaveLeaks(): Future[Int] =
     collection.count(Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
 
   def howManyResolved(): Future[Int] =

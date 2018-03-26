@@ -90,11 +90,11 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
 
   def getStats(): Future[Stats] =
     for {
-      total    <- reportsRepository.count
-      hadLeaks <- reportsRepository.howManyHadLeaks()
-      resolved <- reportsRepository.howManyResolved()
+      total          <- reportsRepository.count
+      stillHaveLeaks <- reportsRepository.howManyStillHaveLeaks()
+      resolved       <- reportsRepository.howManyResolved()
     } yield {
-      Stats(reports = Stats.Reports(total, hadLeaks, resolved, hadLeaks - resolved))
+      Stats(reports = Stats.Reports(total, resolved, stillHaveLeaks))
     }
 }
 
@@ -105,9 +105,8 @@ final case class Stats(
 object Stats {
   case class Reports(
     count: Int,
-    howManyHadLeaks: Int,
-    howManyGotResolved: Int,
-    howManyStillRequireFixing: Int
+    resolvedCount: Int,
+    stillHaveLeaks: Int
   )
   implicit val reportsFormat          = Json.format[Reports]
   implicit val format: OFormat[Stats] = Json.format[Stats]
