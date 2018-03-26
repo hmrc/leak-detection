@@ -16,12 +16,13 @@
 
 package uk.gov.hmrc.leakdetection
 
-import play.api.libs.json.{JsValue, Json, Writes}
-import scala.util.Random
+import org.joda.time.{DateTime, DateTimeZone}
+import play.api.libs.json.{Json, Writes}
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, LeakResolution, PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
 import uk.gov.hmrc.time.DateTimeUtils
+import scala.util.Random
 
 object ModelFactory {
 
@@ -81,31 +82,30 @@ object ModelFactory {
     scanResults = aMatchedResult
   )
 
-  def aReportWithProblems(repoName: String = aString("repositoryName")): Report =
+  def aReport(repoName: String = aString("repositoryName")): Report = {
+    val results = few(() => aResult)
     Report.create(
       repositoryName = repoName,
       repositoryUrl  = aString("repo"),
       commitId       = aString("commitId"),
       authorName     = aString("author"),
       branch         = aString("ref"),
-      results        = few(() => aResult),
-      leakResolution = maybe(aLeakResolution)
+      results        = results
     )
+  }
 
-  def aReportWithUnresolvedProblems(repoName: String = aString("repositoryName")): Report =
-    aReportWithProblems(repoName).copy(leakResolution = None)
+  def aReportWithLeaks(repoName: String = aString("repositoryName")): Report =
+    aReport(repoName).copy(leakResolution = None)
 
-  def aReportWithResolvedProblems(repoName: String = aString("repositoryName")): Report =
-    aReportWithProblems(repoName).copy(leakResolution = Some(aLeakResolution))
+  def aReportWithResolvedLeaks(repoName: String = aString("repositoryName")): Report = {
+    val report = aReport(repoName)
+    val cleanReport =
+      aReportWithoutLeaks(repoName).copy(timestamp = DateTimeUtils.now, commitId = aString("commitId"))
+    report.copy(leakResolution = Some(LeakResolution.create(report, cleanReport)))
+  }
 
-  def aReportWithoutProblems(repoName: String = aString("repositoryName")): Report =
-    aReportWithProblems(repoName).copy(leakResolution = None, inspectionResults = Nil)
-
-  def aLeakResolution: LeakResolution =
-    LeakResolution(
-      timestamp = DateTimeUtils.now,
-      commitId  = aString("commitId")
-    )
+  def aReportWithoutLeaks(repoName: String = aString("repositoryName")): Report =
+    aReport(repoName).copy(leakResolution = None, inspectionResults = Nil)
 
   implicit val payloadDetailsWrites: Writes[PayloadDetails] =
     Writes[PayloadDetails] { payloadDetails =>

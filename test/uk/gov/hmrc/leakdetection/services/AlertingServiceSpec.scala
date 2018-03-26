@@ -142,7 +142,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         }
 
       errorsRequiringAlerting.foreach { error =>
-        val report = ModelFactory.aReportWithProblems()
+        val report = ModelFactory.aReportWithLeaks()
 
         when(slackConnector.sendMessage(any())(any()))
           .thenReturn(Future.successful(SlackNotificationResponse(errors = List(error))))

@@ -271,7 +271,7 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
   })
 
   def prepopulateReportWithProblems(repoName: String, branchName: String): Report = {
-    val report = ModelFactory.aReportWithUnresolvedProblems(repoName).copy(branch = branchName)
+    val report = ModelFactory.aReportWithLeaks(repoName).copy(branch = branchName)
     Await.result(repo.insert(report), 5.seconds)
     report
   }
