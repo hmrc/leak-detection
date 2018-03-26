@@ -18,15 +18,16 @@ package uk.gov.hmrc.leakdetection.model
 
 import org.scalatest.{FreeSpec, Matchers, OptionValues}
 import uk.gov.hmrc.leakdetection.config.Rule
+import uk.gov.hmrc.leakdetection.controllers.AdminController
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
 
 class ReportLineSpec extends FreeSpec with Matchers with OptionValues {
 
   "ReportLine" - {
-    "when creating" - {
+    "when creating directly" - {
       "should set the url to the correct line of the file" in {
         val repoUrl   = "http://githib.com/some-special-repo/"
-        val branch    = "master"
+        val commitId  = "3c81a24"
         val urlToFile = "/src/main/scala/SomeClass.scala"
 
         val descr      = "some descr"
@@ -36,7 +37,7 @@ class ReportLineSpec extends FreeSpec with Matchers with OptionValues {
         val reportLine =
           ReportLine.build(
             repoUrl,
-            branch,
+            commitId,
             Result(
               urlToFile,
               MatchedResult(
@@ -50,7 +51,7 @@ class ReportLineSpec extends FreeSpec with Matchers with OptionValues {
             )
           )
 
-        reportLine.urlToSource  shouldBe s"$repoUrl/blame/master$urlToFile#L$lineNumber"
+        reportLine.urlToSource  shouldBe s"$repoUrl/blame/3c81a24$urlToFile#L$lineNumber"
         reportLine.description  shouldBe descr
         reportLine.ruleId.value shouldBe ruleId
 
@@ -58,7 +59,7 @@ class ReportLineSpec extends FreeSpec with Matchers with OptionValues {
 
       "should set the url to the correct line of the file when the branch is without refs/heads" in {
         val repoUrl   = "http://githib.com/some-special-repo/"
-        val branch    = "branchXyz"
+        val commitId  = "3c81a24"
         val urlToFile = "/src/main/scala/SomeClass.scala"
 
         val descr      = "some descr"
@@ -68,7 +69,7 @@ class ReportLineSpec extends FreeSpec with Matchers with OptionValues {
         val reportLine =
           ReportLine.build(
             repoUrl,
-            branch,
+            commitId,
             Result(
               urlToFile,
               MatchedResult(
@@ -82,10 +83,49 @@ class ReportLineSpec extends FreeSpec with Matchers with OptionValues {
             )
           )
 
-        reportLine.urlToSource  shouldBe s"$repoUrl/blame/branchXyz$urlToFile#L$lineNumber"
+        reportLine.urlToSource  shouldBe s"$repoUrl/blame/3c81a24$urlToFile#L$lineNumber"
         reportLine.description  shouldBe descr
         reportLine.ruleId.value shouldBe ruleId
 
+      }
+    }
+
+    "when creating from reports" - {
+      val branch     = "master"
+      val repoUrl    = "url"
+      val urlToFile  = "/filePath"
+      val lineNumber = 1
+      def createReport(commitId: String): Report =
+        Report.create(
+          repositoryName = "repoName",
+          repositoryUrl  = repoUrl,
+          commitId       = commitId,
+          authorName     = "author",
+          branch         = branch,
+          results = List(
+            Result(
+              filePath = urlToFile,
+              scanResults = MatchedResult(
+                scope       = "scope",
+                lineText    = "lineText",
+                lineNumber  = lineNumber,
+                description = "descr",
+                ruleId      = "ruleId",
+                matches     = List(Match(1, 2))
+              )
+            ))
+        )
+
+      "should use commit id instead of branch" in {
+        val commitId = "4e4a52c"
+        createReport(commitId).inspectionResults.head.urlToSource shouldBe
+          s"$repoUrl/blame/$commitId$urlToFile#L$lineNumber"
+      }
+
+      "should use branch name if commitId = n/a (indicates manual scan from admin endpoints)" in {
+        val `n/a commitId` = AdminController.NOT_APPLICABLE
+        createReport(`n/a commitId`).inspectionResults.head.urlToSource shouldBe
+          s"$repoUrl/blame/$branch$urlToFile#L$lineNumber"
       }
     }
   }

@@ -43,6 +43,7 @@ class AdminController @Inject()(
   val logger = Logger(this.getClass.getName)
 
   import configLoader.cfg
+  import AdminController._
 
   def rules() = Action {
     Ok(Json.toJson(cfg.allRules))
@@ -55,8 +56,8 @@ class AdminController @Inject()(
         branch        = branch,
         isPrivate     = isPrivate,
         repositoryUrl = s"https://github.com/hmrc/$repository",
-        commitId      = "n/a",
-        authorName    = "n/a",
+        commitId      = NOT_APPLICABLE,
+        authorName    = NOT_APPLICABLE,
         archiveUrl    = s"https://api.github.com/repos/hmrc/$repository/{archive_format}{/ref}"
       )
       .map { report =>
@@ -114,6 +115,10 @@ class AdminController @Inject()(
   def stats = Action.async { implicit request =>
     reportsService.getStats().map(stats => Ok(Json.toJson(stats)))
   }
+}
+
+object AdminController {
+  val NOT_APPLICABLE = "n/a"
 }
 
 final case class AcceptanceTestsRequest(fileContent: String, fileName: String)

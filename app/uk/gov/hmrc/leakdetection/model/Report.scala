@@ -17,6 +17,7 @@
 package uk.gov.hmrc.leakdetection.model
 
 import java.util.UUID
+
 import org.joda.time.DateTime
 import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.{Match, Result}
@@ -26,6 +27,7 @@ import uk.gov.hmrc.time.DateTimeUtils
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
+import uk.gov.hmrc.leakdetection.controllers.AdminController
 
 final case class ReportId(value: String) extends AnyVal {
   override def toString: String = value
@@ -91,15 +93,23 @@ object Report {
     results: Seq[Result],
     leakResolution: Option[LeakResolution] = None): Report =
     Report(
-      _id               = ReportId.random,
-      repoName          = repositoryName,
-      repoUrl           = repositoryUrl,
-      commitId          = commitId,
-      branch            = branch,
-      timestamp         = DateTimeUtils.now,
-      author            = authorName,
-      inspectionResults = results.map(r => ReportLine.build(repositoryUrl, branch, r)),
-      leakResolution    = leakResolution
+      _id       = ReportId.random,
+      repoName  = repositoryName,
+      repoUrl   = repositoryUrl,
+      commitId  = commitId,
+      branch    = branch,
+      timestamp = DateTimeUtils.now,
+      author    = authorName,
+      inspectionResults = results.map { r =>
+        val commitOrBranch =
+          if (commitId == AdminController.NOT_APPLICABLE) {
+            branch
+          } else {
+            commitId
+          }
+        ReportLine.build(repositoryUrl, commitOrBranch, r)
+      },
+      leakResolution = leakResolution
     )
 
   implicit val format: Format[Report] = {
@@ -135,14 +145,13 @@ final case class ReportLine(
 )
 
 object ReportLine {
-  def build(repositoryUrl: String, branchRef: String, result: Result): ReportLine = {
+  def build(repositoryUrl: String, commitIdOrBranch: String, result: Result): ReportLine = {
     val repoUrl: String = repositoryUrl
-    val branch          = branchRef
     new ReportLine(
       filePath    = result.filePath,
       scope       = result.scanResults.scope,
       lineNumber  = result.scanResults.lineNumber,
-      urlToSource = s"$repoUrl/blame/$branch${result.filePath}#L${result.scanResults.lineNumber}",
+      urlToSource = s"$repoUrl/blame/$commitIdOrBranch${result.filePath}#L${result.scanResults.lineNumber}",
       ruleId      = Some(result.scanResults.ruleId),
       description = result.scanResults.description,
       lineText    = result.scanResults.lineText,
