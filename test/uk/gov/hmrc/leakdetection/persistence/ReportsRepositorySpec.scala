@@ -84,7 +84,7 @@ class ReportsRepositorySpec
       foundReports should contain theSameElementsAs reportsWithUnresolvedProblems
     }
 
-    "read reports with missing resolved leaks" in {
+    "read reports with missing resolved leaks (testing backwards compatibility)" in {
 
       val mongoDateTimeWrites = uk.gov.hmrc.mongo.json.ReactiveMongoFormats.dateTimeWrite
 
@@ -96,10 +96,15 @@ class ReportsRepositorySpec
             idFormat       = implicitly[Format[String]]
           )
 
-      val id = "id"
-      val reportMissingResolvedLeaksFieldInLeakResolution: JsValue =
+      val leakResWithoutResolvedLeaks = Json.obj(
+        "_id"       -> "n/a",
+        "timestamp" -> mongoDateTimeWrites.writes(DateTimeUtils.now),
+        "commitId"  -> "n/a"
+      )
+      val reportId = "id"
+      val report: JsValue =
         Json.obj(
-          "_id"               -> id,
+          "_id"               -> reportId,
           "repoName"          -> "n/a",
           "repoUrl"           -> "n/a",
           "commitId"          -> "n/a",
@@ -107,17 +112,13 @@ class ReportsRepositorySpec
           "timestamp"         -> mongoDateTimeWrites.writes(DateTimeUtils.now),
           "author"            -> "n/a",
           "inspectionResults" -> JsArray(Nil),
-          "leakResolution" -> Json.obj(
-            "_id"       -> "n/a",
-            "timestamp" -> mongoDateTimeWrites.writes(DateTimeUtils.now),
-            "commitId"  -> "n/a"
-          )
+          "leakResolution"    -> leakResWithoutResolvedLeaks
         )
 
-      GenericRepo.insert(reportMissingResolvedLeaksFieldInLeakResolution).futureValue
+      GenericRepo.insert(report).futureValue
 
       noException shouldBe thrownBy {
-        repo.findByReportId(ReportId(id)).futureValue
+        repo.findByReportId(ReportId(reportId)).futureValue
       }
     }
 
