@@ -17,13 +17,17 @@
 package uk.gov.hmrc.leakdetection.model
 
 import java.util.UUID
+
 import org.joda.time.DateTime
-import play.api.libs.json._
 import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.{Match, Result}
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 import uk.gov.hmrc.play.binders.SimpleObjectBinder
 import uk.gov.hmrc.time.DateTimeUtils
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Reads._
+import play.api.libs.json._
+import uk.gov.hmrc.leakdetection.controllers.AdminController
 
 final case class ReportId(value: String) extends AnyVal {
   override def toString: String = value
@@ -45,13 +49,25 @@ object ReportId {
     new SimpleObjectBinder[ReportId](ReportId.apply, _.value)
 }
 
+final case class ResolvedLeak(ruleId: String, description: String)
+
+object ResolvedLeak {
+  implicit val format: OFormat[ResolvedLeak] = Json.format[ResolvedLeak]
+}
+
 final case class LeakResolution(
   timestamp: DateTime,
-  commitId: String
+  commitId: String,
+  resolvedLeaks: Seq[ResolvedLeak]
 )
 
 object LeakResolution {
-  implicit val format: Format[LeakResolution] = Json.format[LeakResolution]
+  def create(reportWithLeaks: Report, cleanReport: Report): LeakResolution = {
+    val resolvedLeaks = reportWithLeaks.inspectionResults.map { reportLine =>
+      ResolvedLeak(ruleId = reportLine.ruleId.getOrElse(""), description = reportLine.description)
+    }
+    LeakResolution(timestamp = cleanReport.timestamp, commitId = cleanReport.commitId, resolvedLeaks = resolvedLeaks)
+  }
 }
 
 final case class Report(
@@ -77,27 +93,41 @@ object Report {
     results: Seq[Result],
     leakResolution: Option[LeakResolution] = None): Report =
     Report(
-      _id               = ReportId.random,
-      repoName          = repositoryName,
-      repoUrl           = repositoryUrl,
-      commitId          = commitId,
-      branch            = branch,
-      timestamp         = DateTimeUtils.now,
-      author            = authorName,
-      inspectionResults = results.map(r => ReportLine.build(repositoryUrl, branch, r)),
-      leakResolution    = leakResolution
+      _id       = ReportId.random,
+      repoName  = repositoryName,
+      repoUrl   = repositoryUrl,
+      commitId  = commitId,
+      branch    = branch,
+      timestamp = DateTimeUtils.now,
+      author    = authorName,
+      inspectionResults = results.map { r =>
+        val commitOrBranch =
+          if (commitId == AdminController.NOT_APPLICABLE) {
+            branch
+          } else {
+            commitId
+          }
+        ReportLine.build(repositoryUrl, commitOrBranch, r)
+      },
+      leakResolution = leakResolution
     )
 
   implicit val format: Format[Report] = {
 
-    implicit val f = uk.gov.hmrc.http.controllers.RestFormats.dateTimeFormats
+    implicit val restDateTimeFormats  = uk.gov.hmrc.http.controllers.RestFormats.dateTimeFormats
+    implicit val leakResolutionFormat = Json.format[LeakResolution]
     Json.format[Report]
   }
 
   val mongoFormat: OFormat[Report] = {
+    implicit val mongoDateFormats = ReactiveMongoFormats.dateTimeFormats
+    implicit val reads: Reads[LeakResolution] = (
+      (__ \ "timestamp").read[DateTime] and
+        (__ \ "commitId").read[String] and
+        (__ \ "resolvedLeaks").readNullable[Seq[ResolvedLeak]].map(_.getOrElse(Seq.empty[ResolvedLeak]))
+    )(LeakResolution.apply _)
 
-    implicit val mf                   = ReactiveMongoFormats.dateTimeFormats
-    implicit val leakResolutionFormat = Json.format[LeakResolution]
+    implicit val writes: OWrites[LeakResolution] = Json.writes[LeakResolution]
     Json.format[Report]
   }
 }
@@ -107,6 +137,7 @@ final case class ReportLine(
   scope: String,
   lineNumber: Int,
   urlToSource: String,
+  ruleId: Option[String],
   description: String,
   lineText: String,
   matches: List[Match],
@@ -114,18 +145,18 @@ final case class ReportLine(
 )
 
 object ReportLine {
-  def build(repositoryUrl: String, branchRef: String, result: Result): ReportLine = {
+  def build(repositoryUrl: String, commitIdOrBranch: String, result: Result): ReportLine = {
     val repoUrl: String = repositoryUrl
-    val branch          = branchRef
     new ReportLine(
-      result.filePath,
-      result.scanResults.scope,
-      result.scanResults.lineNumber,
-      s"$repoUrl/blame/$branch${result.filePath}#L${result.scanResults.lineNumber}",
-      result.scanResults.description,
-      result.scanResults.lineText,
-      result.scanResults.matches,
-      Some(result.scanResults.isTruncated)
+      filePath    = result.filePath,
+      scope       = result.scanResults.scope,
+      lineNumber  = result.scanResults.lineNumber,
+      urlToSource = s"$repoUrl/blame/$commitIdOrBranch${result.filePath}#L${result.scanResults.lineNumber}",
+      ruleId      = Some(result.scanResults.ruleId),
+      description = result.scanResults.description,
+      lineText    = result.scanResults.lineText,
+      matches     = result.scanResults.matches,
+      isTruncated = Some(result.scanResults.isTruncated)
     )
   }
 

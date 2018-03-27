@@ -16,6 +16,7 @@
 
 @import uk.gov.hmrc.leakdetection.model.Report
 @import uk.gov.hmrc.leakdetection.views.helpers.highlightProblems
+@import uk.gov.hmrc.leakdetection.model.ResolvedLeak
 
 @import uk.gov.hmrc.leakdetection.config.LeakResolutionUrl
 @(report: Report, leakResolutionUrl: LeakResolutionUrl)
@@ -77,16 +78,17 @@
     }
 
     <br/>
-    <h2>Problems detected</h2>
-    <br/>
 
-    @report.inspectionResults.map { problem =>
+    @if(report.inspectionResults.nonEmpty) {
+        <h2>Leaks detected</h2>
+        <br/>
+        @report.inspectionResults.map { problem =>
         <div class="card">
-            <div class="card-header">@problem.description</div>
+            <div class="card-header">@problem.description @for(ruleId <- problem.ruleId) { <span class = 'grey'>(rule id: @ruleId)</span>}</div>
             <div class="card-body">
                 <p class="monospace">@highlightProblems(problem)</p>
                 @if(problem.isTruncated.exists(identity)) {
-                    <p class="monospace">(Line was too long to show and was truncated)</p>
+                <p class="monospace">(Line was too long to show and was truncated)</p>
                 }
             </div>
             <div class="card-footer">
@@ -95,6 +97,30 @@
             </div>
         </div>
         <br/>
+        }
+
+    } else {
+
+        <h2>Resolved leaks</h2>
+        <br/>
+        @report.leakResolution.map { leakRes =>
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Rule Id</th>
+                    <th>Description</th>
+                </tr>
+                </thead>
+                <tbody>
+                @leakRes.resolvedLeaks.map { case ResolvedLeak(id, descr) =>
+                <tr>
+                    <td>@if(id.isEmpty) { n/a } else { @id } </td>
+                    <td>@descr</td>
+                </tr>
+                }
+                </tbody>
+            </table>
+        }
     }
 
 }

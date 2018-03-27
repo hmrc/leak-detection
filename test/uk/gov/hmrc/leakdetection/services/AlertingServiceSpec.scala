@@ -50,6 +50,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             scope       = Rule.Scope.FILE_CONTENT,
             lineNumber  = 2,
             urlToSource = s"https://github.com/hmrc/repoName/blame/master/README.md#L2",
+            ruleId      = Some("no nulls allowed"),
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13)),
@@ -100,6 +101,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
             scope       = Rule.Scope.FILE_CONTENT,
             lineNumber  = 2,
             urlToSource = s"https://github.com/hmrc/repoName/blame/master/README.md#L2",
+            ruleId      = Some("no nulls allowed"),
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13)),
@@ -140,7 +142,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         }
 
       errorsRequiringAlerting.foreach { error =>
-        val report = ModelFactory.aReportWithProblems()
+        val report = ModelFactory.aReportWithLeaks()
 
         when(slackConnector.sendMessage(any())(any()))
           .thenReturn(Future.successful(SlackNotificationResponse(errors = List(error))))

@@ -62,7 +62,7 @@ class ScanningServiceSpec
 
       report.author            shouldBe "me"
       report.repoName          shouldBe "repoName"
-      report.commitId          shouldBe "some commit id"
+      report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.inspectionResults should contain theSameElementsAs
         Seq(
@@ -70,7 +70,8 @@ class ScanningServiceSpec
             filePath    = s"/${file1.getName}",
             scope       = Rule.Scope.FILE_CONTENT,
             lineNumber  = 2,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file1.getName}#L2",
+            urlToSource = s"https://github.com/hmrc/repoName/blame/3d9c100/${file1.getName}#L2",
+            ruleId      = Some("rule-1"),
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13)),
@@ -80,7 +81,8 @@ class ScanningServiceSpec
             filePath    = s"/${file2.getName}",
             scope       = Rule.Scope.FILE_NAME,
             lineNumber  = 1,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
+            urlToSource = s"https://github.com/hmrc/repoName/blame/3d9c100/${file2.getName}#L1",
+            ruleId      = Some("rule-2"),
             description = "checks-in private key!",
             lineText    = s"${file2.getName}",
             matches     = List(Match(startIndex, startIndex + 6)),
@@ -98,7 +100,7 @@ class ScanningServiceSpec
 
       report.author            shouldBe "me"
       report.repoName          shouldBe "repoName"
-      report.commitId          shouldBe "some commit id"
+      report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.inspectionResults shouldBe Nil
     }
@@ -111,7 +113,7 @@ class ScanningServiceSpec
 
       report.author            shouldBe "me"
       report.repoName          shouldBe "repoName"
-      report.commitId          shouldBe "some commit id"
+      report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.inspectionResults shouldBe Nil
     }
@@ -124,7 +126,7 @@ class ScanningServiceSpec
 
       report.author            shouldBe "me"
       report.repoName          shouldBe "repoName"
-      report.commitId          shouldBe "some commit id"
+      report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.inspectionResults shouldBe Nil
     }
@@ -132,18 +134,21 @@ class ScanningServiceSpec
     "scan a git repository and don't include project specific exempted violations" in new TestSetup {
 
       override val privateRules = List(rules.checksInPrivateKeys)
-      override lazy val projectConfigurationYamlContent: String =
+
+      writeRepositoryYaml {
         s"""
-          |leakDetectionExemptions:
-          |  - ruleId: 'rule-2'
-          |    filePath: ${relativePath(file2)}
+           |leakDetectionExemptions:
+           |  - ruleId: 'rule-2'
+           |    filePaths:
+           |      - ${relativePath(file2)}
         """.stripMargin
+      }
 
       val report = generateReport
 
       report.author            shouldBe "me"
       report.repoName          shouldBe "repoName"
-      report.commitId          shouldBe "some commit id"
+      report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.inspectionResults shouldBe Nil
     }
@@ -158,7 +163,7 @@ class ScanningServiceSpec
 
       report.author            shouldBe "me"
       report.repoName          shouldBe "repoName"
-      report.commitId          shouldBe "some commit id"
+      report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.inspectionResults should contain theSameElementsAs
         Seq(
@@ -166,7 +171,8 @@ class ScanningServiceSpec
             filePath    = s"/${file2.getName}",
             scope       = Rule.Scope.FILE_NAME,
             lineNumber  = 1,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/master/${file2.getName}#L1",
+            urlToSource = s"https://github.com/hmrc/repoName/blame/3d9c100/${file2.getName}#L1",
+            ruleId      = Some("rule-2"),
             description = "checks-in private key!",
             lineText    = s"${file2.getName}",
             matches     = List(Match(startIndex, startIndex + 6)),
@@ -254,7 +260,7 @@ class ScanningServiceSpec
           branch        = "master",
           isPrivate     = true,
           repositoryUrl = "https://github.com/hmrc/repoName",
-          commitId      = "some commit id",
+          commitId      = "3d9c100",
           authorName    = "me",
           archiveUrl    = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"
         )
@@ -348,12 +354,14 @@ class ScanningServiceSpec
 
     val privateRules: List[Rule] = Nil
 
-    lazy val config = Cfg(
-      allRules          = AllRules(Nil, privateRules),
-      githubSecrets     = githubSecrets,
-      leakResolutionUrl = leakResolutionUrl,
-      maxLineLength     = Int.MaxValue
-    )
+    lazy val config =
+      Cfg(
+        allRules                  = AllRules(Nil, privateRules),
+        githubSecrets             = githubSecrets,
+        leakResolutionUrl         = leakResolutionUrl,
+        maxLineLength             = Int.MaxValue,
+        clearingCollectionEnabled = false
+      )
 
     lazy val configLoader = new ConfigLoader {
       val cfg = config
@@ -384,9 +392,10 @@ class ScanningServiceSpec
 
     val file2 = Files.createTempFile(projectDirectory, "test2", "id_rsa").toFile
 
-    val projectConfigurationYaml             = Files.createFile(Path(s"$projectDirectory/repository.yaml").toNIO).toFile
-    lazy val projectConfigurationYamlContent = ""
-    write(projectConfigurationYamlContent, projectConfigurationYaml)
+    def writeRepositoryYaml(contents: String): Unit = {
+      val projectConfigurationYaml = Files.createFile(Path(s"$projectDirectory/repository.yaml").toNIO).toFile
+      write(contents, projectConfigurationYaml)
+    }
 
     when(reportsService.saveReport(any())).thenReturn(Future.successful(()))
 

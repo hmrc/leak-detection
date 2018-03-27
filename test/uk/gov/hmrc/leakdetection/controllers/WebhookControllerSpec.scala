@@ -192,10 +192,6 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
                 personalAccessToken = pat
               }
 
-              allRuleExemptions {
-                global = []
-              }
-
               alerts.slack {
                leakDetectionUri    = "https://somewhere"
                enabled             = false
@@ -207,8 +203,6 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
                sendToTeamChannels  = true
                sendToAlertChannel  = true
               }
-
-              maxLineLength = 2147483647 // Int.MaxValue
 
             """
           ))
@@ -257,7 +251,7 @@ trait Fixtures { self: OneAppPerTest with MongoSpecSupport =>
   })
 
   def prepopulateReportWithProblems(repoName: String, branchName: String): Report = {
-    val report = ModelFactory.aReportWithUnresolvedProblems(repoName).copy(branch = branchName)
+    val report = ModelFactory.aReportWithLeaks(repoName).copy(branch = branchName)
     Await.result(repo.insert(report), 5.seconds)
     report
   }

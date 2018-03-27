@@ -41,7 +41,8 @@ final case class Cfg(
   allRules: AllRules,
   githubSecrets: GithubSecrets,
   leakResolutionUrl: LeakResolutionUrl,
-  maxLineLength: Int
+  maxLineLength: Int,
+  clearingCollectionEnabled: Boolean
 )
 
 final case class AllRules(

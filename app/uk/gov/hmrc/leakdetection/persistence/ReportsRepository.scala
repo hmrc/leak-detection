@@ -16,21 +16,19 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import javax.inject.Singleton
-
 import com.google.inject.Inject
-import play.api.libs.json.{JsArray, JsNull, Json}
+import javax.inject.Singleton
 import play.api.libs.json.Reads._
+import play.api.libs.json.{JsArray, JsNull, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.ReadPreference
-import reactivemongo.api.commands.WriteResult
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.play.json.ImplicitBSONHandlers
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
+import uk.gov.hmrc.mongo.ReactiveRepository
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
-import uk.gov.hmrc.mongo.ReactiveRepository
 
 @Singleton
 class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent)(implicit ec: ExecutionContext)
@@ -107,5 +105,11 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
         Some(hasUnresolvedErrorsSelector)
       )
       .map(_.sorted)
+
+  def howManyStillHaveLeaks(): Future[Int] =
+    collection.count(Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
+
+  def howManyResolved(): Future[Int] =
+    collection.count(Some(Json.obj("leakResolution" -> Json.obj("$ne" -> JsNull))))
 
 }

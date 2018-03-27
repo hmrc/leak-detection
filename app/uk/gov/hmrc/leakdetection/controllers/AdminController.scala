@@ -17,9 +17,9 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import java.io.File
-import javax.inject.{Inject, Singleton}
 
 import ammonite.ops.{Path, mkdir, tmp, write}
+import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json.{Format, JsValue, Json}
 import play.api.mvc.Action
@@ -29,6 +29,8 @@ import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
+
+import scala.concurrent.Future
 
 @Singleton
 class AdminController @Inject()(
@@ -41,6 +43,7 @@ class AdminController @Inject()(
   val logger = Logger(this.getClass.getName)
 
   import configLoader.cfg
+  import AdminController._
 
   def rules() = Action {
     Ok(Json.toJson(cfg.allRules))
@@ -53,8 +56,8 @@ class AdminController @Inject()(
         branch        = branch,
         isPrivate     = isPrivate,
         repositoryUrl = s"https://github.com/hmrc/$repository",
-        commitId      = "n/a",
-        authorName    = "n/a",
+        commitId      = NOT_APPLICABLE,
+        authorName    = NOT_APPLICABLE,
         archiveUrl    = s"https://api.github.com/repos/hmrc/$repository/{archive_format}{/ref}"
       )
       .map { report =>
@@ -91,8 +94,12 @@ class AdminController @Inject()(
   }
 
   def clearCollection() = Action.async { implicit request =>
-    reportsService.clearCollection().map { res =>
-      Ok(s"ok=${res.ok}, records deleted=${res.n}, errors = ${res.writeErrors}")
+    if (configLoader.cfg.clearingCollectionEnabled) {
+      reportsService.clearCollection().map { res =>
+        Ok(s"ok=${res.ok}, records deleted=${res.n}, errors = ${res.writeErrors}")
+      }
+    } else {
+      Future.successful(Ok("Clearing reports is disabled."))
     }
   }
 
@@ -104,6 +111,14 @@ class AdminController @Inject()(
       .GET[JsValue]("https://api.github.com/rate_limit")(implicitly, authorizationHeader, implicitly)
       .map(Ok(_))
   }
+
+  def stats = Action.async { implicit request =>
+    reportsService.getStats().map(stats => Ok(Json.toJson(stats)))
+  }
+}
+
+object AdminController {
+  val NOT_APPLICABLE = "n/a"
 }
 
 final case class AcceptanceTestsRequest(fileContent: String, fileName: String)

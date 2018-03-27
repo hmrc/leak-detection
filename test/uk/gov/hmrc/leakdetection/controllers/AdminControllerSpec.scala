@@ -94,6 +94,7 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
                   scope       = Rule.Scope.FILE_CONTENT,
                   lineNumber  = 1,
                   urlToSource = "some url",
+                  ruleId      = Some("rule id"),
                   description = "a description",
                   lineText    = "the line",
                   matches     = List(Match(0, 1)),
@@ -106,7 +107,7 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
           val result        = controller.validate("repoName", "master", isPrivate)(FakeRequest())
           val json: JsValue = contentAsJson(result)
 
-          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","description":"a description","lineText":"the line","matches":[{"start":0,"end":1}],"isTruncated":false}]"""
+          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","ruleId":"rule id","description":"a description","lineText":"the line","matches":[{"start":0,"end":1}],"isTruncated":false}]"""
         }
     }
   }

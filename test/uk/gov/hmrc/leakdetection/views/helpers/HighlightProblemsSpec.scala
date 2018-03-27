@@ -55,6 +55,15 @@ class HighlightProblemsSpec extends WordSpec with Matchers {
   }
 
   def createReportLine(lineText: String, matches: Match*) =
-    ReportLine(null, null, 0, null, null, lineText, matches.toList, Some(false))
+    ReportLine(
+      filePath    = null,
+      scope       = null,
+      lineNumber  = 0,
+      urlToSource = null,
+      ruleId      = None,
+      description = null,
+      lineText    = lineText,
+      matches     = matches.toList,
+      isTruncated = Some(false))
 
 }
