@@ -26,7 +26,6 @@ import org.zeroturnaround.zip.ZipUtil
 import play.api.Logger
 
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 import scalaj.http._
 
 class ArtifactService @Inject()(metrics: Metrics) {
@@ -56,38 +55,27 @@ class ArtifactService @Inject()(metrics: Metrics) {
     explodedZipFile
   }
 
-  def downloadFile(githubAccessToken: String, url: String, filename: String, branch: String): Unit =
-    retry(5) {
-      val resp =
-        Http(url)
-          .header("Authorization", s"token $githubAccessToken")
-          .option(HttpOptions.followRedirects(true))
-          .asBytes
-      if (resp.isError) {
-        registry.counter(s"github.open.zip.failure").inc()
-        val errorMessage = s"Error downloading the zip file from $url:\n${new String(resp.body)}"
-        logger.error(errorMessage)
-        throw new RuntimeException(errorMessage)
-      } else {
-        registry.counter(s"github.open.zip.success").inc()
-        logger.info(s"Response code: ${resp.code}")
-        logger.debug(s"Got ${resp.body.size} bytes from $url... saving it to $filename")
-        val file = new File(filename)
-        FileUtils.deleteQuietly(file)
-        FileUtils.writeByteArrayToFile(file, resp.body)
-        logger.info(s"Saved file: $filename")
-      }
+  def downloadFile(githubAccessToken: String, url: String, filename: String, branch: String): Unit = {
+    val resp =
+      Http(url)
+        .header("Authorization", s"token $githubAccessToken")
+        .option(HttpOptions.followRedirects(true))
+        .asBytes
+    if (resp.isError) {
+      registry.counter(s"github.open.zip.failure").inc()
+      val errorMessage = s"Error downloading the zip file from $url:\n${new String(resp.body)}"
+      logger.error(errorMessage)
+      throw new RuntimeException(errorMessage)
+    } else {
+      registry.counter(s"github.open.zip.success").inc()
+      logger.info(s"Response code: ${resp.code}")
+      logger.debug(s"Got ${resp.body.length} bytes from $url... saving it to $filename")
+      val file = new File(filename)
+      FileUtils.deleteQuietly(file)
+      FileUtils.writeByteArrayToFile(file, resp.body)
+      logger.info(s"Saved file: $filename")
     }
-
-  def retry[T](retryCount: Int)(f: => T): T =
-    Try(f) match {
-      case Success(resp) => resp
-      case Failure(t) =>
-        if (retryCount > 0) {
-          Thread.sleep(200)
-          retry(retryCount - 1)(f)
-        } else throw t
-    }
+  }
 
   private def getArtifactUrl(archiveUrl: String, branch: String) =
     archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$branch")
