@@ -14,12 +14,10 @@
  * limitations under the License.
  *@
 
-@import uk.gov.hmrc.leakdetection.model.Report
-@import uk.gov.hmrc.leakdetection.views.helpers.highlightProblems
-@import uk.gov.hmrc.leakdetection.model.ResolvedLeak
-
 @import uk.gov.hmrc.leakdetection.config.LeakResolutionUrl
-@(report: Report, leakResolutionUrl: LeakResolutionUrl)
+@import uk.gov.hmrc.leakdetection.model.{Report, ResolvedLeak}
+@import uk.gov.hmrc.leakdetection.views.helpers.highlightProblems
+@(report: Report, leakFrequencies: Map[ResolvedLeak, Int], leakResolutionUrl: LeakResolutionUrl)
 
 @main {
 
@@ -109,16 +107,18 @@
                 <tr>
                     <th>Rule Id</th>
                     <th>Description</th>
+                    <th>Count</th>
                 </tr>
                 </thead>
-                <tbody>
-                @leakRes.resolvedLeaks.map { case ResolvedLeak(id, descr) =>
-                <tr>
-                    <td>@if(id.isEmpty) { n/a } else { @id } </td>
-                    <td>@descr</td>
-                </tr>
-                }
-                </tbody>
+                    <tbody>
+                        @leakFrequencies.map { case (ResolvedLeak(id, descr), count) =>
+                        <tr>
+                            <td>@if(id.isEmpty) { n/a } else { @id } </td>
+                            <td>@descr</td>
+                            <td>@count</td>
+                        </tr>
+                        }
+                    </tbody>
             </table>
         }
     }

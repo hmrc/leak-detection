@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import javax.inject.Singleton
 import com.google.inject.Inject
+import javax.inject.Singleton
 import play.api.libs.json.Json
 import play.api.mvc.Action
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
@@ -53,7 +53,11 @@ class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: Re
     reportsService.getReport(reportId).map { maybeReport =>
       maybeReport
         .map { r =>
-          Ok(html.report(r, configLoader.cfg.leakResolutionUrl))
+          val leakFrequencies =
+            r.leakResolution
+              .map(_.resolvedLeaks.groupBy(identity).mapValues(_.size))
+              .getOrElse(Map())
+          Ok(html.report(r, leakFrequencies, configLoader.cfg.leakResolutionUrl))
         }
         .getOrElse(NotFound(Json.obj("msg" -> s"Report w/id $reportId not found")))
     }
