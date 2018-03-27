@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.scheduled
 import javax.inject.Inject
 
 import akka.actor.ActorSystem
-import com.codahale.metrics.MetricRegistry
+import com.kenshoo.play.metrics.Metrics
 import play.api.{Configuration, Logger}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DefaultDB
@@ -29,13 +29,12 @@ import uk.gov.hmrc.metrix.MetricOrchestrator
 import uk.gov.hmrc.metrix.persistence.MongoMetricRepository
 
 import scala.concurrent.ExecutionContext.Implicits.global
-
 import scala.concurrent.duration._
 
 class QueueMetrics @Inject()(
   actorSystem: ActorSystem,
   configuration: Configuration,
-  metricRegistry: MetricRegistry,
+  metrics: Metrics,
   reactiveMongoComponent: ReactiveMongoComponent,
   githubRequestsQueueRepository: GithubRequestsQueueRepository) {
 
@@ -56,7 +55,7 @@ class QueueMetrics @Inject()(
     metricSources    = List(githubRequestsQueueRepository),
     lock             = lock,
     metricRepository = new MongoMetricRepository(),
-    metricRegistry   = metricRegistry
+    metricRegistry   = metrics.defaultRegistry
   )
 
   actorSystem.scheduler.schedule(1.minute, refreshIntervalMillis.milliseconds) {
