@@ -17,9 +17,10 @@
 package uk.gov.hmrc.leakdetection.services
 
 import java.io.File
+import java.net.URLEncoder
 import java.nio.file.Files
-import javax.inject.Inject
 
+import javax.inject.Inject
 import com.kenshoo.play.metrics.Metrics
 import org.apache.commons.io.FileUtils
 import org.zeroturnaround.zip.ZipUtil
@@ -77,6 +78,8 @@ class ArtifactService @Inject()(metrics: Metrics) {
     }
   }
 
-  private def getArtifactUrl(archiveUrl: String, branch: String) =
-    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$branch")
+  def getArtifactUrl(archiveUrl: String, branch: String): String = {
+    val urlEncodedBranchName = URLEncoder.encode(branch, "UTF-8")
+    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$urlEncodedBranchName")
+  }
 }
