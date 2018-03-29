@@ -4,10 +4,10 @@ set -e
 
 usage() {
     echo
-    echo "Triggers LDS rescan of multiple repositories"
+    echo "Triggers LDS rescan of multiple repositories."
     echo
     echo "Please provide the following parameters: "
-    echo " 1. location of a file with repos to scan"
+    echo " 1. location of a text file with repos to scan (each repo on a separate line)"
     echo " 2. location of a file to store progress"
     echo
 }

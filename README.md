@@ -5,6 +5,8 @@
 
 Service used to find leaks in other git repositories, using regular expressions.
 
+Rescanning all branches in all repositories can be done using [the following script](.scripts/rescan_all.sh) 
+
 ### License
 
 This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html")
