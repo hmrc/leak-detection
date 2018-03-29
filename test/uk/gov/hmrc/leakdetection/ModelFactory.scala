@@ -101,7 +101,7 @@ object ModelFactory {
     val report = aReport(repoName)
     val cleanReport =
       aReportWithoutLeaks(repoName).copy(timestamp = DateTimeUtils.now, commitId = aString("commitId"))
-    report.copy(leakResolution = Some(LeakResolution.create(report, cleanReport)))
+    report.copy(leakResolution = Some(LeakResolution.create(report, cleanReport)), inspectionResults = Nil)
   }
 
   def aReportWithoutLeaks(repoName: String = aString("repositoryName")): Report =

@@ -24,8 +24,10 @@ import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
+import uk.gov.hmrc.metrix.domain.MetricSource
 
-class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext) {
+class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext)
+    extends MetricSource {
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 
@@ -91,6 +93,16 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
       resolved       <- reportsRepository.howManyResolved()
     } yield {
       Stats(reports = Stats.Reports(total, resolved, stillHaveLeaks))
+    }
+
+  override def metrics(implicit ec: ExecutionContext): Future[Map[String, Int]] =
+    getStats().map {
+      case Stats(reports) =>
+        Map(
+          "reports.total"      -> reports.count,
+          "reports.unresolved" -> reports.stillHaveLeaks,
+          "reports.resolved"   -> reports.resolvedCount
+        )
     }
 }
 

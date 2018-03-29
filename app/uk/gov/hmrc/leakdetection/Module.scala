@@ -17,13 +17,13 @@
 package uk.gov.hmrc.leakdetection
 
 import com.google.inject.AbstractModule
-import uk.gov.hmrc.leakdetection.scheduled.{QueueMetrics, ScanRepositoriesScheduler}
+import uk.gov.hmrc.leakdetection.scheduled.{MetricsScheduler, ScanRepositoriesScheduler}
 
 class Module() extends AbstractModule {
 
   override def configure(): Unit = {
     bind(classOf[ScanRepositoriesScheduler]).asEagerSingleton()
-    bind(classOf[QueueMetrics]).asEagerSingleton()
+    bind(classOf[MetricsScheduler]).asEagerSingleton()
   }
 
 }

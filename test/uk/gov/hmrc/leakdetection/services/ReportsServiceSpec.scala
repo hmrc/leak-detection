@@ -158,6 +158,29 @@ class ReportsServiceSpec
       reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
     }
 
+    "produce metrics" in {
+      val repoName   = "repo"
+      val branchName = "master"
+
+      def genReports() = few(() => aReport(repoName).copy(branch = branchName))
+
+      Given("LDS repo contains some outstanding problems for a given branch")
+      val reportsWithLeaks = genReports().map(_.copy(leakResolution = None))
+
+      And("it also contains some already resolved reports")
+      val reportsWithPreviouslyResolvedLeaks = few(() => aReportWithResolvedLeaks())
+
+      repo
+        .bulkInsert(reportsWithLeaks ::: reportsWithPreviouslyResolvedLeaks)
+        .futureValue
+
+      reportsService.metrics.futureValue shouldBe Map(
+        "reports.total"      -> (reportsWithLeaks.size + reportsWithPreviouslyResolvedLeaks.size),
+        "reports.unresolved" -> reportsWithLeaks.size,
+        "reports.resolved"   -> reportsWithPreviouslyResolvedLeaks.size
+      )
+    }
+
   }
 
   override def beforeEach(): Unit =
