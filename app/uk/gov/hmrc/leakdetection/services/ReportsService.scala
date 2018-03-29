@@ -18,16 +18,15 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import play.api.Configuration
-import play.api.libs.json.{Format, Json, OFormat}
 import reactivemongo.api.commands.WriteResult
-
-import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.metrix.domain.MetricSource
+
 import scala.collection.JavaConverters._
+import scala.concurrent.{ExecutionContext, Future}
 
 class ReportsService @Inject()(
   reportsRepository: ReportsRepository,
@@ -95,20 +94,13 @@ class ReportsService @Inject()(
     }
   }
 
-  def getStats(): Future[Stats] =
-    for {
-      total          <- reportsRepository.count
-      stillHaveLeaks <- reportsRepository.howManyUnresolved()
-      resolved       <- reportsRepository.howManyResolved()
-    } yield {
-      Stats(reports = Stats.Reports(total, resolved, stillHaveLeaks))
-    }
-
   override def metrics(implicit ec: ExecutionContext): Future[Map[String, Int]] =
     for {
-      stats  <- getStats().map(_.reports)
-      byRepo <- reportsRepository.howManyUnresolvedByRepository()
-      teams  <- teamsAndRepositoriesConnector.teamsWithRepositories()
+      total      <- reportsRepository.count
+      unresolved <- reportsRepository.howManyUnresolved()
+      resolved   <- reportsRepository.howManyResolved()
+      byRepo     <- reportsRepository.howManyUnresolvedByRepository()
+      teams      <- teamsAndRepositoriesConnector.teamsWithRepositories()
     } yield {
 
       def ownedRepos(team: Team): Seq[String] = {
@@ -122,25 +114,11 @@ class ReportsService @Inject()(
         .toMap
 
       val globalStats = Map(
-        "reports.total"      -> stats.count,
-        "reports.unresolved" -> stats.stillHaveLeaks,
-        "reports.resolved"   -> stats.resolvedCount
+        "reports.total"      -> total,
+        "reports.unresolved" -> unresolved,
+        "reports.resolved"   -> resolved
       )
 
       globalStats ++ byTeamStats
     }
-}
-
-final case class Stats(
-  reports: Stats.Reports
-)
-
-object Stats {
-  case class Reports(
-    count: Int,
-    resolvedCount: Int,
-    stillHaveLeaks: Int
-  )
-  implicit val reportsFormat          = Json.format[Reports]
-  implicit val format: OFormat[Stats] = Json.format[Stats]
 }
