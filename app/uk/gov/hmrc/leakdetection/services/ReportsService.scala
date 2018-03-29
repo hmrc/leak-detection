@@ -17,17 +17,26 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
+import play.api.Configuration
 import play.api.libs.json.{Format, Json, OFormat}
 import reactivemongo.api.commands.WriteResult
 
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
+import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.metrix.domain.MetricSource
+import scala.collection.JavaConverters._
 
-class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec: ExecutionContext)
+class ReportsService @Inject()(
+  reportsRepository: ReportsRepository,
+  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
+  configuration: Configuration)(implicit ec: ExecutionContext)
     extends MetricSource {
+
+  lazy val repositoriesToIgnore: List[String] =
+    configuration.getStringList("shared.repositories").fold(List.empty[String])(_.asScala.toList)
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 
@@ -89,20 +98,36 @@ class ReportsService @Inject()(reportsRepository: ReportsRepository)(implicit ec
   def getStats(): Future[Stats] =
     for {
       total          <- reportsRepository.count
-      stillHaveLeaks <- reportsRepository.howManyStillHaveLeaks()
+      stillHaveLeaks <- reportsRepository.howManyUnresolved()
       resolved       <- reportsRepository.howManyResolved()
     } yield {
       Stats(reports = Stats.Reports(total, resolved, stillHaveLeaks))
     }
 
   override def metrics(implicit ec: ExecutionContext): Future[Map[String, Int]] =
-    getStats().map {
-      case Stats(reports) =>
-        Map(
-          "reports.total"      -> reports.count,
-          "reports.unresolved" -> reports.stillHaveLeaks,
-          "reports.resolved"   -> reports.resolvedCount
-        )
+    for {
+      stats  <- getStats().map(_.reports)
+      byRepo <- reportsRepository.howManyUnresolvedByRepository()
+      teams  <- teamsAndRepositoriesConnector.teamsWithRepositories()
+    } yield {
+
+      def ownedRepos(team: Team): Seq[String] = {
+
+        val allRepos = team.repos.fold(Seq.empty[String])(_.values.toSeq.flatten)
+        allRepos.filterNot(repositoriesToIgnore.contains(_))
+      }
+
+      val byTeamStats = teams
+        .map(t => s"reports.teams.${t.normalisedName}.unresolved" -> ownedRepos(t).map(r => byRepo.getOrElse(r, 0)).sum)
+        .toMap
+
+      val globalStats = Map(
+        "reports.total"      -> stats.count,
+        "reports.unresolved" -> stats.stillHaveLeaks,
+        "reports.resolved"   -> stats.resolvedCount
+      )
+
+      globalStats ++ byTeamStats
     }
 }
 

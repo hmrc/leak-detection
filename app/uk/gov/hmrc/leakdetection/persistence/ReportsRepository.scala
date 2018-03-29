@@ -16,14 +16,16 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import com.google.inject.Inject
 import javax.inject.Singleton
+
+import com.google.inject.Inject
 import play.api.libs.json.Reads._
-import play.api.libs.json.{JsArray, JsNull, Json}
+import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.ReadPreference
+import reactivemongo.api.commands.Command
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.play.json.ImplicitBSONHandlers
+import reactivemongo.api.{FailoverStrategy, ReadPreference}
+import reactivemongo.play.json.{ImplicitBSONHandlers, JSONSerializationPack}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
 
@@ -106,10 +108,31 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
       )
       .map(_.sorted)
 
-  def howManyStillHaveLeaks(): Future[Int] =
+  def howManyUnresolved(): Future[Int] =
     collection.count(Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
 
   def howManyResolved(): Future[Int] =
     collection.count(Some(Json.obj("leakResolution" -> Json.obj("$ne" -> JsNull))))
 
+  case class AggregationResult(ok: Int, result: List[CountByRepo])
+  case class CountByRepo(_id: String, count: Int)
+
+  def howManyUnresolvedByRepository(): Future[Map[String, Int]] = {
+
+    implicit val cr: Reads[CountByRepo]       = Json.reads[CountByRepo]
+    implicit val ar: Reads[AggregationResult] = Json.reads[AggregationResult]
+
+    val commandDoc = Json.obj(
+      "aggregate" -> "reports",
+      "pipeline" -> List(
+        Json.obj("$match" -> Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))),
+        Json.obj("$group" -> Json.obj("_id"               -> "$repoName", "count" -> Json.obj("$sum" -> 1)))
+      )
+    )
+    val runner = Command.run(JSONSerializationPack, FailoverStrategy.default)
+
+    runner(reactiveMongoComponent.mongoConnector.db(), runner.rawCommand(commandDoc))
+      .one[AggregationResult](ReadPreference.secondaryPreferred)
+      .map(_.result.map(line => line._id -> line.count).toMap)
+  }
 }

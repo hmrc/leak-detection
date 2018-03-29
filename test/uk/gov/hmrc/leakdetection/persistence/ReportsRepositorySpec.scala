@@ -122,6 +122,13 @@ class ReportsRepositorySpec
       }
     }
 
+    "produce stats grouped by repository" in {
+      val reports = List(aReportWithResolvedLeaks("r1"), aReport("r2"), aReport("r1"), aReportWithResolvedLeaks("r3"))
+      repo.bulkInsert(reports).futureValue
+
+      repo.howManyUnresolvedByRepository().futureValue shouldBe Map("r1" -> 1, "r2" -> 1)
+    }
+
   }
 
   override def beforeEach(): Unit =
