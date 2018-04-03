@@ -13,9 +13,11 @@ branches:
     - master
   services:
     - mongodb
+services:
+- mongodb
 addons:
   apt:
     sources:
-    - mongodb-3.2-precise
+    - mongodb-3.0-precise
     packages:
-    - mongodb-org=3.2.14
+    - mongodb-org-server
