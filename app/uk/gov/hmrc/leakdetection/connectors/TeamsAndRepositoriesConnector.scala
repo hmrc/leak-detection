@@ -53,7 +53,7 @@ class TeamsAndRepositoriesConnector @Inject()(
 
   def teamsWithRepositories()(implicit ec: ExecutionContext): Future[Seq[Team]] = {
     implicit val hc = HeaderCarrier()
-    http.GET[Seq[Team]](s"${baseUrl("teams-and-services")}/api/teams_with_repositories")
+    http.GET[Seq[Team]](s"${baseUrl("teams-and-repositories")}/api/teams_with_repositories")
   }
 
 }
