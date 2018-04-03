@@ -8,11 +8,6 @@ jdk:
 cache:
   directories:
     - '$HOME/.ivy2/cache'
-branches:
-  except:
-    - master
-  services:
-    - mongodb
 services:
 - mongodb
 addons:
