@@ -16,16 +16,23 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import java.time.LocalDateTime
+
+import org.mockito.Mockito.when
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfterEach, GivenWhenThen, Matchers, WordSpec}
+import play.api.Configuration
 import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, aReportWithResolvedLeaks, few}
+import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.ResolvedLeak
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class ReportsServiceSpec
@@ -158,6 +165,82 @@ class ReportsServiceSpec
       reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
     }
 
+    "produce metrics" in {
+      val repoName   = "repo"
+      val branchName = "master"
+
+      def genReports() = few(() => aReport(repoName).copy(branch = branchName))
+
+      Given("LDS repo contains some outstanding problems for a given branch")
+      val reportsWithLeaks = genReports().map(_.copy(leakResolution = None))
+
+      And("it also contains some already resolved reports")
+      val reportsWithPreviouslyResolvedLeaks = few(() => aReportWithResolvedLeaks())
+
+      repo
+        .bulkInsert(reportsWithLeaks ::: reportsWithPreviouslyResolvedLeaks)
+        .futureValue
+
+      reportsService.metrics.futureValue should contain allOf (
+        "reports.total"                  -> (reportsWithLeaks.size + reportsWithPreviouslyResolvedLeaks.size),
+        "reports.unresolved"             -> reportsWithLeaks.size,
+        "reports.resolved"               -> reportsWithPreviouslyResolvedLeaks.size
+      )
+    }
+
+    "produce metrics grouped by team" in {
+
+      val reports = List(aReport("r1"), aReport("r2"), aReport("r1"))
+      repo.bulkInsert(reports).futureValue
+
+      val now = Some(LocalDateTime.now)
+      val teams: Seq[Team] = Seq(
+        Team("t1", now, now, now, Some(Map("services" -> Seq("r1")))),
+        Team("t2", now, now, now, Some(Map("services" -> Seq("r2")))))
+      when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
+
+      reportsService.metrics.futureValue should contain allOf (
+        "reports.teams.t1.unresolved"    -> 2,
+        "reports.teams.t2.unresolved"    -> 1
+      )
+    }
+
+    "normalise team names" in {
+
+      val reports = List(aReport("r1"), aReport("r2"), aReport("r1"))
+      repo.bulkInsert(reports).futureValue
+
+      val now = Some(LocalDateTime.now)
+      val teams: Seq[Team] = Seq(
+        Team("T1", now, now, now, Some(Map("services"             -> Seq("r1")))),
+        Team("T2 with spaces", now, now, now, Some(Map("services" -> Seq("r2")))))
+      when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
+
+      reportsService.metrics.futureValue          should contain allOf (
+        "reports.teams.t1.unresolved"             -> 2,
+        "reports.teams.t2_with_spaces.unresolved" -> 1
+      )
+    }
+
+    "ignore shared repositories" in {
+
+      val reports = List(aReport("r1"), aReport("r2"), aReport("r1"))
+      repo.bulkInsert(reports).futureValue
+
+      val now = Some(LocalDateTime.now)
+      val teams: Seq[Team] = Seq(
+        Team("T1", now, now, now, Some(Map("services" -> Seq("r1")))),
+        Team("T2", now, now, now, Some(Map("services" -> Seq("r2")))))
+      when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
+
+      val reportsService =
+        new ReportsService(repo, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"))
+      reportsService.metrics.futureValue should contain allOf (
+        "reports.teams.t1.unresolved"    -> 0,
+        "reports.teams.t2.unresolved"    -> 1
+      )
+    }
+
   }
 
   override def beforeEach(): Unit =
@@ -170,6 +253,9 @@ class ReportsServiceSpec
     override def mongoConnector: MongoConnector = mongoConnectorForTest
   })
 
-  val reportsService = new ReportsService(repo)
+  private val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
+  when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(Seq.empty))
+
+  val reportsService = new ReportsService(repo, teamsAndRepositoriesConnector, Configuration())
 
 }

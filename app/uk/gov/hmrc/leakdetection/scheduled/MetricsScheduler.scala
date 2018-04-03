@@ -24,6 +24,7 @@ import play.api.{Configuration, Logger}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DefaultDB
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
+import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.lock.{ExclusiveTimePeriodLock, LockRepository}
 import uk.gov.hmrc.metrix.MetricOrchestrator
 import uk.gov.hmrc.metrix.persistence.MongoMetricRepository
@@ -31,12 +32,13 @@ import uk.gov.hmrc.metrix.persistence.MongoMetricRepository
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
-class QueueMetrics @Inject()(
+class MetricsScheduler @Inject()(
   actorSystem: ActorSystem,
   configuration: Configuration,
   metrics: Metrics,
   reactiveMongoComponent: ReactiveMongoComponent,
-  githubRequestsQueueRepository: GithubRequestsQueueRepository) {
+  githubRequestsQueueRepository: GithubRequestsQueueRepository,
+  reportsService: ReportsService) {
 
   private val key = "queue.metricsGauges.interval"
   lazy val refreshIntervalMillis: Long = configuration
@@ -52,7 +54,7 @@ class QueueMetrics @Inject()(
   }
 
   val metricOrchestrator = new MetricOrchestrator(
-    metricSources    = List(githubRequestsQueueRepository),
+    metricSources    = List(githubRequestsQueueRepository, reportsService),
     lock             = lock,
     metricRepository = new MongoMetricRepository(),
     metricRegistry   = metrics.defaultRegistry

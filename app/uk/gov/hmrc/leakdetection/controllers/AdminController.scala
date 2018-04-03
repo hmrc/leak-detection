@@ -113,7 +113,7 @@ class AdminController @Inject()(
   }
 
   def stats = Action.async { implicit request =>
-    reportsService.getStats().map(stats => Ok(Json.toJson(stats)))
+    reportsService.metrics.map(stats => Ok(Json.toJson(stats)))
   }
 }
 
