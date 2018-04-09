@@ -31,6 +31,7 @@ import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.time.DateTimeUtils
 import uk.gov.hmrc.workitem.{Failed, WorkItem}
+
 @Singleton
 class ScanningService @Inject()(
   configuration: Configuration,

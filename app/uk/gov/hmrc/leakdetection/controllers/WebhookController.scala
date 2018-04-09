@@ -18,7 +18,9 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import javax.inject.{Inject, Singleton}
 import play.api.libs.json.Json
+import play.api.libs.json.Json.toJson
 import play.api.mvc.{Action, BodyParser}
+
 import scala.concurrent.Future
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
@@ -41,24 +43,29 @@ class WebhookController @Inject()(
 
         case payloadDetails: PayloadDetails if payloadDetails.branchRef.contains("refs/tags/") =>
           Future.successful(
-            Ok(Json.toJson(WebhookResponse("Tag commit ignored")))
+            Ok(toJson(WebhookResponse("Tag commit ignored")))
+          )
+
+        case payloadDetails: PayloadDetails if payloadDetails.deleted =>
+          Future.successful(
+            Ok(toJson(WebhookResponse("Tag commit ignored")))
           )
 
         case payloadDetails: PayloadDetails =>
           scanningService.queueRequest(payloadDetails).map { _ =>
-            Ok(Json.toJson(WebhookResponse("Request successfully queued")))
+            Ok(toJson(WebhookResponse("Request successfully queued")))
           }
 
         case deleteBranchEvent: DeleteBranchEvent =>
           reportsService
             .clearReportsAfterBranchDeleted(deleteBranchEvent)
             .map { reports =>
-              Ok(Json.toJson(WebhookResponse(s"${reports.size} report(s) successfully cleared")))
+              Ok(toJson(WebhookResponse(s"${reports.size} report(s) successfully cleared")))
             }
 
         case ZenMessage(_) =>
           Future.successful(
-            Ok(Json.toJson(WebhookResponse("Zen message ignored")))
+            Ok(toJson(WebhookResponse("Zen message ignored")))
           )
       }
 

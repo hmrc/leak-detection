@@ -33,7 +33,8 @@ object MicroServiceBuild extends Build with MicroService {
     "org.mockito"            % "mockito-all"         % "1.10.19",
     "uk.gov.hmrc"            %% "reactivemongo-test" % "3.1.0",
     "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.1",
-    "org.scalacheck"         %% "scalacheck"         % "1.13.4"
+    "org.scalacheck"         %% "scalacheck"         % "1.13.4",
+    "com.github.tomakehurst" % "wiremock"            % "2.16.0"
   ).map(_ % "test, it")
 
 }
