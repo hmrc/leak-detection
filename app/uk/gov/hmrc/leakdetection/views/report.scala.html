@@ -36,12 +36,14 @@
         <tr>
             <th>Repository URL</th>
             <td>
-                <a href="@report.repoUrl">@report.repoUrl</a>
+                <a href="@report.repoUrl" target="_blank">@report.repoUrl</a>
             </td>
         </tr>
         <tr>
             <th>Commit Id</th>
-            <td>@report.commitId</td>
+            <td>
+                <a href="@report.repoUrl/commit/@report.commitId" target="_blank">@report.commitId</a>
+            </td>
         </tr>
         <tr>
             <th>Branch</th>
@@ -53,7 +55,9 @@
         </tr>
         <tr>
             <th>Author</th>
-            <td>@report.author</td>
+            <td>
+                <a href="https://github.com/@report.author" target="_blank">@report.author</a>
+            </td>
         </tr>
 
         </tbody>
