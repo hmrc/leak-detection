@@ -37,12 +37,19 @@ class GithubStub {
 
 object GithubStub {
 
+  def serving404: GithubStub = {
+    val gh = new GithubStub
+    gh.server.stubFor(
+      get(s"/${gh.relativeArchiveUrl}").willReturn(aResponse().withStatus(404).withBody("404: Not Found"))
+    )
+    gh
+  }
+
   def servingZippedFiles(files: List[TestZippedFile]): GithubStub = {
     val gh = new GithubStub
     gh.server
       .stubFor(
-        get(s"/${gh.relativeArchiveUrl}")
-          .willReturn(aResponse().withBody(createZip(files)))
+        get(s"/${gh.relativeArchiveUrl}").willReturn(aResponse().withBody(createZip(files)))
       )
     gh
   }

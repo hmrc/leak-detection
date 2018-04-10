@@ -23,6 +23,7 @@ import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
+import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult
 import uk.gov.hmrc.metrix.domain.MetricSource
 
 import scala.collection.JavaConverters._
@@ -50,18 +51,19 @@ class ReportsService @Inject()(
 
   def clearCollection(): Future[WriteResult] = reportsRepository.removeAll()
 
-  def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[List[Report]] = {
+  def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[ClearingReportsResult] = {
     import deleteBranchEvent._
-    markPreviousReportsAsResolved {
-      Report.create(
-        repositoryName = repositoryName,
-        repositoryUrl  = repositoryUrl,
-        commitId       = "n/a (branch was deleted)",
-        authorName     = authorName,
-        branch         = branchRef,
-        results        = Nil,
-        leakResolution = None
-      )
+    val reportSolvingProblems = Report.create(
+      repositoryName = repositoryName,
+      repositoryUrl  = repositoryUrl,
+      commitId       = "n/a (branch was deleted)",
+      authorName     = authorName,
+      branch         = branchRef,
+      results        = Nil,
+      leakResolution = None
+    )
+    markPreviousReportsAsResolved(reportSolvingProblems).map { reports =>
+      ClearingReportsResult(reportSolvingProblems, reports)
     }
   }
 
@@ -121,4 +123,11 @@ class ReportsService @Inject()(
 
       globalStats ++ byTeamStats
     }
+}
+
+object ReportsService {
+  final case class ClearingReportsResult(
+    reportSolvingProblems: Report,
+    previousProblems: List[Report]
+  )
 }

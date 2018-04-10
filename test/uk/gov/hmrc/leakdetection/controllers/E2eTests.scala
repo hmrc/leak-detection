@@ -82,8 +82,8 @@ class E2eTests
 
       And("New report will eventually be created after branch is processed")
       eventually {
-        def findReport() = reportsRepo.findAll().futureValue.find(_.repoName == payloadDetails.repositoryName)
-        findReport() shouldBe 'defined
+        val reports = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef)
+        reports.size shouldBe 1
       }
     }
 
@@ -129,7 +129,7 @@ class E2eTests
           )
 
       And("there is already a report with problems for a given repo/branch")
-      val existingProblems = prepopulateReportWithProblems(requestPayload.repositoryName, requestPayload.branchRef)
+      val _ = prepopulateReportWithProblems(requestPayload.repositoryName, requestPayload.branchRef)
 
       When("LDS receives a request related to deleting a branch")
       val res = Helpers.route(app, signedRequest).get
@@ -140,6 +140,45 @@ class E2eTests
       And("response should inform which problem where cleared as a result of deleting a branch")
       val response = Json.parse(Helpers.contentAsString(res)).as[WebhookResponse]
       response.details shouldBe "1 report(s) successfully cleared"
+
+    }
+
+    scenario("Processing a branch that no longer exists") {
+      Given("Github will return 404 when an attempt is made to download a zip")
+      val githubStub = GithubStub.serving404
+
+      And("it will provide a url to a no longer existing branch")
+      val noLongerExistingArchiveUrl   = githubStub.archiveUrl
+      val payloadDetails               = aPayloadDetails.copy(archiveUrl = noLongerExistingArchiveUrl, deleted = false)
+      val githubRequestPayload: String = asJson(payloadDetails)
+
+      And("there is already a report with problems for a given repo/branch")
+      val _ = prepopulateReportWithProblems(payloadDetails.repositoryName, payloadDetails.branchRef)
+
+      When("Github calls LDS")
+      val signedRequest =
+        FakeRequest("POST", "/validate")
+          .withBody(githubRequestPayload)
+          .withHeaders(
+            CONTENT_TYPE      -> "application/json",
+            "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequestPayload))
+          )
+
+      val res = Helpers.route(app, signedRequest).get
+
+      Then("Processing should be successful")
+      Helpers.status(res) shouldBe 200
+
+      And("Result should notify that the request has been queued")
+      val report = Json.parse(Helpers.contentAsString(res)).as[WebhookResponse]
+      report.details shouldBe "Request successfully queued"
+
+      And("Eventually previous reports with problems will be cleared")
+      eventually {
+        val report = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).head
+        report.inspectionResults shouldBe 'empty
+        report.leakResolution    shouldBe 'defined
+      }
 
     }
 
@@ -171,7 +210,7 @@ class E2eTests
 
               scheduling.scanner {
                 initialDelay = 5 millis
-                interval = 2 seconds
+                interval = 1 seconds
               }
             """
           ))
@@ -184,6 +223,14 @@ class E2eTests
   lazy val reportsRepo = new ReportsRepository(new ReactiveMongoComponent {
     override def mongoConnector: MongoConnector = mongoConnectorForTest
   })
+
+  def findReportsForRepoAndBranch(repositoryName: String, branchName: String): List[Report] =
+    reportsRepo
+      .findAll()
+      .futureValue
+      .filter { report =>
+        report.repoName == repositoryName && report.branch == branchName
+      }
 
   def prepopulateReportWithProblems(repoName: String, branchName: String): Report = {
     val report = ModelFactory.aReportWithLeaks(repoName).copy(branch = branchName)

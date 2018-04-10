@@ -24,6 +24,7 @@ import play.api.mvc.{Action, BodyParser}
 import scala.concurrent.Future
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
+import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
@@ -46,11 +47,6 @@ class WebhookController @Inject()(
             Ok(toJson(WebhookResponse("Tag commit ignored")))
           )
 
-        case payloadDetails: PayloadDetails if payloadDetails.deleted =>
-          Future.successful(
-            Ok(toJson(WebhookResponse("Tag commit ignored")))
-          )
-
         case payloadDetails: PayloadDetails =>
           scanningService.queueRequest(payloadDetails).map { _ =>
             Ok(toJson(WebhookResponse("Request successfully queued")))
@@ -59,8 +55,9 @@ class WebhookController @Inject()(
         case deleteBranchEvent: DeleteBranchEvent =>
           reportsService
             .clearReportsAfterBranchDeleted(deleteBranchEvent)
-            .map { reports =>
-              Ok(toJson(WebhookResponse(s"${reports.size} report(s) successfully cleared")))
+            .map {
+              case ClearingReportsResult(_, reports) =>
+                Ok(toJson(WebhookResponse(s"${reports.size} report(s) successfully cleared")))
             }
 
         case ZenMessage(_) =>
