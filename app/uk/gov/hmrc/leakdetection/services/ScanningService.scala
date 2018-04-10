@@ -17,7 +17,6 @@
 package uk.gov.hmrc.leakdetection.services
 
 import javax.inject.{Inject, Singleton}
-
 import org.apache.commons.io.FileUtils
 import play.api.{Configuration, Logger}
 import play.api.libs.iteratee.{Enumerator, Iteratee}
@@ -25,12 +24,16 @@ import play.api.libs.iteratee.{Enumerator, Iteratee}
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
+import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.time.DateTimeUtils
 import uk.gov.hmrc.workitem.{Failed, WorkItem}
+
+import scala.util.control.NonFatal
+
 @Singleton
 class ScanningService @Inject()(
   configuration: Configuration,
@@ -46,8 +49,6 @@ class ScanningService @Inject()(
   lazy val privateMatchingEngine = new RegexMatchingEngine(cfg.allRules.privateRules, cfg.maxLineLength)
   lazy val publicMatchingEngine  = new RegexMatchingEngine(cfg.allRules.publicRules, cfg.maxLineLength)
 
-  def now = DateTimeUtils
-
   def scanRepository(
     repository: String,
     branch: String,
@@ -57,24 +58,35 @@ class ScanningService @Inject()(
     authorName: String,
     archiveUrl: String)(implicit hc: HeaderCarrier): Future[Report] =
     try {
-      val explodedZipDir = artifactService
-        .getZipAndExplode(cfg.githubSecrets.personalAccessToken, archiveUrl, branch)
-
-      try {
-        val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
-        val results             = regexMatchingEngine.run(explodedZipDir)
-        val report              = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
-        for {
-          _ <- reportsService.saveReport(report)
-          _ <- alertingService.alert(report)
-        } yield {
-          report
-        }
-      } finally {
-        FileUtils.deleteDirectory(explodedZipDir)
+      artifactService.getZipAndExplode(cfg.githubSecrets.personalAccessToken, archiveUrl, branch) match {
+        case Left(BranchNotFound(_)) =>
+          reportsService
+            .clearReportsAfterBranchDeleted(
+              DeleteBranchEvent(
+                repositoryName = repository,
+                authorName     = authorName,
+                branchRef      = branch,
+                deleted        = true,
+                repositoryUrl  = repositoryUrl)
+            )
+            .map(_.reportSolvingProblems)
+        case Right(ExplodedZip(dir)) =>
+          try {
+            val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
+            val results             = regexMatchingEngine.run(dir)
+            val report              = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
+            for {
+              _ <- reportsService.saveReport(report)
+              _ <- alertingService.alert(report)
+            } yield {
+              report
+            }
+          } finally {
+            FileUtils.deleteDirectory(dir)
+          }
       }
     } catch {
-      case e: RuntimeException => Future.failed(e)
+      case NonFatal(e) => Future.failed(e)
     }
 
   def queueRequest(p: PayloadDetails)(implicit hc: HeaderCarrier): Future[Boolean] =
@@ -100,7 +112,7 @@ class ScanningService @Inject()(
       archiveUrl    = request.archiveUrl
     ).flatMap(report => githubRequestsQueueRepository.complete(workItem.id).map(_ => acc :+ report))
       .recover {
-        case e =>
+        case NonFatal(e) =>
           Logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
           githubRequestsQueueRepository.markAs(workItem.id, Failed)
           acc

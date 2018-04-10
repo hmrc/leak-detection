@@ -35,6 +35,7 @@ import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report, ReportId, Report
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
+import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import uk.gov.hmrc.workitem.{Failed, ProcessingStatus}
 
@@ -205,7 +206,7 @@ class ScanningServiceSpec
       queue.count(global).futureValue          shouldBe 0
     }
 
-    "recover from exceptions expaning the zip and mark the item as failed" in new TestSetup {
+    "recover from exceptions expanding the zip and mark the item as failed" in new TestSetup {
       scanningService.queueRequest(request).futureValue
       queue.count(global).futureValue shouldBe 1
 
@@ -403,7 +404,7 @@ class ScanningServiceSpec
       artifactService.getZipAndExplode(
         is(githubSecrets.personalAccessToken),
         is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        is("master"))).thenReturn(unzippedTmpDirectory.toFile)
+        is("master"))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any())(any())).thenReturn(Future.successful(()))
