@@ -62,7 +62,7 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
         attachments = Seq(Attachment(s"$leakDetectionUri/reports/${report._id}")))
 
     val alertChannelNotification =
-      if (sendToAlertChannel) Some(notificationForAlertChannel(messageDetails)) else None
+      if (sendToAlertChannel) Some(notificationForAlertChannel(report, messageDetails)) else None
 
     val teamChannelNotification =
       if (sendToTeamChannels) Some(notificationForTeam(report, messageDetails)) else None
@@ -78,19 +78,21 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
         messageDetails = messageDetails)
 
     SlackNotificationAndErrorMessage(
-      request  = request,
-      errorMsg = s"Error sending message to team channels of user: '${report.author}'")
+      request    = request,
+      errorMsg   = s"Error sending message to team channels of user: '${report.author}'",
+      commitInfo = CommitInfo.fromReport(report))
   }
 
-  private def notificationForAlertChannel(messageDetails: MessageDetails) = {
+  private def notificationForAlertChannel(report: Report, messageDetails: MessageDetails) = {
     val request =
       SlackNotificationRequest(
         channelLookup  = ChannelLookup.SlackChannel(slackChannels = List(defaultAlertChannel)),
         messageDetails = messageDetails)
 
     SlackNotificationAndErrorMessage(
-      request  = request,
-      errorMsg = s"Error sending message to default alert channel: '$defaultAlertChannel'")
+      request    = request,
+      errorMsg   = s"Error sending message to default alert channel: '$defaultAlertChannel'",
+      commitInfo = CommitInfo.fromReport(report))
   }
 
   private def sendSlackMessage(slackNotificationAndErrorMessage: SlackNotificationAndErrorMessage)(
@@ -99,11 +101,13 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
       case SlackNotificationResponse(errors) if errors.isEmpty => ()
       case SlackNotificationResponse(errors) =>
         Logger.error(s"Errors sending notification: ${errors.mkString("[", ",", "]")}")
-        alertAdminsIfNoSlackChannelFound(errors)
-      case _ => Logger.error(slackNotificationAndErrorMessage.errorMsg)
+        alertAdminsIfNoSlackChannelFound(errors, slackNotificationAndErrorMessage.commitInfo)
+      case _ =>
+        Logger.error(
+          s"error: ${slackNotificationAndErrorMessage.errorMsg}, commitInfo: ${slackNotificationAndErrorMessage.commitInfo}")
     }
 
-  private def alertAdminsIfNoSlackChannelFound(errors: List[SlackNotificationError])(
+  private def alertAdminsIfNoSlackChannelFound(errors: List[SlackNotificationError], commitInfo: CommitInfo)(
     implicit hc: HeaderCarrier): Future[Unit] = {
     val errorsToAlert = errors.filter { error =>
       error.code == "teams_not_found_for_github_username" || error.code == "slack_channel_not_found"
@@ -117,7 +121,7 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
               text        = "LDS failed to deliver slack message to intended channels. Errors are shown below:",
               username    = username,
               iconEmoji   = iconEmoji,
-              attachments = errorsToAlert.map(e => Attachment(e.message))
+              attachments = errorsToAlert.map(e => Attachment(e.message)) :+ commitInfo.toAttachment
             )
           )
         )
@@ -130,8 +134,37 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
 
 final case class SlackNotificationAndErrorMessage(
   request: SlackNotificationRequest,
-  errorMsg: String
+  errorMsg: String,
+  commitInfo: CommitInfo
 )
+
+final case class CommitInfo(
+  author: String,
+  branch: String,
+  repository: String
+) {
+  def toAttachment: Attachment =
+    Attachment(
+      text = "",
+      fields = List(
+        Attachment.Field(title = "author", value     = author, short     = true),
+        Attachment.Field(title = "branch", value     = branch, short     = true),
+        Attachment.Field(title = "repository", value = repository, short = true)
+      )
+    )
+
+  override def toString: String =
+    s"author: $author, branch: $branch, repository: $repository"
+}
+
+object CommitInfo {
+  def fromReport(report: Report): CommitInfo =
+    CommitInfo(
+      author     = report.author,
+      branch     = report.branch,
+      repository = report.repoName
+    )
+}
 
 final case class SlackConfig(
   enabled: Boolean,
