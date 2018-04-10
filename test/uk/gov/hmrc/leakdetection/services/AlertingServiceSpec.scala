@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import org.mockito.ArgumentCaptor
 import org.mockito.Matchers.{any, eq => is}
 import org.mockito.Mockito.{reset, times, verify, verifyZeroInteractions, when}
 import org.scalatest.concurrent.ScalaFutures
@@ -30,6 +31,7 @@ import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.time.DateTimeUtils
+import scala.collection.JavaConverters._
 
 class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar {
 
@@ -153,6 +155,35 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
         verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(any())(any())
         reset(slackConnector)
       }
+
+    }
+
+    "include error context details in the slack message for the admin channel" in new Fixtures {
+      val errorRequiringAlert = SlackNotificationError("slack_channel_not_found", message = "")
+
+      val report = ModelFactory.aReportWithLeaks()
+
+      when(slackConnector.sendMessage(any())(any()))
+        .thenReturn(Future.successful(SlackNotificationResponse(errors = List(errorRequiringAlert))))
+
+      service.alert(report).futureValue
+
+      val slackMessageCaptor = ArgumentCaptor.forClass(classOf[SlackNotificationRequest])
+
+      val expectedNumberOfMessages = 4 // 1 for alert channel, 1 for team channel, since both failed 2 further for admin channel
+
+      verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(slackMessageCaptor.capture())(any())
+
+      val values = slackMessageCaptor.getAllValues.asScala
+
+      assert(
+        values.exists(_.messageDetails.attachments.exists(_.fields == List(
+          Attachment.Field(title = "author", value     = report.author, short   = true),
+          Attachment.Field(title = "branch", value     = report.branch, short   = true),
+          Attachment.Field(title = "repository", value = report.repoName, short = true)
+        ))))
+
+      reset(slackConnector)
 
     }
 

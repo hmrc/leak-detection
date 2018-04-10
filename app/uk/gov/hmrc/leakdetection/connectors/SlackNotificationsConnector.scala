@@ -98,10 +98,21 @@ object ChannelLookup {
   }
 }
 
-final case class Attachment(text: String)
+final case class Attachment(text: String, fields: Seq[Attachment.Field] = Nil)
 
 object Attachment {
+  final case class Field(
+    title: String,
+    value: String,
+    short: Boolean
+  )
+
+  object Field {
+    implicit val format: OFormat[Field] = Json.format[Field]
+  }
+
   implicit val format: OFormat[Attachment] = Json.format[Attachment]
+
 }
 
 final case class MessageDetails(
