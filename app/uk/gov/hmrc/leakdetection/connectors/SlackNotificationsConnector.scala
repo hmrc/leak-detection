@@ -16,16 +16,19 @@
 
 package uk.gov.hmrc.leakdetection.connectors
 
+import com.google.common.io.BaseEncoding
 import javax.inject.{Inject, Singleton}
 import play.api.Mode.Mode
 import play.api.libs.json._
 import play.api.{Configuration, Environment, Logger}
-import scala.concurrent.Future
-import scala.util.control.NonFatal
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, NotFoundException}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.config.ServicesConfig
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
+
+import scala.concurrent.Future
+import scala.util.control.NonFatal
 
 @Singleton
 class SlackNotificationsConnector @Inject()(
@@ -37,18 +40,32 @@ class SlackNotificationsConnector @Inject()(
   val mode: Mode  = environment.mode
   val url: String = baseUrl("slack-notifications")
 
+  private val authorizationHeaderValue = {
+    val username = {
+      val key = "alerts.slack.basicAuth.username"
+      runModeConfiguration
+        .getString(key)
+        .getOrElse(throw new RuntimeException(s"$key not found in configuration"))
+    }
+
+    val password = {
+      val key = "alerts.slack.basicAuth.password"
+      runModeConfiguration
+        .getString(key)
+        .getOrElse(throw new RuntimeException(s"$key not found in configuration"))
+    }
+
+    s"Basic ${BaseEncoding.base64().encode(s"$username:$password".getBytes("UTF-8"))}"
+  }
+
   def sendMessage(message: SlackNotificationRequest)(implicit hc: HeaderCarrier): Future[SlackNotificationResponse] =
     http
-      .POST[SlackNotificationRequest, HttpResponse](s"$url/slack-notifications/notification", message)
-      .map { httpResponse =>
-        val body = httpResponse.body
-        Json.parse(body).validate[SlackNotificationResponse] match {
-          case JsSuccess(slackResponse, _) => slackResponse
-          case JsError(errors) =>
-            throw new Exception(s"Error parsing response from slack-notifications: $errors, response body was: $body")
-
-        }
-      }
+      .POST[SlackNotificationRequest, SlackNotificationResponse](s"$url/slack-notifications/notification", message)(
+        implicitly,
+        implicitly,
+        hc.copy(authorization = Some(Authorization(authorizationHeaderValue))),
+        implicitly
+      )
       .recoverWith {
         case NonFatal(ex) =>
           Logger.error(s"Unable to notify ${message.channelLookup} on Slack", ex)
