@@ -5,10 +5,10 @@ object AppDependencies {
 
   val compile = Seq(
     "uk.gov.hmrc"           %% "play-reactivemongo" % "6.2.0",
-    "uk.gov.hmrc"           %% "bootstrap-play-25"  % "1.7.0",
+    "uk.gov.hmrc"           %% "bootstrap-play-26"  % "0.7.0",
     "uk.gov.hmrc"           %% "play-ui"            % "7.17.0",
-    "uk.gov.hmrc"           %% "metrix"             % "2.0.0",
-    "uk.gov.hmrc"           %% "work-item-repo"     % "5.2.0",
+    "uk.gov.hmrc"           %% "metrix"             % "2.0.0-3-g48b8866",
+    "uk.gov.hmrc"           %% "work-item-repo"     % "5.2.0-8-g1e1fb03",
     "uk.gov.hmrc"           %% "play-scheduling"    % "4.1.0",
     "com.github.pureconfig" %% "pureconfig"         % "0.8.0",
     "org.zeroturnaround"    % "zt-zip"              % "1.10",
