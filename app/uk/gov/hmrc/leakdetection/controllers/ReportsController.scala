@@ -19,18 +19,20 @@ package uk.gov.hmrc.leakdetection.controllers
 import com.google.inject.Inject
 import javax.inject.Singleton
 import play.api.libs.json.Json
-import play.api.mvc.Action
+import play.api.mvc.{Action, AnyContent, InjectedController}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.ReportId
 import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.leakdetection.views.html
-import uk.gov.hmrc.play.bootstrap.controller.BaseController
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
+import uk.gov.hmrc.play.bootstrap.controller.BackendController
 
 @Singleton
-class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: ReportsService) extends BaseController {
+class ReportsController @Inject()(
+  configLoader: ConfigLoader,
+  reportsService: ReportsService
+) extends BackendController with InjectedController {
 
-  def repositories = Action.async { implicit request =>
+  def repositories: Action[AnyContent] = Action.async { implicit request =>
     reportsService.getRepositories.map { repoNames =>
       render {
         case Accepts.Html() => Ok(html.repo_list(repoNames))
@@ -39,17 +41,17 @@ class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: Re
     }
   }
 
-  def reportsForRepository(repoName: String) = Action.async { implicit request =>
+  def reportsForRepository(repoName: String): Action[AnyContent] = Action.async { implicit request =>
     reportsService.getLatestReportsForEachBranch(repoName).map { reports =>
       Ok(html.reports_for_repo(repoName, reports))
     }
   }
 
-  def redirectToRepositories = Action {
+  def redirectToRepositories: Action[AnyContent] = Action {
     Redirect(routes.ReportsController.repositories())
   }
 
-  def showReport(reportId: ReportId) = Action.async { implicit request =>
+  def showReport(reportId: ReportId): Action[AnyContent] = Action.async { implicit request =>
     reportsService.getReport(reportId).map { maybeReport =>
       maybeReport
         .map { r =>

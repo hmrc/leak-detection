@@ -17,10 +17,9 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import javax.inject.{Inject, Singleton}
-
 import org.joda.time.{DateTime, Duration}
 import play.api.Configuration
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.{Format, JsObject, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.bson.BSONObjectID
 import reactivemongo.play.json.ImplicitBSONHandlers._
@@ -33,7 +32,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object MongoPayloadDetailsFormats {
   implicit val pf = Json.format[PayloadDetails]
-  val formats     = WorkItem.workItemMongoFormat[PayloadDetails]
+  val formats: Format[WorkItem[PayloadDetails]] = WorkItem.workItemMongoFormat[PayloadDetails]
 }
 
 @Singleton
@@ -43,7 +42,8 @@ class GithubRequestsQueueRepository @Inject()(
     extends WorkItemRepository[PayloadDetails, BSONObjectID](
       "githubRequestsQueue",
       reactiveMongoComponent.mongoConnector.db,
-      MongoPayloadDetailsFormats.formats
+      MongoPayloadDetailsFormats.formats,
+      None
     ) {
   override def now: DateTime = DateTimeUtils.now
 
