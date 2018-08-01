@@ -17,11 +17,12 @@
 package uk.gov.hmrc.leakdetection.connectors
 
 import java.time.LocalDateTime
-import javax.inject.{Inject, Singleton}
 
+import javax.inject.{Inject, Singleton}
 import play.api.libs.json._
 import play.api.{Configuration, Environment}
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.config.ServicesConfig
 
@@ -35,25 +36,24 @@ case class Team(
   firstServiceCreationDate: Option[LocalDateTime],
   repos: Option[Map[String, Seq[String]]]
 ) {
-  def normalisedName = name.toLowerCase.replaceAll(" ", "_")
+  def normalisedName: String = name.toLowerCase.replaceAll(" ", "_")
 }
 
 object Team {
-  implicit val format = Json.format[Team]
+  implicit val format: OFormat[Team] = Json.format[Team]
 }
 
 @Singleton
 class TeamsAndRepositoriesConnector @Inject()(
   http: HttpClient,
-  override val runModeConfiguration: Configuration,
-  environment: Environment)
-    extends ServicesConfig {
-
-  override protected def mode = environment.mode
+  configuration: Configuration,
+  environment: Environment,
+  servicesConfig: ServicesConfig
+) {
 
   def teamsWithRepositories()(implicit ec: ExecutionContext): Future[Seq[Team]] = {
     implicit val hc = HeaderCarrier()
-    http.GET[Seq[Team]](s"${baseUrl("teams-and-repositories")}/api/teams_with_repositories")
+    http.GET[Seq[Team]](s"${servicesConfig.baseUrl("teams-and-repositories")}/api/teams_with_repositories")
   }
 
 }

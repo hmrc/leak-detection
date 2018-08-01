@@ -23,8 +23,8 @@ import play.api.libs.json._
 import play.api.{Configuration, Environment, Logger}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.logging.Authorization
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
-import uk.gov.hmrc.play.config.ServicesConfig
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
 import scala.concurrent.Future
@@ -33,27 +33,14 @@ import scala.util.control.NonFatal
 @Singleton
 class SlackNotificationsConnector @Inject()(
   http: HttpClient,
-  override val runModeConfiguration: Configuration,
-  environment: Environment)
-    extends ServicesConfig {
+  serviceConfig: ServicesConfig
+) {
 
-  val mode: Mode  = environment.mode
-  val url: String = baseUrl("slack-notifications")
+  val url: String = serviceConfig.baseUrl("slack-notifications")
 
   private val authorizationHeaderValue = {
-    val username = {
-      val key = "alerts.slack.basicAuth.username"
-      runModeConfiguration
-        .getString(key)
-        .getOrElse(throw new RuntimeException(s"$key not found in configuration"))
-    }
-
-    val password = {
-      val key = "alerts.slack.basicAuth.password"
-      runModeConfiguration
-        .getString(key)
-        .getOrElse(throw new RuntimeException(s"$key not found in configuration"))
-    }
+    val username = serviceConfig.getString("alerts.slack.basicAuth.username")
+    val password = serviceConfig.getString("alerts.slack.basicAuth.password")
 
     s"Basic ${BaseEncoding.base64().encode(s"$username:$password".getBytes("UTF-8"))}"
   }

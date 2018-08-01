@@ -22,13 +22,12 @@ import ammonite.ops.{Path, mkdir, tmp, write}
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json.{Format, JsValue, Json}
-import play.api.mvc.Action
+import play.api.mvc.{Action, AnyContent, InjectedController}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
-import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.controller.{BackendController, BaseController}
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 
 import scala.concurrent.Future
 
@@ -37,8 +36,8 @@ class AdminController @Inject()(
   configLoader: ConfigLoader,
   scanningService: ScanningService,
   reportsService: ReportsService,
-  httpClient: HttpClient)
-    extends BaseController {
+  httpClient: HttpClient
+) extends BackendController with InjectedController {
 
   val logger = Logger(this.getClass.getName)
 
@@ -93,7 +92,7 @@ class AdminController @Inject()(
     simulatedExplodedDir.toIO
   }
 
-  def clearCollection() = Action.async { implicit request =>
+  def clearCollection(): Action[AnyContent] = Action.async { implicit request =>
     if (configLoader.cfg.clearingCollectionEnabled) {
       reportsService.clearCollection().map { res =>
         Ok(s"ok=${res.ok}, records deleted=${res.n}, errors = ${res.writeErrors}")
@@ -103,7 +102,7 @@ class AdminController @Inject()(
     }
   }
 
-  def checkGithubRateLimits = Action.async { implicit request =>
+  def checkGithubRateLimits: Action[AnyContent] = Action.async { implicit request =>
     val authorizationHeader =
       hc.withExtraHeaders("Authorization" -> s"token ${cfg.githubSecrets.personalAccessToken}")
 
@@ -112,7 +111,7 @@ class AdminController @Inject()(
       .map(Ok(_))
   }
 
-  def stats = Action.async { implicit request =>
+  def stats: Action[AnyContent] = Action.async { implicit request =>
     reportsService.metrics.map(stats => Ok(Json.toJson(stats)))
   }
 }
