@@ -14,7 +14,7 @@ lazy val microservice = Project(appName, file("."))
   .settings(
     libraryDependencies              ++= AppDependencies.compile ++ AppDependencies.test,
     evictionWarningOptions in update := EvictionWarningOptions.default.withWarnScalaVersionEviction(false),
-    routesGenerator                  := StaticRoutesGenerator
+    routesGenerator                  := InjectedRoutesGenerator
   )
   .settings(resolvers ++= Seq(
     Resolver.bintrayRepo("hmrc", "releases"),
