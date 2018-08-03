@@ -109,8 +109,8 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
 
   private def alertAdminsIfNoSlackChannelFound(errors: List[SlackNotificationError], commitInfo: CommitInfo)(
     implicit hc: HeaderCarrier): Future[Unit] = {
-    val errorsToAlert = errors.filter { error =>
-      error.code == "teams_not_found_for_github_username" || error.code == "slack_channel_not_found"
+    val errorsToAlert = errors.filterNot { error =>
+      error.code == "repository_not_found" || error.code == "slack_error"
     }
     if (errorsToAlert.nonEmpty) {
       slackConnector

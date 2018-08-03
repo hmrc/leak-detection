@@ -139,7 +139,8 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     "send a message to the admin channel if slack notification failed because team was not on slack" in new Fixtures {
       val errorsRequiringAlerting =
-        List("teams_not_found_for_github_username", "slack_channel_not_found").map { code =>
+        List("teams_not_found_for_github_username", "slack_channel_not_found",
+          "teams_not_found_for_repository", "slack_channel_not_found_for_team_in_ump").map { code =>
           SlackNotificationError(code, message = "")
         }
 
