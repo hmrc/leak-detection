@@ -52,7 +52,7 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
 
   private def idx(field: String, indexType: IndexType) =
     collection.indexesManager
-      .ensure(Index(Seq("field" -> indexType), name = Some(s"$field-idx")))
+      .ensure(Index(Seq("field" -> indexType), name = Some(s"$field-idx"), background = true))
 
   def saveReport(report: Report): Future[Unit] =
     insert(report).map { writeResult =>
