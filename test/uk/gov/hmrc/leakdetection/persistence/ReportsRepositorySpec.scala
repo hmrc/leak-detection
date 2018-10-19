@@ -131,8 +131,14 @@ class ReportsRepositorySpec
 
   }
 
-  override def beforeEach(): Unit =
-    repo.drop.futureValue
+  override def beforeEach(): Unit = dropCollectionWithRetries()
+
+  // Sometimes dropping fails with error complaining about background operations still in progress
+  private def dropCollectionWithRetries(maxRetries: Int = 5): Unit = {
+    if (!repo.drop.futureValue && maxRetries > 0) {
+      dropCollectionWithRetries(maxRetries - 1)
+    }
+  }
 
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = 5.seconds)
