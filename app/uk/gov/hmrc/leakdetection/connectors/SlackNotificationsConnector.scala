@@ -25,16 +25,15 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.config.ServicesConfig
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
-import scala.concurrent.Future
 import scala.util.control.NonFatal
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class SlackNotificationsConnector @Inject()(
   http: HttpClient,
   override val runModeConfiguration: Configuration,
-  environment: Environment)
+  environment: Environment)(implicit ec: ExecutionContext)
     extends ServicesConfig {
 
   val mode: Mode  = environment.mode

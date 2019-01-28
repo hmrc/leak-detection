@@ -25,7 +25,6 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.http.HttpClient
 import uk.gov.hmrc.play.config.ServicesConfig
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 case class Team(
@@ -42,18 +41,14 @@ object Team {
   implicit val format = Json.format[Team]
 }
 
-@Singleton
-class TeamsAndRepositoriesConnector @Inject()(
+@Singleton class TeamsAndRepositoriesConnector @Inject()(
   http: HttpClient,
   override val runModeConfiguration: Configuration,
-  environment: Environment)
+  environment: Environment)(implicit ec: ExecutionContext)
     extends ServicesConfig {
-
   override protected def mode = environment.mode
-
   def teamsWithRepositories()(implicit ec: ExecutionContext): Future[Seq[Team]] = {
     implicit val hc = HeaderCarrier()
     http.GET[Seq[Team]](s"${baseUrl("teams-and-repositories")}/api/teams_with_repositories")
   }
-
 }

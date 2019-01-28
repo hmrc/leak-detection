@@ -29,8 +29,8 @@ import uk.gov.hmrc.lock.{ExclusiveTimePeriodLock, LockRepository}
 import uk.gov.hmrc.metrix.MetricOrchestrator
 import uk.gov.hmrc.metrix.persistence.MongoMetricRepository
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 class MetricsScheduler @Inject()(
   actorSystem: ActorSystem,
@@ -38,32 +38,30 @@ class MetricsScheduler @Inject()(
   metrics: Metrics,
   reactiveMongoComponent: ReactiveMongoComponent,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  reportsService: ReportsService) {
-
+  reportsService: ReportsService)(implicit ec: ExecutionContext) {
   private val key = "queue.metricsGauges.interval"
-  lazy val refreshIntervalMillis: Long = configuration
-    .getMilliseconds(key)
-    .getOrElse(throw new RuntimeException(s"$key not specified"))
-
+  lazy val refreshIntervalMillis: Long =
+    configuration.getMilliseconds(key).getOrElse(throw new RuntimeException(s"$key not specified"))
   implicit lazy val mongo: () => DefaultDB = reactiveMongoComponent.mongoConnector.db
-
   val lock = new ExclusiveTimePeriodLock {
     override val repo: LockRepository = new LockRepository()
     override val lockId: String       = "queue"
     override val holdLockFor          = new org.joda.time.Duration(refreshIntervalMillis)
-  }
 
+  }
   val metricOrchestrator = new MetricOrchestrator(
     metricSources    = List(githubRequestsQueueRepository, reportsService),
     lock             = lock,
     metricRepository = new MongoMetricRepository(),
     metricRegistry   = metrics.defaultRegistry
   )
-
   actorSystem.scheduler.schedule(1.minute, refreshIntervalMillis.milliseconds) {
     metricOrchestrator
       .attemptToUpdateAndRefreshMetrics()
       .map(_.andLogTheResult())
-      .recover { case e: RuntimeException => Logger.error(s"An error occurred processing metrics: ${e.getMessage}", e) }
+      .recover({
+        case e: RuntimeException =>
+          Logger.error(s"An error occurred processing metrics: ${e.getMessage}", e)
+      })
   }
 }

@@ -30,7 +30,6 @@ import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails, Repor
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.time.DateTimeUtils
 import uk.gov.hmrc.workitem.{Failed, WorkItem}
 
@@ -44,8 +43,7 @@ class ScanningService @Inject()(
   reportsService: ReportsService,
   alertingService: AlertingService,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  repoVisibilityChecker: RepoVisiblityChecker
-) {
+  repoVisibilityChecker: RepoVisiblityChecker)(implicit ec: ExecutionContext) {
 
   import configLoader.cfg
 

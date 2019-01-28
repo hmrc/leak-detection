@@ -21,7 +21,8 @@ import org.apache.commons.codec.digest.HmacUtils
 import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.Json
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails}
-import WebhookRequestValidator.isValidSignature
+
+import scala.concurrent.ExecutionContext
 
 class WebhookRequestValidatorSpec extends WordSpec with Matchers {
 
@@ -50,28 +51,32 @@ class WebhookRequestValidatorSpec extends WordSpec with Matchers {
   }
 
   "Validating payload signature" should {
-    "fail if signature invalid" in {
+    "fail if signature invalid" in new TestSetup {
       val secret           = aString()
       val payload          = aString()
       val invalidSignature = aString()
 
-      val res = isValidSignature(payload, invalidSignature, secret)
+      val res = webhookRequestValidator.isValidSignature(payload, invalidSignature, secret)
 
       withClue("Expected a failure for invalid signature") {
         res shouldBe false
       }
     }
-    "succeed if valid" in {
+    "succeed if valid" in new TestSetup {
       val secret         = aString()
       val payload        = aString()
       val validSignature = "sha1=" + HmacUtils.hmacSha1Hex(secret, payload)
 
-      val res = isValidSignature(payload, validSignature, secret)
+      val res = webhookRequestValidator.isValidSignature(payload, validSignature, secret)
 
       withClue("Expected signature validation to succeed") {
         res shouldBe true
       }
     }
+  }
+
+  trait TestSetup {
+    val webhookRequestValidator = new WebhookRequestValidator()(ExecutionContext.global)
   }
 
 }

@@ -25,10 +25,12 @@ import uk.gov.hmrc.leakdetection.model.ReportId
 import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.leakdetection.views.html
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
+import scala.concurrent.ExecutionContext
 
 @Singleton
-class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: ReportsService) extends BaseController {
+class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: ReportsService)(
+  implicit ec: ExecutionContext)
+    extends BaseController {
 
   def repositories = Action.async { implicit request =>
     reportsService.getRepositories.map { repoNames =>

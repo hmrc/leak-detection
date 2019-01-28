@@ -24,7 +24,7 @@ import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.Configuration
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.Rule
@@ -252,7 +252,7 @@ class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with 
 
     val configuration = defaultConfiguration
 
-    lazy val service = new AlertingService(configuration, slackConnector)
+    lazy val service = new AlertingService(configuration, slackConnector)(ExecutionContext.global)
 
   }
 }

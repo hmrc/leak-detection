@@ -23,12 +23,12 @@ import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.Report
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class AlertingService @Inject()(configuration: Configuration, slackConnector: SlackNotificationsConnector) {
+class AlertingService @Inject()(configuration: Configuration, slackConnector: SlackNotificationsConnector)(
+  implicit ec: ExecutionContext) {
 
   private val slackConfig: SlackConfig = {
     implicit def hint[T]: ProductHint[T] =
