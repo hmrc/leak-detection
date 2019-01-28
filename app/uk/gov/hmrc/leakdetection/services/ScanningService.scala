@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 package uk.gov.hmrc.leakdetection.services
+
+import java.io.File
 
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.io.FileUtils
@@ -41,7 +43,8 @@ class ScanningService @Inject()(
   configLoader: ConfigLoader,
   reportsService: ReportsService,
   alertingService: AlertingService,
-  githubRequestsQueueRepository: GithubRequestsQueueRepository
+  githubRequestsQueueRepository: GithubRequestsQueueRepository,
+  repoVisibilityChecker: RepoVisiblityChecker
 ) {
 
   import configLoader.cfg
@@ -78,6 +81,7 @@ class ScanningService @Inject()(
             for {
               _ <- reportsService.saveReport(report)
               _ <- alertingService.alert(report)
+              _ <- alertAboutRepoVisibility(repoName = repository, branchName = branch, authorName, dir, isPrivate)
             } yield {
               report
             }
@@ -87,6 +91,18 @@ class ScanningService @Inject()(
       }
     } catch {
       case NonFatal(e) => Future.failed(e)
+    }
+
+  private def alertAboutRepoVisibility(
+    repoName: String,
+    branchName: String,
+    author: String,
+    dir: File,
+    isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+    if (repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate) || branchName != "master") {
+      Future.successful(())
+    } else {
+      alertingService.alertAboutRepoVisibility(repoName, author)
     }
 
   def queueRequest(p: PayloadDetails)(implicit hc: HeaderCarrier): Future[Boolean] =
