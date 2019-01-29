@@ -35,6 +35,7 @@ class RepoVisiblityChecker {
       val repositoryYaml: File = new File(dir.getAbsolutePath.concat("/repository.yaml"))
 
       if (!repositoryYaml.exists()) {
+        Logger.warn("repository.yaml file not found")
         false
       } else {
         val fileContents = Source.fromFile(repositoryYaml).mkString

@@ -97,10 +97,13 @@ class ScanningService @Inject()(
     author: String,
     dir: File,
     isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate) || branchName != "master") {
-      Future.successful(())
-    } else {
+    if (!repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate) && branchName == "master") {
+      Logger.warn(
+        s"Incorrect configuration for repo $repoName on $branchName branch! File path: ${dir.getAbsolutePath}. Sending alert")
       alertingService.alertAboutRepoVisibility(repoName, author)
+    } else {
+      Logger.info(s"repo: $repoName, branch: $branchName, dir: ${dir.getAbsolutePath}. No action needed")
+      Future.successful(())
     }
 
   def queueRequest(p: PayloadDetails)(implicit hc: HeaderCarrier): Future[Boolean] =
