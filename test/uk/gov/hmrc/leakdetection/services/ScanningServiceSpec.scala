@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import java.nio.file.Files
 import ammonite.ops.Path
 import org.joda.time.{DateTime, DateTimeZone, Duration}
 import org.mockito.Matchers.{any, eq => is}
-import org.mockito.Mockito.{verify, when}
+import org.mockito.Mockito.{times, verify, when}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
@@ -37,7 +37,7 @@ import uk.gov.hmrc.leakdetection.scanner.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
-import uk.gov.hmrc.workitem.{Failed, ProcessingStatus}
+import uk.gov.hmrc.workitem.Failed
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -184,13 +184,42 @@ class ScanningServiceSpec
     }
 
     "trigger alerts" in new TestSetup {
-
       override val privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)
 
       val startIndex = file2.getName.indexOf("id_rsa")
       generateReport.inspectionResults.size shouldBe 2
       verify(alertingService).alert(any[Report])(any())
+    }
 
+    "send an alert if there were problems with repository.yaml" in new TestSetup {
+      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(true)
+
+      performScan()
+
+      verify(alertingService, times(0)).alertAboutRepoVisibility(any(), any())(any())
+    }
+
+    "not send alerts if repoVisibility correctly defined in repository.yaml" in new TestSetup {
+      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(false)
+
+      performScan()
+
+      verify(alertingService).alertAboutRepoVisibility(repoName = "repoName", author = "me")(hc)
+    }
+
+    "not send alerts if the branch is not master" in new TestSetup {
+      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(false)
+
+      override val branch = "not-master"
+      when(
+        artifactService.getZipAndExplode(
+          is(githubSecrets.personalAccessToken),
+          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+          is(branch))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+
+      performScan()
+
+      verify(alertingService, times(0)).alertAboutRepoVisibility(any(), any())(any())
     }
 
   }
@@ -223,7 +252,6 @@ class ScanningServiceSpec
     }
 
     "recover from exceptions saving a report and mark the item as failed" in new TestSetup {
-
       scanningService.queueRequest(request).futureValue
       queue.count(global).futureValue shouldBe 1
 
@@ -254,11 +282,15 @@ class ScanningServiceSpec
     val id          = ReportId.random
     implicit val hc = HeaderCarrier()
 
-    def generateReport =
+    def generateReport = performScan()
+
+    def branch = "master"
+
+    def performScan() =
       scanningService
         .scanRepository(
           repository    = "repoName",
-          branch        = "master",
+          branch        = branch,
           isPrivate     = true,
           repositoryUrl = "https://github.com/hmrc/repoName",
           commitId      = "3d9c100",
@@ -271,7 +303,7 @@ class ScanningServiceSpec
       repositoryName = "repoName",
       isPrivate      = true,
       authorName     = "me",
-      branchRef      = "master",
+      branchRef      = branch,
       repositoryUrl  = "https://github.com/hmrc/repoName",
       commitId       = "some commit id",
       archiveUrl     = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}",
@@ -348,6 +380,7 @@ class ScanningServiceSpec
           description  = "Unencrypted play.crypto.secret",
           ignoredFiles = List("/application.conf", "/test-application.conf")
         )
+
     }
 
     def relativePath(file: File) =
@@ -404,15 +437,26 @@ class ScanningServiceSpec
       artifactService.getZipAndExplode(
         is(githubSecrets.personalAccessToken),
         is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        is("master"))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+        is(branch))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any())(any())).thenReturn(Future.successful(()))
+    when(alertingService.alertAboutRepoVisibility(any(), any())(any())).thenReturn(Future.successful(()))
 
     val configuration = Configuration()
 
+    val repoVisiblityChecker = mock[RepoVisiblityChecker]
+    when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(false)
+
     lazy val scanningService =
-      new ScanningService(configuration, artifactService, configLoader, reportsService, alertingService, queue)
+      new ScanningService(
+        configuration,
+        artifactService,
+        configLoader,
+        reportsService,
+        alertingService,
+        queue,
+        repoVisiblityChecker)
   }
 
   def write(content: String, destination: File) =

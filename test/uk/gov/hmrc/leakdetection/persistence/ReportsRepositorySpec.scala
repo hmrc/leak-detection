@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,11 +134,10 @@ class ReportsRepositorySpec
   override def beforeEach(): Unit = dropCollectionWithRetries()
 
   // Sometimes dropping fails with error complaining about background operations still in progress
-  private def dropCollectionWithRetries(maxRetries: Int = 5): Unit = {
+  private def dropCollectionWithRetries(maxRetries: Int = 5): Unit =
     if (!repo.drop.futureValue && maxRetries > 0) {
       dropCollectionWithRetries(maxRetries - 1)
     }
-  }
 
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = 5.seconds)

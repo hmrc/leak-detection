@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import play.api.libs.json.JsValue
 import play.api.mvc.Results
 import play.api.test.FakeRequest
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
@@ -119,7 +119,8 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
     val reportService   = mock[ReportsService]
     val httpClient      = mock[HttpClient]
 
-    val controller = new AdminController(configLoader, scanningService, reportService, httpClient)
+    val controller =
+      new AdminController(configLoader, scanningService, reportService, httpClient)(ExecutionContext.global)
   }
 
 }

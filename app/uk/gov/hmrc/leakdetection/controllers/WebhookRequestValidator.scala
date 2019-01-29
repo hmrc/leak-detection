@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import akka.util.ByteString
 import cats.implicits._
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import javax.inject.Inject
 import javax.xml.bind.DatatypeConverter
 import play.api.libs.json.{JsValue, Json, Reads}
 import play.api.libs.streams.Accumulator
@@ -29,9 +30,10 @@ import play.api.mvc.{BodyParser, Headers, Result}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
 import uk.gov.hmrc.play.HeaderCarrierConverter
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 
-object WebhookRequestValidator {
+import scala.concurrent.ExecutionContext
+
+class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
 
   def parser(webhookSecret: String): BodyParser[GithubRequest] =
     BodyParser { rh =>

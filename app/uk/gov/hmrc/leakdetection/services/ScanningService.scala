@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 HM Revenue & Customs
+ * Copyright 2019 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import java.io.File
+
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.io.FileUtils
 import play.api.{Configuration, Logger}
@@ -28,7 +30,6 @@ import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails, Repor
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext.fromLoggingDetails
 import uk.gov.hmrc.time.DateTimeUtils
 import uk.gov.hmrc.workitem.{Failed, WorkItem}
 
@@ -41,8 +42,8 @@ class ScanningService @Inject()(
   configLoader: ConfigLoader,
   reportsService: ReportsService,
   alertingService: AlertingService,
-  githubRequestsQueueRepository: GithubRequestsQueueRepository
-) {
+  githubRequestsQueueRepository: GithubRequestsQueueRepository,
+  repoVisibilityChecker: RepoVisiblityChecker)(implicit ec: ExecutionContext) {
 
   import configLoader.cfg
 
@@ -78,6 +79,7 @@ class ScanningService @Inject()(
             for {
               _ <- reportsService.saveReport(report)
               _ <- alertingService.alert(report)
+              _ <- alertAboutRepoVisibility(repoName = repository, branchName = branch, authorName, dir, isPrivate)
             } yield {
               report
             }
@@ -87,6 +89,18 @@ class ScanningService @Inject()(
       }
     } catch {
       case NonFatal(e) => Future.failed(e)
+    }
+
+  private def alertAboutRepoVisibility(
+    repoName: String,
+    branchName: String,
+    author: String,
+    dir: File,
+    isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+    if (repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate) || branchName != "master") {
+      Future.successful(())
+    } else {
+      alertingService.alertAboutRepoVisibility(repoName, author)
     }
 
   def queueRequest(p: PayloadDetails)(implicit hc: HeaderCarrier): Future[Boolean] =
