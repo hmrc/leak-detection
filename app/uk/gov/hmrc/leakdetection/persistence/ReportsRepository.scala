@@ -17,18 +17,16 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import javax.inject.Singleton
-
 import com.google.inject.Inject
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.commands.Command
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.api.{FailoverStrategy, ReadPreference}
+import reactivemongo.api.{Cursor, FailoverStrategy, ReadPreference}
 import reactivemongo.play.json.{ImplicitBSONHandlers, JSONSerializationPack}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
@@ -95,7 +93,7 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
       )
       .sort(Json.obj("timestamp" -> -1))
       .cursor[Report](ReadPreference.primaryPreferred)
-      .collect[List]()
+      .collect[List](maxDocs = -1, err = Cursor.FailOnError[List[Report]]())
 
   def findByReportId(reportId: ReportId): Future[Option[Report]] =
     findById(reportId)

@@ -18,8 +18,8 @@ package uk.gov.hmrc.leakdetection.services
 
 import java.io.{File, PrintWriter}
 import java.nio.file.Files
-
 import ammonite.ops.Path
+import com.typesafe.config.ConfigFactory
 import org.joda.time.{DateTime, DateTimeZone, Duration}
 import org.mockito.Matchers.{any, eq => is}
 import org.mockito.Mockito.{times, verify, when}
@@ -38,7 +38,6 @@ import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import uk.gov.hmrc.workitem.Failed
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -403,7 +402,7 @@ class ScanningServiceSpec
 
     val artifactService = mock[ArtifactService]
     val reportsService  = mock[ReportsService]
-    val queue = new GithubRequestsQueueRepository(null, new ReactiveMongoComponent {
+    val queue = new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), new ReactiveMongoComponent {
       override def mongoConnector: MongoConnector = mongoConnectorForTest
     }) {
       override lazy val inProgressRetryAfter: Duration = Duration.standardHours(1)
