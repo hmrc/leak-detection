@@ -16,9 +16,11 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import com.typesafe.config.ConfigFactory
 import org.joda.time.{DateTime, Duration}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{BeforeAndAfterEach, Inspectors, LoneElement}
+import play.api.Configuration
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.ReadPreference
 import reactivemongo.bson.BSONObjectID
@@ -28,7 +30,6 @@ import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import uk.gov.hmrc.play.test.UnitSpec
 import uk.gov.hmrc.time.DateTimeUtils
 import uk.gov.hmrc.workitem.WorkItem
-
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class GithubRequestsQueueRepositorySpec
@@ -43,7 +44,7 @@ class GithubRequestsQueueRepositorySpec
   val anInstant = DateTimeUtils.now
 
   def repoAtInstant(anInstant: DateTime): GithubRequestsQueueRepository =
-    new GithubRequestsQueueRepository(null, new ReactiveMongoComponent {
+    new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), new ReactiveMongoComponent {
       override def mongoConnector: MongoConnector = mongoConnectorForTest
     }) {
       override lazy val inProgressRetryAfter: Duration = Duration.standardHours(1)
