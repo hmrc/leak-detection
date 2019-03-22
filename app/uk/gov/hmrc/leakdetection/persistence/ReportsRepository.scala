@@ -21,12 +21,12 @@ import com.google.inject.Inject
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.commands.Command
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.api.{Cursor, FailoverStrategy, ReadPreference}
-import reactivemongo.play.json.{ImplicitBSONHandlers, JSONSerializationPack}
+import reactivemongo.api.{Cursor, ReadPreference}
+import reactivemongo.play.json.ImplicitBSONHandlers
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
@@ -112,25 +112,21 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
   def howManyResolved(): Future[Int] =
     collection.count(Some(Json.obj("leakResolution" -> Json.obj("$ne" -> JsNull))))
 
-  case class AggregationResult(ok: Int, result: List[CountByRepo])
   case class CountByRepo(_id: String, count: Int)
 
   def howManyUnresolvedByRepository(): Future[Map[String, Int]] = {
 
     implicit val cr: Reads[CountByRepo]       = Json.reads[CountByRepo]
-    implicit val ar: Reads[AggregationResult] = Json.reads[AggregationResult]
 
-    val commandDoc = Json.obj(
-      "aggregate" -> "reports",
-      "pipeline" -> List(
-        Json.obj("$match" -> Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))),
-        Json.obj("$group" -> Json.obj("_id"               -> "$repoName", "count" -> Json.obj("$sum" -> 1)))
-      )
+    import reactivemongo.api.Cursor
+    import collection.BatchCommands.AggregationFramework.{Group, Match, SumAll}
+
+    val f = collection.aggregatorContext[CountByRepo](
+      Match(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))),
+      List(Group(JsString("$repoName"))( "count" -> SumAll))).
+      prepared.cursor.collect[List](-1, Cursor.FailOnError[List[CountByRepo]]()
     )
-    val runner = Command.run(JSONSerializationPack, FailoverStrategy.default)
 
-    runner(reactiveMongoComponent.mongoConnector.db(), runner.rawCommand(commandDoc))
-      .one[AggregationResult](ReadPreference.secondaryPreferred)
-      .map(_.result.map(line => line._id -> line.count).toMap)
+    f.map(_.map(line => line._id -> line.count).toMap)
   }
 }
