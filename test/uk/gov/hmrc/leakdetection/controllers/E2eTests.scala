@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.apache.commons.codec.digest.HmacUtils
+import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.{BeforeAndAfterEach, FeatureSpec, GivenWhenThen, Matchers, TestData}
 import org.scalatestplus.play.OneAppPerTest
@@ -67,7 +67,7 @@ class E2eTests
           .withBody(githubRequestPayload)
           .withHeaders(
             CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequestPayload))
+            "X-Hub-Signature" -> ("sha1=" + hmacGenerator.hmacHex(githubRequestPayload))
           )
 
       When("Leak Detection service receives a request")
@@ -99,7 +99,7 @@ class E2eTests
           .withBody(githubRequestPayload)
           .withHeaders(
             CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequestPayload))
+            "X-Hub-Signature" -> ("sha1=" + hmacGenerator.hmacHex(githubRequestPayload))
           )
 
       When("Leak Detection service receives a request")
@@ -125,7 +125,7 @@ class E2eTests
           .withBody(githubRequestPayload)
           .withHeaders(
             CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequestPayload))
+            "X-Hub-Signature" -> ("sha1=" + hmacGenerator.hmacHex(githubRequestPayload))
           )
 
       And("there is already a report with problems for a given repo/branch")
@@ -161,7 +161,7 @@ class E2eTests
           .withBody(githubRequestPayload)
           .withHeaders(
             CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + HmacUtils.hmacSha1Hex(secret, githubRequestPayload))
+            "X-Hub-Signature" -> ("sha1=" + hmacGenerator.hmacHex(githubRequestPayload))
           )
 
       val res = Helpers.route(app, signedRequest).get
@@ -198,6 +198,7 @@ class E2eTests
     PatienceConfig(timeout = 5.seconds)
 
   val secret: String = aString()
+  private val hmacGenerator = new HmacUtils(HmacAlgorithms.HMAC_SHA_1, secret)
 
   override def newAppForTest(testData: TestData): Application =
     new GuiceApplicationBuilder()

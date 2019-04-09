@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import javax.inject.Singleton
 import com.google.inject.Inject
+import javax.inject.Singleton
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.api.{Cursor, ReadPreference}
+import reactivemongo.api.{Cursor, ReadConcern, ReadPreference}
 import reactivemongo.play.json.ImplicitBSONHandlers
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
@@ -86,10 +86,11 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
 
   def findUnresolvedWithProblems(repoName: String, branch: Option[String] = None): Future[List[Report]] =
     collection
-      .find(
+      .find[JsObject, JsObject](
         hasUnresolvedErrorsSelector ++
           Json.obj("repoName" -> repoName) ++
-          branch.fold(Json.obj())(b => Json.obj("branch" -> b))
+          branch.fold(Json.obj())(b => Json.obj("branch" -> b)),
+        None
       )
       .sort(Json.obj("timestamp" -> -1))
       .cursor[Report](ReadPreference.primaryPreferred)
@@ -101,16 +102,26 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
   def getDistinctRepoNames: Future[List[String]] =
     collection
       .distinct[String, List](
-        "repoName",
-        Some(hasUnresolvedErrorsSelector)
-      )
-      .map(_.sorted)
+      key = "repoName",
+      query = Some(hasUnresolvedErrorsSelector),
+      readConcern = ReadConcern.Majority,
+      collation = None).map(_.sorted)
 
   def howManyUnresolved(): Future[Int] =
-    collection.count(Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))))
+    collection.count(
+      selector = Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))),
+      limit = None,
+      skip = 0,
+      hint = None,
+      readConcern = ReadConcern.Majority).map(_.intValue())
 
   def howManyResolved(): Future[Int] =
-    collection.count(Some(Json.obj("leakResolution" -> Json.obj("$ne" -> JsNull))))
+    collection.count(
+      selector = Some(Json.obj("leakResolution" -> Json.obj("$ne" -> JsNull))),
+      limit = None,
+      skip = 0,
+      hint = None,
+      readConcern = ReadConcern.Majority).map(_.intValue())
 
   case class CountByRepo(_id: String, count: Int)
 
@@ -118,8 +129,8 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
 
     implicit val cr: Reads[CountByRepo]       = Json.reads[CountByRepo]
 
-    import reactivemongo.api.Cursor
     import collection.BatchCommands.AggregationFramework.{Group, Match, SumAll}
+    import reactivemongo.api.Cursor
 
     val f = collection.aggregatorContext[CountByRepo](
       Match(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))),

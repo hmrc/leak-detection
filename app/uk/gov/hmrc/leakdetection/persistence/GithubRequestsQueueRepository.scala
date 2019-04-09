@@ -72,6 +72,6 @@ class GithubRequestsQueueRepository @Inject()(
   def complete(id: BSONObjectID)(implicit ec: ExecutionContext): Future[Boolean] = {
     val selector = JsObject(
       Seq("_id" -> Json.toJson(id)(ReactiveMongoFormats.objectIdFormats), "status" -> Json.toJson(InProgress)))
-    collection.remove(selector).map(_.n > 0)
+    collection.delete().one(selector).map(_.n > 0)
   }
 }
