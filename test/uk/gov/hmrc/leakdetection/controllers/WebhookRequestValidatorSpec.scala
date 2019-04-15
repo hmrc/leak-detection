@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import org.apache.commons.codec.digest.HmacUtils
+import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
 import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.Json
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails}
@@ -65,7 +65,7 @@ class WebhookRequestValidatorSpec extends WordSpec with Matchers {
     "succeed if valid" in new TestSetup {
       val secret         = aString()
       val payload        = aString()
-      val validSignature = "sha1=" + HmacUtils.hmacSha1Hex(secret, payload)
+      val validSignature = "sha1=" + new HmacUtils(HmacAlgorithms.HMAC_SHA_1, secret).hmacHex(payload)
 
       val res = webhookRequestValidator.isValidSignature(payload, validSignature, secret)
 
