@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.leakdetection.scanner
+package uk.gov.hmrc.leakdetection
 
 import ammonite.ops.{Path, mkdir, tmp, write}
 import org.scalatest.{Matchers, WordSpec}

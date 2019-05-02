@@ -20,6 +20,7 @@ import java.{util => ju}
 
 import org.yaml.snakeyaml.Yaml
 import play.api.Logger
+import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 
 import scala.collection.JavaConverters._
 import scala.io.Source
@@ -32,28 +33,39 @@ class RepoVisiblityChecker {
 
   def hasCorrectVisibilityDefined(dir: File, isPrivate: Boolean): Boolean =
     try {
-      val repositoryYaml: File = new File(dir.getAbsolutePath.concat("/repository.yaml"))
+
+      val projectRoot = FileAndDirectoryUtils.getSubdirName(dir)
+
+      val repositoryYaml: File = new File(projectRoot.getAbsolutePath.concat("/repository.yaml"))
 
       if (!repositoryYaml.exists()) {
-        Logger.warn("repository.yaml file not found")
+        Logger.warn(s"$repositoryYaml file not found")
         false
       } else {
         val fileContents = Source.fromFile(repositoryYaml).mkString
 
         type ExpectedConfigFormat = ju.Map[String, String]
 
-        new Yaml()
+        val repoVisibility = new Yaml()
           .load(fileContents)
           .asInstanceOf[ExpectedConfigFormat]
           .asScala
           .get("repoVisibility")
-          .exists { repoVisibility =>
-            if (isPrivate) {
-              repoVisibility == privateVisibilityIdentifier
+
+        repoVisibility match {
+          case Some(value) =>
+            if (isPrivate && value == privateVisibilityIdentifier) {
+              true
+            } else if (!isPrivate && value == publicVisibilityIdentifier) {
+              true
             } else {
-              repoVisibility == publicVisibilityIdentifier
+              Logger.warn(s"Invalid value of repoVisibility entry: [$value], repo privacy [$isPrivate]")
+              false
             }
-          }
+          case None =>
+            Logger.warn("Missing repoVisibility entry")
+            false
+        }
       }
     } catch {
       case NonFatal(ex) =>

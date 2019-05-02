@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 import java.nio.file.Files
 
-import ammonite.ops.{Path, tmp, write}
+import ammonite.ops.{Path, mkdir, tmp, write}
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.util.Random
@@ -37,7 +37,9 @@ class RepoVisiblityCheckerSpec extends WordSpec with Matchers {
     "confirm if repoVisibility has correct value for a public repository" in {
       val yamlFileContents = "repoVisibility: public_0C3F0CE3E6E6448FAD341E7BFA50FCD333E06A20CFF05FCACE61154DDBBADF71"
       val dir: Path        = tmp.dir()
-      write(dir / "repository.yaml", yamlFileContents)
+      val subDir: Path     = dir / "test"
+      mkdir(subDir)
+      write(subDir / "repository.yaml", yamlFileContents)
 
       val checker = new RepoVisiblityChecker()
 
@@ -47,7 +49,9 @@ class RepoVisiblityCheckerSpec extends WordSpec with Matchers {
     "confirm if repoVisibility has correct value for a private repository" in {
       val yamlFileContents = "repoVisibility: private_12E5349CFB8BBA30AF464C24760B70343C0EAE9E9BD99156345DD0852C2E0F6F"
       val dir: Path        = tmp.dir()
-      write(dir / "repository.yaml", yamlFileContents)
+      val subDir: Path     = dir / "test"
+      mkdir(subDir)
+      write(subDir / "repository.yaml", yamlFileContents)
 
       val checker = new RepoVisiblityChecker()
 
@@ -57,7 +61,9 @@ class RepoVisiblityCheckerSpec extends WordSpec with Matchers {
     "return false if the file doesn't have the repoVisibility key" in {
       val yamlFileContents = "foo: bar"
       val dir: Path        = tmp.dir()
-      write(dir / "repository.yaml", yamlFileContents)
+      val subDir: Path     = dir / "test"
+      mkdir(subDir)
+      write(subDir / "repository.yaml", yamlFileContents)
 
       val checker = new RepoVisiblityChecker()
 
@@ -67,7 +73,9 @@ class RepoVisiblityCheckerSpec extends WordSpec with Matchers {
     "return false if the repoVisibility key doesn't have a string value" in {
       val yamlFileContents = "repoVisibility: 1"
       val dir: Path        = tmp.dir()
-      write(dir / "repository.yaml", yamlFileContents)
+      val subDir: Path     = dir / "test"
+      mkdir(subDir)
+      write(subDir / "repository.yaml", yamlFileContents)
 
       val checker = new RepoVisiblityChecker()
 
