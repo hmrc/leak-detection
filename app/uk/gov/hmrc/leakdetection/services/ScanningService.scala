@@ -74,17 +74,18 @@ class ScanningService @Inject()(
         case Right(ExplodedZip(dir)) =>
           try {
             val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
-            val results             = regexMatchingEngine.run(dir)
-            val report              = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
+            val processingResult =
             for {
+              results <- Future { regexMatchingEngine.run(dir) }
+              report = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
               _ <- reportsService.saveReport(report)
               _ <- alertingService.alert(report)
               _ <- alertAboutRepoVisibility(repoName = repository, branchName = branch, authorName, dir, isPrivate)
             } yield {
               report
             }
-          } finally {
-            FileUtils.deleteDirectory(dir)
+            processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
+            processingResult
           }
       }
     } catch {
