@@ -15,7 +15,8 @@ Further reading: https://blog.acolyer.org/2019/04/08/how-bad-can-it-git-characte
 * Run `sbt "run -DgithubSecrets.personalAccessToken="bc123abc123abc123abc123abc123abc123abc123abc123` in the repository.
 * MongoDB running locally. No local authorisation required.
     * On Ubuntu (likely all Debian derivatives): `sudo apt-get install mongodb-server && sudo systemctl start mongodb` is sufficient.
-
+    * With docker compose: `make run`
+    
 ### Rules
 * In `/conf/application.conf`, modify the `allRules` section with whatever regular expressions you want.
 
