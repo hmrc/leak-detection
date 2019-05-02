@@ -33,7 +33,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
-import uk.gov.hmrc.leakdetection.scanner.FileAndDirectoryUtils._
+import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}

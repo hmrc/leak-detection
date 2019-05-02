@@ -20,6 +20,7 @@ import java.{util => ju}
 
 import org.yaml.snakeyaml.Yaml
 import play.api.Logger
+import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 
 import scala.collection.JavaConverters._
 import scala.io.Source
@@ -32,7 +33,10 @@ class RepoVisiblityChecker {
 
   def hasCorrectVisibilityDefined(dir: File, isPrivate: Boolean): Boolean =
     try {
-      val repositoryYaml: File = new File(dir.getAbsolutePath.concat("/repository.yaml"))
+
+      val projectRoot = FileAndDirectoryUtils.getSubdirName(dir)
+
+      val repositoryYaml: File = new File(projectRoot.getAbsolutePath.concat("/repository.yaml"))
 
       if (!repositoryYaml.exists()) {
         Logger.warn(s"$repositoryYaml file not found")
