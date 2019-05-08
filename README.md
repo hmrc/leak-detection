@@ -1,4 +1,4 @@
-﻿# leak-detection
+# leak-detection
 
 [![Build Status](https://travis-ci.org/hmrc/leak-detection.svg)](https://travis-ci.org/hmrc/leak-detection) [ ![Download](https://api.bintray.com/packages/hmrc/releases/leak-detection/images/download.svg) ](https://bintray.com/hmrc/releases/leak-detection/_latestVersion)
 
@@ -36,9 +36,13 @@ If the check is enabled, whenever commit is made to the repository that doesn't 
 * Ensure [sbt](https://www.scala-sbt.org/0.13/docs/Setup.html) is installed.
 * You will also need a GitHub personal access token: https://github.com/settings/tokens
     * Export the GitHub token with `export GITHUB_TOKEN=abc123abc123abc123abc123abc123abc123abc123abc123`.
-* Run `sbt "run -DgithubSecrets.personalAccessToken="bc123abc123abc123abc123abc123abc123abc123abc123` in the repository.
+* Run `sbt "run -DgithubSecrets.personalAccessToken=bc123abc123abc123abc123abc123abc123abc123abc123"` in the repository.
 * MongoDB running locally. No local authorisation required.
     * On Ubuntu (likely all Debian derivatives): `sudo apt-get install mongodb-server && sudo systemctl start mongodb` is sufficient.
+* Java requirements:
+    * This tool was tested against Java V8 and is known to fail with Java V11. Other versions currently untested.
+    * To install Java V8 on Ubuntu, if needed, run `apt install openjdk-8-jdk`
+    * If your default Java version does not support this tool, run `sudo update-alternatives --config java` and select a compatible version from the list.
 
 ### Rules
 * In `/conf/application.conf`, modify the `allRules` section with whatever regular expressions you want.
