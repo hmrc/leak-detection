@@ -7,6 +7,30 @@ Service used to find leaks in git repositories using regular expressions.
 It is worth noting here that as the service only runs periodically, leaked credentials might have already been found by unsavoury characters.  Education is the best tool not to leak secrets.
 Further reading: https://blog.acolyer.org/2019/04/08/how-bad-can-it-git-characterizing-secret-leakage-in-public-github-repositories/?-characterizing-secret-leakage-in-public-github-repositories/
 
+## Checks performed by Leak Detection Service
+Currently there are two kinds of checks performed by LDS:
+* Check for occurrence of a regular expression from the predefined set
+* Check for existence of `repository.yaml` file that contains unique fingerprint of public/private MDTP repository.
+
+### Regular expression rules
+LDS allows to create collection of rules that detect certain types of secrets that might be stored in a GIT repository. Each rule definition consist of set of properties. E.g.
+```
+ {
+      id = "cert_1"
+      scope = fileContent
+      regex = """-----(BEGIN|END).*?PRIVATE.*?-----"""
+      description = "certificates and private keys"
+      ignoredFiles = ["^\\/.*phantomjs.*", "^\\/.*xxx.*", "^\\/.*Foo.*", """/\.bar\.yml"""]
+      ignoredExtensions = ${allRules.knownBinaryFilesExtensions}
+    },
+```
+In such case the rule applies to all non-binary files (with filename extension that is not of ingoredExtensions), which match specified regex. 
+
+
+### Checking for existence of `repository.yaml` file.
+This check is performed if a configuration parameter `alerts.slack.enabledForRepoVisibility` is set to true.
+If the check is enabled, whenever commit is made to the repository that doesn't contain `repository.yaml` file or the file doesn't contain valid fingerprint, the alert will be sent.
+
 ## Testing in a local environment
 ### Requirements
 * Ensure [sbt](https://www.scala-sbt.org/0.13/docs/Setup.html) is installed.
