@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,10 @@ class ReportsService @Inject()(
       .map(_.groupBy(_.branch).map {
         case (_, reports) => reports.head
       }.toList)
+
+  def getLatestReportForMaster(repoName: String): Future[Option[Report]] =
+    reportsRepository
+    .findUnresolvedWithProblems(repoName, Some("master")).map(_.headOption)
 
   def getReport(reportId: ReportId): Future[Option[Report]] = reportsRepository.findByReportId(reportId)
 

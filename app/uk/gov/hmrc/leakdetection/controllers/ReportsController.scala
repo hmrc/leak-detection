@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 HM Revenue & Customs
+ * Copyright 2020 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,13 @@ class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: Re
     reportsService.getLatestReportsForEachBranch(repoName).map { reports =>
       Ok(html.reports_for_repo(repoName, reports))
     }
+  }
+
+  def reportForRepositoryMaster(repoName: String) = Action.async { implicit request =>
+    for {
+      findLatestMasterReport <- reportsService.getLatestReportForMaster(repoName)
+      result = findLatestMasterReport.map(report => Ok(Json.toJson(report))).getOrElse(NoContent)
+    } yield result
   }
 
   def redirectToRepositories = Action {
