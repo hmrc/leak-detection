@@ -50,7 +50,7 @@ class ReportsController @Inject()(configLoader: ConfigLoader, reportsService: Re
   def reportForRepositoryMaster(repoName: String) = Action.async { implicit request =>
     for {
       findLatestMasterReport <- reportsService.getLatestReportForMaster(repoName)
-      result = findLatestMasterReport.map(report => Ok(Json.toJson(report))).getOrElse(NoContent)
+      result = findLatestMasterReport.map(report => Ok(Json.toJson(report))).getOrElse(NotFound)
     } yield result
   }
 
