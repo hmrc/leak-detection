@@ -21,10 +21,7 @@ lazy val microservice = Project(appName, file("."))
     evictionWarningOptions in update := EvictionWarningOptions.default.withWarnScalaVersionEviction(false),
     routesGenerator := StaticRoutesGenerator
   )
-  .settings(resolvers ++= Seq(
-    Resolver.bintrayRepo("hmrc", "releases"),
-    Resolver.jcenterRepo
-  ))
+  .settings(resolvers += Resolver.jcenterRepo)
   .settings(addCompilerPlugin(scalafixSemanticdb))
   .settings(
     scalacOptions ++= List(
