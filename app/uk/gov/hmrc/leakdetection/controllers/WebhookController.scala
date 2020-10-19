@@ -19,13 +19,13 @@ package uk.gov.hmrc.leakdetection.controllers
 import javax.inject.{Inject, Singleton}
 import play.api.libs.json.Json
 import play.api.libs.json.Json.toJson
-import play.api.mvc.{Action, BodyParser}
-
+import play.api.mvc.{Action, BodyParser, ControllerComponents}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
 import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
-import uk.gov.hmrc.play.bootstrap.controller.BaseController
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -33,8 +33,9 @@ class WebhookController @Inject()(
   configLoader: ConfigLoader,
   scanningService: ScanningService,
   reportsService: ReportsService,
-  webhookRequestValidator: WebhookRequestValidator)(implicit ec: ExecutionContext)
-    extends BaseController {
+  webhookRequestValidator: WebhookRequestValidator,
+  cc: ControllerComponents)(implicit ec: ExecutionContext)
+    extends BackendController(cc) {
 
   implicit val responseF = Json.format[WebhookResponse]
 

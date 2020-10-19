@@ -28,7 +28,6 @@ import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.ReactiveRepository
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.implicitConversions
 
 @Singleton
 class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent)(implicit ec: ExecutionContext)
@@ -64,7 +63,8 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
 
   def updateReport(report: Report): Future[Unit] =
     collection
-      .update(
+      .update(ordered = false)
+      .one(
         _id(report._id),
         Report.mongoFormat.writes(report),
         upsert = false
@@ -103,7 +103,7 @@ class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent
     collection
       .distinct[String, List](
       key = "repoName",
-      query = Some(hasUnresolvedErrorsSelector),
+      selector = Some(hasUnresolvedErrorsSelector),
       readConcern = ReadConcern.Majority,
       collation = None).map(_.sorted)
 

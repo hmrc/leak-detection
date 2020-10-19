@@ -22,12 +22,12 @@ import ammonite.ops.{Path, mkdir, tmp, write}
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json.{Format, JsValue, Json}
-import play.api.mvc.Action
+import play.api.mvc.ControllerComponents
+import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
-import uk.gov.hmrc.play.bootstrap.controller.BaseController
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -36,13 +36,14 @@ class AdminController @Inject()(
   configLoader: ConfigLoader,
   scanningService: ScanningService,
   reportsService: ReportsService,
-  httpClient: HttpClient)(implicit ec: ExecutionContext)
-    extends BaseController {
+  httpClient: HttpClient,
+  cc: ControllerComponents)(implicit ec: ExecutionContext)
+    extends BackendController(cc) {
 
   val logger = Logger(this.getClass.getName)
 
-  import configLoader.cfg
   import AdminController._
+  import configLoader.cfg
 
   def rules() = Action {
     Ok(Json.toJson(cfg.allRules))

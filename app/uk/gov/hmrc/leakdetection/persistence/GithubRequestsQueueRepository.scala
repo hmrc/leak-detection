@@ -60,9 +60,7 @@ class GithubRequestsQueueRepository @Inject()(
   val failureRetryAfterProperty: String    = "queue.retryAfter"
   val inProgressRetryAfterProperty: String = failureRetryAfterProperty
 
-  lazy val retryIntervalMillis: Long = configuration
-    .getMilliseconds(failureRetryAfterProperty)
-    .getOrElse(throw new RuntimeException(s"$failureRetryAfterProperty not specified"))
+  lazy val retryIntervalMillis: Long = configuration.getMillis(failureRetryAfterProperty)
 
   override lazy val inProgressRetryAfter: Duration = Duration.millis(retryIntervalMillis)
 

@@ -17,9 +17,10 @@
 package uk.gov.hmrc.leakdetection
 
 import ammonite.ops.{Path, mkdir, tmp, write}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class FileAndDirectoryUtilsSpec extends WordSpec with Matchers {
+class FileAndDirectoryUtilsSpec extends AnyWordSpec with Matchers {
   "getPathRelativeToProjectRoot" should {
     "remove tmp dir and randomized repo name leaving just a file path relative to repo root" in {
       val dir: Path          = tmp.dir()

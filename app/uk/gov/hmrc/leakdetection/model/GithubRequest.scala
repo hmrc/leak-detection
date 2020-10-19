@@ -36,17 +36,17 @@ final case class PayloadDetails(
 
 object PayloadDetails {
   implicit val reads: Reads[PayloadDetails] = (
-    (__ \ "repository" \ "name").read[String] and
-      (__ \ "repository" \ "private").read[Boolean] and
-      (__ \ "pusher" \ "name").read[String] and
-      (__ \ "ref").read[String] and
-      (__ \ "repository" \ "url").read[String] and
-      (__ \ "after").read[String] and
+      (__ \ "repository" \ "name"       ).read[String] and
+      (__ \ "repository" \ "private"    ).read[Boolean] and
+      (__ \ "pusher" \ "name"           ).read[String] and
+      (__ \ "ref"                       ).read[String] and
+      (__ \ "repository" \ "url"        ).read[String] and
+      (__ \ "after"                     ).read[String] and
       (__ \ "repository" \ "archive_url").read[String] and
-      (__ \ "deleted").read[Boolean]
+      (__ \ "deleted"                   ).read[Boolean]
   )(PayloadDetails.apply _)
     .map(cleanBranchName)
-    .filter(ValidationError("Delete event is not valid"))(failIfDeleteBranchEvent)
+    .filter(JsonValidationError("Delete event is not valid"))(failIfDeleteBranchEvent)
 
   private def failIfDeleteBranchEvent(pd: PayloadDetails): Boolean = !pd.deleted
 
@@ -65,14 +65,14 @@ final case class DeleteBranchEvent(
 object DeleteBranchEvent {
 
   implicit val reads: Reads[DeleteBranchEvent] = (
-    (__ \ "repository" \ "name").read[String] and
-      (__ \ "pusher" \ "name").read[String] and
-      (__ \ "ref").read[String] and
-      (__ \ "deleted").read[Boolean] and
+    (__ \ "repository" \ "name" ).read[String] and
+      (__ \ "pusher" \ "name"   ).read[String] and
+      (__ \ "ref"               ).read[String] and
+      (__ \ "deleted"           ).read[Boolean] and
       (__ \ "repository" \ "url").read[String]
   )(DeleteBranchEvent.apply _)
     .map(cleanBranchName)
-    .filter(ValidationError("Not a delete event"))(_.deleted)
+    .filter(JsonValidationError("Not a delete event"))(_.deleted)
 
   def cleanBranchName(deleteBranchEvent: DeleteBranchEvent): DeleteBranchEvent =
     deleteBranchEvent.copy(branchRef = deleteBranchEvent.branchRef.stripPrefix("refs/heads/"))

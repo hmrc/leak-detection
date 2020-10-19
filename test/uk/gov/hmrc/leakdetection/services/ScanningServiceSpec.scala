@@ -18,14 +18,16 @@ package uk.gov.hmrc.leakdetection.services
 
 import java.io.{File, PrintWriter}
 import java.nio.file.Files
+
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
 import org.joda.time.{DateTime, DateTimeZone, Duration}
-import org.mockito.Matchers.{any, eq => is}
+import org.mockito.ArgumentMatchers.{any, eq => is}
 import org.mockito.Mockito.{times, verify, when}
+import org.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
 import play.api.mvc.Results
 import play.modules.reactivemongo.ReactiveMongoComponent
@@ -38,11 +40,12 @@ import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
 import uk.gov.hmrc.workitem.Failed
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class ScanningServiceSpec
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with ScalaFutures
     with MockitoSugar
@@ -224,6 +227,8 @@ class ScanningServiceSpec
   }
 
   "The service" should {
+    implicit val hc = HeaderCarrier()
+
     "process all queued requests" in new TestSetup {
       scanningService.queueRequest(request).futureValue
       queue.count(global).futureValue shouldBe 1

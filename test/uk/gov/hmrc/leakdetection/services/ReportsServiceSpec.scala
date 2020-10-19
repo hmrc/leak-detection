@@ -19,9 +19,11 @@ package uk.gov.hmrc.leakdetection.services
 import java.time.LocalDateTime
 
 import org.mockito.Mockito.when
+import org.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{BeforeAndAfterEach, GivenWhenThen, Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{BeforeAndAfterEach, GivenWhenThen}
 import play.api.Configuration
 import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
@@ -36,7 +38,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class ReportsServiceSpec
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with ScalaFutures
     with MockitoSugar

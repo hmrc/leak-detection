@@ -30,6 +30,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class AlertingService @Inject()(configuration: Configuration, slackConnector: SlackNotificationsConnector)(
   implicit ec: ExecutionContext) {
 
+  private val logger = Logger(this.getClass.getName)
+
   private val slackConfig: SlackConfig = {
     implicit def hint[T]: ProductHint[T] =
       ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
@@ -125,10 +127,10 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
     slackConnector.sendMessage(slackNotificationAndErrorMessage.request).map {
       case SlackNotificationResponse(errors) if errors.isEmpty => ()
       case SlackNotificationResponse(errors) =>
-        Logger.error(s"Errors sending notification: ${errors.mkString("[", ",", "]")}")
+        logger.error(s"Errors sending notification: ${errors.mkString("[", ",", "]")}")
         alertAdminsIfNoSlackChannelFound(errors, slackNotificationAndErrorMessage.commitInfo)
       case _ =>
-        Logger.error(
+        logger.error(
           s"error: ${slackNotificationAndErrorMessage.errorMsg}, commitInfo: ${slackNotificationAndErrorMessage.commitInfo}")
     }
 

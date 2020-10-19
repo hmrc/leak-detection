@@ -26,7 +26,6 @@ import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult
 import uk.gov.hmrc.metrix.domain.MetricSource
 
-import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 class ReportsService @Inject()(
@@ -35,8 +34,8 @@ class ReportsService @Inject()(
   configuration: Configuration)(implicit ec: ExecutionContext)
     extends MetricSource {
 
-  lazy val repositoriesToIgnore: List[String] =
-    configuration.getStringList("shared.repositories").fold(List.empty[String])(_.asScala.toList)
+  lazy val repositoriesToIgnore: Seq[String] =
+    configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 

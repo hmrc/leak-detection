@@ -28,17 +28,22 @@ import scala.io.Source
 
 object RulesExemptionParser {
 
+  private val logger = Logger(this.getClass.getName)
+
   def parseServiceSpecificExemptions(repoDir: File): List[RuleExemption] =
     try { getConfigFileContents(repoDir).map(parseYamlAsRuleExemptions).getOrElse(Nil) } catch {
       case e: RuntimeException =>
-        Logger.warn(s"Error parsing ${repoDir.getAbsolutePath}/repository.yaml. Ignoring all exemptions.", e)
+        logger.warn(s"Error parsing ${repoDir.getAbsolutePath}/repository.yaml. Ignoring all exemptions.", e)
         List.empty
     }
 
   private def getConfigFileContents(repoDir: File): Option[String] = {
     val f = new File(repoDir.getAbsolutePath + "/" + "repository.yaml")
     if (f.exists) {
-      Some(Source.fromFile(f).mkString)
+      val source = Source.fromFile(f)
+      val content = source.mkString
+      source.close()
+      Some(content)
     } else None
   }
 

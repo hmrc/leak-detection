@@ -16,9 +16,11 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class ArtifactServiceSpec extends FlatSpec with Matchers {
+
+class ArtifactServiceSpec extends AnyFlatSpec with Matchers {
 
   "Branch names" should "be url-encoded" in {
     val nonEscapedBranchName = "feature/#10_DeathToConcrete" // real life example

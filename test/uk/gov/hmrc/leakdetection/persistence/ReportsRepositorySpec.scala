@@ -16,10 +16,12 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.matchers.should.Matchers
 
 import concurrent.duration._
-import org.scalatest._
+import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{Format, JsArray, JsValue, Json}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
@@ -28,11 +30,12 @@ import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport, ReactiveRepository}
 import uk.gov.hmrc.time.DateTimeUtils
 
+import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
 class ReportsRepositorySpec
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with MongoSpecSupport
     with ScalaFutures
@@ -134,6 +137,7 @@ class ReportsRepositorySpec
   override def beforeEach(): Unit = dropCollectionWithRetries()
 
   // Sometimes dropping fails with error complaining about background operations still in progress
+  @tailrec
   private def dropCollectionWithRetries(maxRetries: Int = 5): Unit =
     if (!repo.drop.futureValue && maxRetries > 0) {
       dropCollectionWithRetries(maxRetries - 1)

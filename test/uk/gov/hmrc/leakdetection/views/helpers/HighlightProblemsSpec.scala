@@ -16,11 +16,12 @@
 
 package uk.gov.hmrc.leakdetection.views.helpers
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.model.ReportLine
 import uk.gov.hmrc.leakdetection.scanner.Match
 
-class HighlightProblemsSpec extends WordSpec with Matchers {
+class HighlightProblemsSpec extends AnyWordSpec with Matchers {
 
   "Highlighting problems" should {
     "wrap single occurrence of a detected problem in a span html tag" in {

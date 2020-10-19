@@ -17,25 +17,28 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import akka.util.Timeout
+import org.mockito.MockitoSugar
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+
 import concurrent.duration._
-import org.mockito.Mockito.when
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.Json
 import play.api.test.{FakeRequest, Helpers}
+import play.api.test.Helpers._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import uk.gov.hmrc.leakdetection.services.ReportsService
 
-class ReportsControllerSpec extends WordSpec with Matchers with MockitoSugar {
+class ReportsControllerSpec extends AnyWordSpec with Matchers with MockitoSugar {
 
-  implicit val timeout = Timeout(10.seconds)
+
 
   "Reports list" should {
 
     "be in json if 'application/json' Accept header was sent" in {
       val mockedReportsService = mock[ReportsService]
-      val controller           = new ReportsController(null, mockedReportsService)
+      val controller           = new ReportsController(null, mockedReportsService, stubControllerComponents())
       val request              = FakeRequest().withHeaders("Accept" -> "application/json")
       val repos                = List("repo1", "repo2")
       when(mockedReportsService.getRepositories).thenReturn(Future(repos))
@@ -49,7 +52,7 @@ class ReportsControllerSpec extends WordSpec with Matchers with MockitoSugar {
 
     "be in html if appropriate '*/*' Accept header was sent" in {
       val mockedReportsService = mock[ReportsService]
-      val controller           = new ReportsController(null, mockedReportsService)
+      val controller           = new ReportsController(null, mockedReportsService, stubControllerComponents())
       val request              = FakeRequest().withHeaders("Accept" -> "*/*")
       val repos                = List("repo1", "repo2")
       when(mockedReportsService.getRepositories).thenReturn(Future(repos))

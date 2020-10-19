@@ -19,17 +19,21 @@ package uk.gov.hmrc.leakdetection.scanner
 import java.io.File
 import java.nio.charset.CodingErrorAction
 
+import play.api.Logger
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.services.RulesExemptionParser
 
 import scala.io.{Codec, Source}
+import scala.util.control.NonFatal
 
 case class Result(filePath: String, scanResults: MatchedResult)
 
 class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
 
   import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
+
+  private val logger = Logger(this.getClass.getName)
 
   val fileContentScanners = createFileContentScanners(rules)
   val fileNameScanners    = createFileNameScanners(rules)
@@ -65,16 +69,25 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
         val applicableFileContentScanners = applicableScanners(fileContentScanners)
         val applicableFileNameScanners    = applicableScanners(fileNameScanners)
 
-        val contentResults: Seq[Result] = Source
-          .fromFile(file)
-          .getLines
-          .foldLeft(1 -> Seq.empty[Result]) {
-            case ((lineNumber, acc), line) =>
-              lineNumber + 1 -> (acc ++ applicableFileContentScanners.flatMap {
-                _.scanLine(line, lineNumber).map(mr => Result(filePath, mr))
-              })
-          }
-          ._2
+        val source = Source.fromFile(file)
+        val contentResults: Seq[Result] = try {
+          source.getLines
+            .foldLeft(1 -> Seq.empty[Result]) {
+              case ((lineNumber, acc), line) =>
+                lineNumber + 1 -> (acc ++ applicableFileContentScanners.flatMap {
+                  _.scanLine(line, lineNumber).map(mr => Result(filePath, mr))
+                })
+            }
+            ._2
+
+        } catch {
+          case ex: Throwable =>
+            logger.error(s"error reading $file", ex)
+            throw ex
+        } finally {
+          source.close()
+        }
+
 
         val fileNameResult: Seq[Result] = applicableFileNameScanners.flatMap {
           _.scanFileName(file.getName).map(mr => Result(filePath, mr))

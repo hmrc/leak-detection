@@ -19,6 +19,8 @@ package uk.gov.hmrc.leakdetection.persistence
 import com.typesafe.config.ConfigFactory
 import org.joda.time.{DateTime, Duration}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, Inspectors, LoneElement}
 import play.api.Configuration
 import play.modules.reactivemongo.ReactiveMongoComponent
@@ -27,13 +29,14 @@ import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
 import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
-import uk.gov.hmrc.play.test.UnitSpec
 import uk.gov.hmrc.time.DateTimeUtils
 import uk.gov.hmrc.workitem.WorkItem
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class GithubRequestsQueueRepositorySpec
-    extends UnitSpec
+    extends AnyWordSpec
+    with Matchers
     with MongoSpecSupport
     with BeforeAndAfterEach
     with ScalaFutures
@@ -55,8 +58,8 @@ class GithubRequestsQueueRepositorySpec
   lazy val repo = repoAtInstant(anInstant)
 
   override protected def beforeEach(): Unit = {
-    await(repo.drop)
-    await(repo.ensureIndexes)
+    repo.drop.futureValue
+    repo.ensureIndexes.futureValue
   }
 
   "The github request queue repository" should {

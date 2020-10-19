@@ -18,13 +18,14 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails}
 
 import scala.concurrent.ExecutionContext
 
-class WebhookRequestValidatorSpec extends WordSpec with Matchers {
+class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
 
   s"Parsing ${PayloadDetails.getClass.getName}" should {
     "succeed if all required fields are present and deleted field is 'false'" in {

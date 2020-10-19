@@ -16,12 +16,11 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import org.mockito.ArgumentCaptor
-import org.mockito.Matchers.{any, eq => is}
-import org.mockito.Mockito.{reset, times, verify, verifyZeroInteractions, when}
+import org.mockito.{ArgumentCaptor, MockitoSugar}
+import org.mockito.ArgumentMatchers.{any, eq => is}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,7 +34,7 @@ import uk.gov.hmrc.time.DateTimeUtils
 
 import scala.collection.JavaConverters._
 
-class AlertingServiceSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar {
+class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar {
 
   "The alerting service" should {
     "send alerts to both alert channel and team channel if leaks are in the report" in new Fixtures {

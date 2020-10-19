@@ -20,8 +20,10 @@ import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.{BeforeAndAfterEach, FeatureSpec, GivenWhenThen, Matchers, TestData}
-import org.scalatestplus.play.OneAppPerTest
+import org.scalatest.featurespec.AnyFeatureSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.{BeforeAndAfterEach, GivenWhenThen, TestData}
+import org.scalatestplus.play.guice.GuiceOneAppPerTest
 import play.api._
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -41,10 +43,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class E2eTests
-    extends FeatureSpec
+    extends AnyFeatureSpec
     with GivenWhenThen
     with Matchers
-    with OneAppPerTest
+    with GuiceOneAppPerTest
     with MongoSpecSupport
     with ScalaFutures
     with BeforeAndAfterEach
@@ -53,9 +55,9 @@ class E2eTests
   implicit val responseF = Json.format[WebhookResponse]
   implicit val timeout   = Timeout(10.seconds)
 
-  feature("Verifying Github commits") {
+  Feature("Verifying Github commits") {
 
-    scenario("happy path") {
+    Scenario("happy path") {
       Given("Github makes a request with all required fields incl. a link to download a zip")
       val githubStub                   = GithubStub.servingZippedFiles(List(TestZippedFile("content", "/foo/bar")))
       val payloadDetails               = aPayloadDetails.copy(archiveUrl = githubStub.archiveUrl, deleted = false)
@@ -87,7 +89,7 @@ class E2eTests
       }
     }
 
-    scenario("tags") {
+    Scenario("tags") {
 
       Given("Github makes a request where the ref indicates a tag")
       val githubRequestPayload: String =
@@ -114,7 +116,7 @@ class E2eTests
 
     }
 
-    scenario("Delete branch event") {
+    Scenario("Delete branch event") {
       Given("Github makes a request representing a delete branch event")
       val requestPayload               = aPayloadDetails.copy(deleted = true)
       val githubRequestPayload: String = asJson(requestPayload)
@@ -143,7 +145,7 @@ class E2eTests
 
     }
 
-    scenario("Processing a branch that no longer exists") {
+    Scenario("Processing a branch that no longer exists") {
       Given("Github will return 404 when an attempt is made to download a zip")
       val githubStub = GithubStub.serving404
 
