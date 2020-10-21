@@ -4,26 +4,21 @@ import sbt._
 object AppDependencies {
 
   val compile = Seq(
-    "uk.gov.hmrc"           %% "bootstrap-backend-play-27" % "2.23.0",
+    "uk.gov.hmrc"           %% "bootstrap-backend-play-27"  % "2.23.0",
     "uk.gov.hmrc"           %% "play-ui"                    % "8.12.0-play-27",
     "uk.gov.hmrc"           %% "metrix"                     % "4.7.0-play-27",
     "uk.gov.hmrc"           %% "work-item-repo"             % "7.10.0-play-27",
-    /*
-     * metrix & work-item-repo depend on simple-reactivemongo but the play-25 branches are no longer maintained.
-     * We add an explicit dependency below to force a version uplift.
-     * This can be removed upon uplifting this project to Play 2.7
-     */
-    "uk.gov.hmrc"           %% "simple-reactivemongo" % "7.30.0-play-27",
-    "uk.gov.hmrc"           %% "play-scheduling"      % "7.4.0-play-26",
-    "com.github.pureconfig" %% "pureconfig"           % "0.8.0",
-    "org.zeroturnaround"    % "zt-zip"                % "1.10",
-    "commons-lang"          % "commons-lang"          % "2.6",
-    "commons-io"            % "commons-io"            % "2.5",
-    "org.scalaj"            %% "scalaj-http"          % "2.3.0",
-    "org.typelevel"         %% "cats-core"            % "0.9.0",
-    "org.yaml"              % "snakeyaml"             % "1.17",
-    "com.lihaoyi"           %% "pprint"               % "0.5.3",
-    "com.lihaoyi"           %% "ammonite-ops"         % "1.0.3"
+    "uk.gov.hmrc"           %% "simple-reactivemongo"       % "7.30.0-play-27",
+    "uk.gov.hmrc"           %% "play-scheduling"            % "7.4.0-play-26",
+    "com.github.pureconfig" %% "pureconfig"                 % "0.8.0",
+    "org.zeroturnaround"    % "zt-zip"                      % "1.10",
+    "commons-lang"          % "commons-lang"                % "2.6",
+    "commons-io"            % "commons-io"                  % "2.5",
+    "org.scalaj"            %% "scalaj-http"                % "2.3.0",
+    "org.typelevel"         %% "cats-core"                  % "0.9.0",
+    "org.yaml"              % "snakeyaml"                   % "1.17",
+    "com.lihaoyi"           %% "pprint"                     % "0.5.3",
+    "com.lihaoyi"           %% "ammonite-ops"               % "1.0.3"
   )
 
   val test = Seq(
