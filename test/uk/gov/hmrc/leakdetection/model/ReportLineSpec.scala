@@ -15,13 +15,14 @@
  */
 
 package uk.gov.hmrc.leakdetection.model
-
-import org.scalatest.{FreeSpec, Matchers, OptionValues}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.OptionValues
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.controllers.AdminController
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
 
-class ReportLineSpec extends FreeSpec with Matchers with OptionValues {
+class ReportLineSpec extends AnyFreeSpec with Matchers with OptionValues {
 
   "ReportLine" - {
     "when creating directly" - {

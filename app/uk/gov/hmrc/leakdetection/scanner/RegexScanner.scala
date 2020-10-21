@@ -49,7 +49,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
 
   def scanLine(line: String, lineNumber: Int): Option[MatchedResult] =
     line match {
-      case (Extractor(lineText, matches)) =>
+      case Extractor(lineText, matches) =>
         Some(
           ensureLengthIsBelowLimit(
             MatchedResult(

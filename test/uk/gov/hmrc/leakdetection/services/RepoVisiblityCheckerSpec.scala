@@ -18,11 +18,12 @@ package uk.gov.hmrc.leakdetection.services
 import java.nio.file.Files
 
 import ammonite.ops.{Path, mkdir, tmp, write}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.Random
 
-class RepoVisiblityCheckerSpec extends WordSpec with Matchers {
+class RepoVisiblityCheckerSpec extends AnyWordSpec with Matchers {
 
   "repositoryYamlChecker" should {
 

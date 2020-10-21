@@ -17,11 +17,12 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import ammonite.ops.{tmp, write}
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FreeSpec, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.leakdetection.config.Rule
 
-class RegexMatchingEngineSpec extends FreeSpec with MockitoSugar with Matchers {
+class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matchers {
 
   "run" - {
     "should scan all the files in all subdirectories and return a report with correct file paths" in {

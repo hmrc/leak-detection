@@ -115,12 +115,13 @@
                 </tr>
                 </thead>
                     <tbody>
-                        @leakFrequencies.map { case (ResolvedLeak(id, descr), count) =>
-                        <tr>
-                            <td>@if(id.isEmpty) { n/a } else { @id } </td>
-                            <td>@descr</td>
-                            <td>@count</td>
-                        </tr>
+                        @leakFrequencies.map { case (ResolvedLeak(id:String, descr:String), count) =>{
+                                <tr>
+                                    <td>@if( id.isEmpty ){ n/a } else { @id } </td>
+                                    <td>@descr</td>
+                                    <td>@count</td>
+                                </tr>
+                          }
                         }
                     </tbody>
             </table>

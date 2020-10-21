@@ -32,25 +32,30 @@ class ScanRepositoriesScheduler @Inject()(
   configuration: Configuration,
   scanningService: ScanningService)(implicit ec: ExecutionContext)
     extends ExclusiveScheduledJob {
+
+  private val logger = Logger(this.getClass.getName)
+
   override def name: String = "scanner"
+
   override def executeInMutex(implicit ec: ExecutionContext): Future[Result] =
     scanningService.scanAll.map(reports => Result(s"Processed ${reports.size} github requests"))
+
   private def durationFromConfig(propertyKey: String): FiniteDuration = {
     val key = s"scheduling.$name.$propertyKey"
-    configuration
-      .getMilliseconds(key)
-      .getOrElse(throw new IllegalStateException(s"Config key $key missing"))
-      .milliseconds
+    configuration.get[FiniteDuration](key)
   }
+
   lazy val initialDelay: FiniteDuration = durationFromConfig("initialDelay")
+
   lazy val interval: FiniteDuration     = durationFromConfig("interval")
+
   actorSystem.scheduler.schedule(initialDelay, interval) {
-    Logger.info("Scheduled scanning job triggered")
+    logger.info("Scheduled scanning job triggered")
     execute.onComplete({
       case Success(Result(message)) =>
-        Logger.info(s"Completed scanning job: $message")
+        logger.info(s"Completed scanning job: $message")
       case Failure(throwable) =>
-        Logger.error(s"Exception running scanning job", throwable)
+        logger.error(s"Exception running scanning job", throwable)
     })
   }
 

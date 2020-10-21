@@ -15,22 +15,20 @@
  */
 
 package uk.gov.hmrc.leakdetection.connectors
-
-import org.mockito.ArgumentCaptor
-import org.mockito.Matchers.any
-import org.mockito.Mockito.when
+import org.mockito.ArgumentMatchers.any
+import org.mockito.{ArgumentCaptor, MockitoSugar}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import play.api.{Configuration, Environment}
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
 import uk.gov.hmrc.http.logging.Authorization
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class SlackNotificationsConnectorSpec extends WordSpec with Matchers with MockitoSugar with ScalaFutures {
+class SlackNotificationsConnectorSpec extends AnyWordSpec with Matchers with MockitoSugar with ScalaFutures {
   "Connector" should {
     "use basic auth" in {
       val httpClient       = mock[HttpClient]
@@ -38,7 +36,7 @@ class SlackNotificationsConnectorSpec extends WordSpec with Matchers with Mockit
       val hc               = HeaderCarrier(authorization = None)
       val expectedResponse = SlackNotificationResponse(errors = Nil)
 
-      val argumentCaptor = ArgumentCaptor.forClass(classOf[HeaderCarrier])
+      val argumentCaptor:ArgumentCaptor[HeaderCarrier] = ArgumentCaptor.forClass(classOf[HeaderCarrier])
       when(
         httpClient
           .POST[SlackNotificationRequest, SlackNotificationResponse](any(), any(), any())(
@@ -56,7 +54,7 @@ class SlackNotificationsConnectorSpec extends WordSpec with Matchers with Mockit
           "microservice.services.slack-notifications.port" -> 80
         )
 
-      val connector = new SlackNotificationsConnector(httpClient, configuration, Environment.simple())
+      val connector = new SlackNotificationsConnector(httpClient, configuration, new ServicesConfig(configuration))
 
       val slackMessage =
         SlackNotificationRequest(

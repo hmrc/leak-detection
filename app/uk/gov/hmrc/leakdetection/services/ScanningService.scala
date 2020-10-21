@@ -47,6 +47,8 @@ class ScanningService @Inject()(
 
   import configLoader.cfg
 
+  val logger = Logger(getClass)
+
   lazy val privateMatchingEngine = new RegexMatchingEngine(cfg.allRules.privateRules, cfg.maxLineLength)
   lazy val publicMatchingEngine  = new RegexMatchingEngine(cfg.allRules.publicRules, cfg.maxLineLength)
 
@@ -72,9 +74,8 @@ class ScanningService @Inject()(
             )
             .map(_.reportSolvingProblems)
         case Right(ExplodedZip(dir)) =>
-          try {
-            val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
-            val processingResult =
+          val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
+          val processingResult =
             for {
               results <- Future { regexMatchingEngine.run(dir) }
               report = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
@@ -84,9 +85,8 @@ class ScanningService @Inject()(
             } yield {
               report
             }
-            processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
-            processingResult
-          }
+          processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
+          processingResult
       }
     } catch {
       case NonFatal(e) => Future.failed(e)
@@ -100,11 +100,11 @@ class ScanningService @Inject()(
     isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
     if (branchName == "master") {
       if (!repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate)) {
-        Logger.warn(
+        logger.warn(
           s"Incorrect configuration for repo $repoName on $branchName branch! File path: ${dir.getAbsolutePath}. Sending alert")
         alertingService.alertAboutRepoVisibility(repoName, author)
       } else {
-        Logger.info(s"repo: $repoName, branch: $branchName, dir: ${dir.getAbsolutePath}. No action needed")
+        logger.info(s"repo: $repoName, branch: $branchName, dir: ${dir.getAbsolutePath}. No action needed")
         Future.successful(())
       }
     } else {
@@ -135,7 +135,7 @@ class ScanningService @Inject()(
     ).flatMap(report => githubRequestsQueueRepository.complete(workItem.id).map(_ => acc :+ report))
       .recover {
         case NonFatal(e) =>
-          Logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
+          logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
           githubRequestsQueueRepository.markAs(workItem.id, Failed)
           acc
       }

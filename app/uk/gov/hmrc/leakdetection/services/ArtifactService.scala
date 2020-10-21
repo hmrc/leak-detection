@@ -27,15 +27,11 @@ import org.zeroturnaround.zip.ZipUtil
 import play.api.Logger
 import scalaj.http._
 
-import cats.implicits._
-
-import scala.language.postfixOps
-
 class ArtifactService @Inject()(metrics: Metrics) {
 
   import ArtifactService._
 
-  val logger = Logger("ArtifactManager")
+  private val logger = Logger(this.getClass.getName)
 
   private lazy val registry = metrics.defaultRegistry
 

@@ -17,23 +17,24 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import org.joda.time.{DateTime, DateTimeZone}
-import org.mockito.Matchers.{any, eq => is}
-import org.mockito.Mockito._
+import org.mockito.ArgumentMatchers.{any, eq => eqTo}
+import org.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.JsValue
 import play.api.mvc.Results
 import play.api.test.FakeRequest
+import uk.gov.hmrc.http.HttpClient
 
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
 
-class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
+
+class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
 
   import play.api.test.Helpers._
 
@@ -48,13 +49,13 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
 
           when(
             scanningService.scanRepository(
-              is("repoName"),
-              is("master"),
-              is(isPrivate),
-              is("https://github.com/hmrc/repoName"),
-              is("n/a"),
-              is("n/a"),
-              is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+              eqTo("repoName"),
+              eqTo("master"),
+              eqTo(isPrivate),
+              eqTo("https://github.com/hmrc/repoName"),
+              eqTo("n/a"),
+              eqTo("n/a"),
+              eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
             )(any()))
             .thenReturn(
               Future.successful(Report(id, "repoName", "someUrl", "n/a", "master", now, "n/a", Seq.empty, None)))
@@ -72,13 +73,13 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
 
           when(
             scanningService.scanRepository(
-              is("repoName"),
-              is("master"),
-              is(isPrivate),
-              is("https://github.com/hmrc/repoName"),
-              is("n/a"),
-              is("n/a"),
-              is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+              eqTo("repoName"),
+              eqTo("master"),
+              eqTo(isPrivate),
+              eqTo("https://github.com/hmrc/repoName"),
+              eqTo("n/a"),
+              eqTo("n/a"),
+              eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
             )(any()))
             .thenReturn(Future.successful(Report(
               id,
@@ -120,7 +121,7 @@ class AdminControllerSpec extends WordSpec with Matchers with ScalaFutures with 
     val httpClient      = mock[HttpClient]
 
     val controller =
-      new AdminController(configLoader, scanningService, reportService, httpClient)(ExecutionContext.global)
+      new AdminController(configLoader, scanningService, reportService, httpClient, stubControllerComponents())(ExecutionContext.global)
   }
 
 }

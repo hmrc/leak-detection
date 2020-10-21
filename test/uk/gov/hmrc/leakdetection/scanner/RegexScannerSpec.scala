@@ -16,10 +16,11 @@
 
 package uk.gov.hmrc.leakdetection.scanner
 
-import org.scalatest.{FreeSpec, Matchers}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.leakdetection.config.Rule
 
-class RegexScannerSpec extends FreeSpec with Matchers {
+class RegexScannerSpec extends AnyFreeSpec with Matchers {
 
   "scanning file content" - {
     "should look for a regex in a given text" - {

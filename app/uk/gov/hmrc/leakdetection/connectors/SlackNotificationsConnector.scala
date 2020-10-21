@@ -18,13 +18,11 @@ package uk.gov.hmrc.leakdetection.connectors
 
 import com.google.common.io.BaseEncoding
 import javax.inject.{Inject, Singleton}
-import play.api.Mode.Mode
 import play.api.libs.json._
 import play.api.{Configuration, Environment, Logger}
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
 import uk.gov.hmrc.http.logging.Authorization
-import uk.gov.hmrc.play.bootstrap.http.HttpClient
-import uk.gov.hmrc.play.config.ServicesConfig
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.util.control.NonFatal
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,25 +30,26 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class SlackNotificationsConnector @Inject()(
   http: HttpClient,
-  override val runModeConfiguration: Configuration,
-  environment: Environment)(implicit ec: ExecutionContext)
-    extends ServicesConfig {
+  runModeConfiguration: Configuration,
+  servicesConfig: ServicesConfig,
+  )(implicit ec: ExecutionContext) {
 
-  val mode: Mode  = environment.mode
-  val url: String = baseUrl("slack-notifications")
+  private val logger = Logger(this.getClass.getName)
+
+  val url: String = servicesConfig.baseUrl("slack-notifications")
 
   private val authorizationHeaderValue = {
     val username = {
       val key = "alerts.slack.basicAuth.username"
       runModeConfiguration
-        .getString(key)
+        .getOptional[String](key)
         .getOrElse(throw new RuntimeException(s"$key not found in configuration"))
     }
 
     val password = {
       val key = "alerts.slack.basicAuth.password"
       runModeConfiguration
-        .getString(key)
+        .getOptional[String](key)
         .getOrElse(throw new RuntimeException(s"$key not found in configuration"))
     }
 
@@ -67,7 +66,7 @@ class SlackNotificationsConnector @Inject()(
       )
       .recoverWith {
         case NonFatal(ex) =>
-          Logger.error(s"Unable to notify ${message.channelLookup} on Slack", ex)
+          logger.error(s"Unable to notify ${message.channelLookup} on Slack", ex)
           Future.failed(ex)
       }
 

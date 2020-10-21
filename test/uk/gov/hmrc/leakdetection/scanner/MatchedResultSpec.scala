@@ -17,11 +17,12 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import org.scalacheck.{Gen, Shrink}
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import uk.gov.hmrc.leakdetection.scanner.MatchedResult.ensureLengthIsBelowLimit
 
-class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
+class MatchedResultSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyChecks {
   implicit val noShrink: Shrink[Int] = Shrink.shrinkAny
 
   "truncated result" should {
@@ -32,6 +33,7 @@ class MatchedResultSpec extends WordSpec with Matchers with PropertyChecks {
           val strippedElipses = truncated.lineText.stripPrefix("[…] ").stripSuffix(" […]").replaceAll(" \\[…\\] ", "")
           strippedElipses.length should be <= limit
       }
+
     }
 
     "contain all matches if their total length is <= limit" in {

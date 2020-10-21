@@ -19,12 +19,13 @@ package uk.gov.hmrc.leakdetection.services
 import java.io.File
 
 import ammonite.ops.{Path, tmp, write}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.RuleExemption
 
 import scala.util.Random
 
-class RulesExemptionParserSpec extends WordSpec with Matchers {
+class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
 
   "Rules exemption service" should {
     "extract rule exemptions from a configuration file" in new Setup {

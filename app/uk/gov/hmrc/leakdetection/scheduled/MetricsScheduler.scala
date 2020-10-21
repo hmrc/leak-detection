@@ -39,9 +39,13 @@ class MetricsScheduler @Inject()(
   reactiveMongoComponent: ReactiveMongoComponent,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
   reportsService: ReportsService)(implicit ec: ExecutionContext) {
+
   private val key = "queue.metricsGauges.interval"
-  lazy val refreshIntervalMillis: Long =
-    configuration.getMilliseconds(key).getOrElse(throw new RuntimeException(s"$key not specified"))
+
+  lazy val refreshIntervalMillis: Long = configuration.getMillis(key)
+
+  val logger = Logger(this.getClass.getName)
+
   implicit lazy val mongo: () => DefaultDB = reactiveMongoComponent.mongoConnector.db
   val lock = new ExclusiveTimePeriodLock {
     override val repo: LockRepository = new LockRepository()
@@ -61,7 +65,7 @@ class MetricsScheduler @Inject()(
       .map(_.andLogTheResult())
       .recover({
         case e: RuntimeException =>
-          Logger.error(s"An error occurred processing metrics: ${e.getMessage}", e)
+          logger.error(s"An error occurred processing metrics: ${e.getMessage}", e)
       })
   }
 }
