@@ -17,13 +17,12 @@
 package uk.gov.hmrc.leakdetection.model
 
 import java.util.UUID
+import java.time.Instant
 
-import org.joda.time.DateTime
 import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.{Match, Result}
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 import uk.gov.hmrc.play.binders.SimpleObjectBinder
-import uk.gov.hmrc.time.DateTimeUtils
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -56,7 +55,7 @@ object ResolvedLeak {
 }
 
 final case class LeakResolution(
-  timestamp: DateTime,
+  timestamp: Instant,
   commitId: String,
   resolvedLeaks: Seq[ResolvedLeak]
 )
@@ -76,7 +75,7 @@ final case class Report(
   repoUrl: String,
   commitId: String,
   branch: String,
-  timestamp: DateTime,
+  timestamp: Instant,
   author: String,
   inspectionResults: Seq[ReportLine],
   leakResolution: Option[LeakResolution]
@@ -98,7 +97,7 @@ object Report {
       repoUrl   = repositoryUrl,
       commitId  = commitId,
       branch    = branch,
-      timestamp = DateTimeUtils.now,
+      timestamp = Instant.now,
       author    = authorName,
       inspectionResults = results.map { r =>
         val commitOrBranch =
@@ -114,17 +113,28 @@ object Report {
 
   implicit val format: Format[Report] = {
 
-    implicit val restDateTimeFormats  = uk.gov.hmrc.http.controllers.RestFormats.dateTimeFormats
+    implicit val restInstantWrites: Writes[Instant] =
+      new Writes[Instant] {
+        private val restDateTimeFormat =
+          // preserving millis which Instant.toString doesn't when 000
+          java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
+
+        def writes(instant: Instant): JsValue =
+          JsString(restDateTimeFormat.format(instant))
+      }
+
+
+    //implicit val restDateTimeFormats  = uk.gov.hmrc.http.controllers.RestFormats.dateTimeFormats
     implicit val leakResolutionFormat = Json.format[LeakResolution]
     Json.format[Report]
   }
 
   val mongoFormat: OFormat[Report] = {
-    implicit val mongoDateFormats = ReactiveMongoFormats.dateTimeFormats
-    implicit val reads: Reads[LeakResolution] = (
-      (__ \ "timestamp").read[DateTime] and
-        (__ \ "commitId").read[String] and
-        (__ \ "resolvedLeaks").readNullable[Seq[ResolvedLeak]].map(_.getOrElse(Seq.empty[ResolvedLeak]))
+    implicit val mongoDateFormats = MongoJavatimeFormats.instantFormats
+    implicit val reads: Reads[LeakResolution] =
+      ( (__ \ "timestamp").read[Instant]
+      ~ (__ \ "commitId").read[String]
+      ~ (__ \ "resolvedLeaks").readNullable[Seq[ResolvedLeak]].map(_.getOrElse(Seq.empty[ResolvedLeak]))
     )(LeakResolution.apply _)
 
     implicit val writes: OWrites[LeakResolution] = Json.writes[LeakResolution]

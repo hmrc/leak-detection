@@ -16,11 +16,11 @@
 
 package uk.gov.hmrc.leakdetection
 
-import org.joda.time.{DateTime, DateTimeZone}
+import java.time.Instant
 
 trait IncreasingTimestamps {
-  val increasingTimestamp: () => DateTime = {
-    var t = DateTime.now(DateTimeZone.UTC)
+  val increasingTimestamp: () => Instant = {
+    var t = Instant.now()
     () =>
       {
         t = t.plusSeconds(1)

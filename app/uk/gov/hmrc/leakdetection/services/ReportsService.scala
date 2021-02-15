@@ -18,7 +18,6 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import play.api.Configuration
-import reactivemongo.api.commands.WriteResult
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._

@@ -8,9 +8,7 @@ object AppDependencies {
   val compile = Seq(
     "uk.gov.hmrc"           %% "bootstrap-backend-play-27"         % "2.23.0",
     "uk.gov.hmrc"           %% "play-ui"                           % "8.12.0-play-27",
-    "uk.gov.hmrc"           %% "metrix"                            % "4.7.0-play-27",
     "uk.gov.hmrc.mongo"     %% "hmrc-mongo-work-item-repo-play-27" % hmrcMongoVersion, // TODO rename to work-item-repo-play-27? the organisation alredy include mongo...
-    //"uk.gov.hmrc"           %% "play-scheduling-play-27"    % "7.10.0",
     "com.github.pureconfig" %% "pureconfig"                        % "0.8.0",
     "org.zeroturnaround"    %  "zt-zip"                            % "1.14",
     "commons-lang"          %  "commons-lang"                      % "2.6",

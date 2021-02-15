@@ -17,12 +17,10 @@
 package uk.gov.hmrc.leakdetection.services
 
 import java.io.File
-import java.time.Instant
 
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.io.FileUtils
 import play.api.{Configuration, Logger}
-import play.api.libs.iteratee.{Enumerator, Iteratee}
 
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -43,7 +41,8 @@ class ScanningService @Inject()(
   reportsService: ReportsService,
   alertingService: AlertingService,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  repoVisibilityChecker: RepoVisiblityChecker)(implicit ec: ExecutionContext) {
+  repoVisibilityChecker: RepoVisiblityChecker
+)(implicit ec: ExecutionContext) {
 
   import configLoader.cfg
 
@@ -114,14 +113,17 @@ class ScanningService @Inject()(
   def queueRequest(p: PayloadDetails): Future[Boolean] =
     githubRequestsQueueRepository.pushNew(p).map(_ => true)
 
-  def scanAll(implicit ec: ExecutionContext): Future[Seq[Report]] = {
-    val pullWorkItems: Enumerator[WorkItem[PayloadDetails]] =
-      Enumerator.generateM(githubRequestsQueueRepository.pullOutstanding)
-    val processWorkItems = Iteratee.foldM(Seq.empty[Report]) { scanOneItemAndMarkAsComplete }
-    pullWorkItems.run(processWorkItems)
+  def scanAll(implicit ec: ExecutionContext): Future[Int] = {
+    def processNext(acc: Int): Future[Int] =
+      githubRequestsQueueRepository.pullOutstanding.flatMap {
+        case None     => Future.successful(acc)
+        case Some(wi) => scanOneItemAndMarkAsComplete(wi).flatMap(res => processNext(acc + res.size))
+      }
+
+    processNext(0)
   }
 
-  def scanOneItemAndMarkAsComplete(acc: Seq[Report], workItem: WorkItem[PayloadDetails]): Future[Seq[Report]] = {
+  def scanOneItemAndMarkAsComplete(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
     val request     = workItem.item
     implicit val hc = HeaderCarrier()
     scanRepository(
@@ -132,12 +134,11 @@ class ScanningService @Inject()(
       commitId      = request.commitId,
       authorName    = request.authorName,
       archiveUrl    = request.archiveUrl
-    ).flatMap(report => githubRequestsQueueRepository.complete(workItem.id).map(_ => acc :+ report))
-      .recover {
+    ).flatMap(report => githubRequestsQueueRepository.complete(workItem.id).map(_ => Some(report)))
+      .recoverWith {
         case NonFatal(e) =>
           logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
-          githubRequestsQueueRepository.markAs(workItem.id, ProcessingStatus.Failed)
-          acc
+          githubRequestsQueueRepository.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
       }
   }
 }

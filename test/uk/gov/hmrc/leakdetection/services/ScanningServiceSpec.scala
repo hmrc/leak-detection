@@ -23,14 +23,12 @@ import java.time.{Instant, Duration}
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
 import org.mockito.ArgumentMatchers.{any, eq => is}
-import org.mockito.Mockito.{times, verify, when}
 import org.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
 import play.api.mvc.Results
-import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report, ReportId, ReportLine}
@@ -38,9 +36,8 @@ import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
-import uk.gov.hmrc.mongo.MongoConnector
 import uk.gov.hmrc.mongo.test.MongoSupport
-import uk.gov.hmrc.workitem.{WorkItem, ProcessingStatus}
+import uk.gov.hmrc.workitem.ProcessingStatus
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -229,15 +226,13 @@ class ScanningServiceSpec
   }
 
   "The service" should {
-    implicit val hc = HeaderCarrier()
-
     "process all queued requests" in new TestSetup {
       scanningService.queueRequest(request).futureValue
       queue.collection.countDocuments().toFuture.futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
-      scanningService.scanAll.futureValue.size shouldBe 1
+      scanningService.scanAll.futureValue shouldBe 1
       queue.collection.countDocuments().toFuture.futureValue shouldBe 0
     }
 
@@ -253,7 +248,7 @@ class ScanningServiceSpec
           is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
           is("master"))).thenThrow(new RuntimeException("Some error"))
 
-      scanningService.scanAll.futureValue.size shouldBe 0
+      scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
     }
 
@@ -265,7 +260,7 @@ class ScanningServiceSpec
 
       when(reportsService.saveReport(any())).thenThrow(new RuntimeException("Some error"))
 
-      scanningService.scanAll.futureValue.size shouldBe 0
+      scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
     }
 
@@ -277,7 +272,7 @@ class ScanningServiceSpec
 
       when(reportsService.saveReport(any())).thenReturn(Future.failed(new RuntimeException("Some error")))
 
-      scanningService.scanAll.futureValue.size shouldBe 0
+      scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
     }
   }

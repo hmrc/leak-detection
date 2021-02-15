@@ -21,8 +21,6 @@ import javax.inject.Inject
 import akka.actor.ActorSystem
 import com.kenshoo.play.metrics.Metrics
 import play.api.{Configuration, Logger}
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.DefaultDB
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.mongo.lock.{LockRepository, MongoLockService}
@@ -35,7 +33,6 @@ class MetricsScheduler @Inject()(
   actorSystem: ActorSystem,
   configuration: Configuration,
   metrics: Metrics,
-  reactiveMongoComponent: ReactiveMongoComponent,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
   reportsService: ReportsService,
   lockRepository: LockRepository,
@@ -47,8 +44,6 @@ class MetricsScheduler @Inject()(
   lazy val refreshIntervalMillis: Long = configuration.getMillis(key)
 
   val logger = Logger(this.getClass.getName)
-
-  implicit lazy val mongo: () => DefaultDB = reactiveMongoComponent.mongoConnector.db
 
   val lock = MongoLockService(
     lockRepository = lockRepository,
