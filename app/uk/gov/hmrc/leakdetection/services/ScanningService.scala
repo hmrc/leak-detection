@@ -17,6 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 import java.io.File
+import java.time.Instant
 
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.io.FileUtils
@@ -30,8 +31,7 @@ import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails, Repor
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
-import uk.gov.hmrc.time.DateTimeUtils
-import uk.gov.hmrc.workitem.{Failed, WorkItem}
+import uk.gov.hmrc.workitem.{ProcessingStatus, WorkItem}
 
 import scala.util.control.NonFatal
 
@@ -111,8 +111,8 @@ class ScanningService @Inject()(
       Future.successful(())
     }
 
-  def queueRequest(p: PayloadDetails)(implicit hc: HeaderCarrier): Future[Boolean] =
-    githubRequestsQueueRepository.pushNew(p, DateTimeUtils.now).map(_ => true)
+  def queueRequest(p: PayloadDetails): Future[Boolean] =
+    githubRequestsQueueRepository.pushNew(p).map(_ => true)
 
   def scanAll(implicit ec: ExecutionContext): Future[Seq[Report]] = {
     val pullWorkItems: Enumerator[WorkItem[PayloadDetails]] =
@@ -136,7 +136,7 @@ class ScanningService @Inject()(
       .recover {
         case NonFatal(e) =>
           logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
-          githubRequestsQueueRepository.markAs(workItem.id, Failed)
+          githubRequestsQueueRepository.markAs(workItem.id, ProcessingStatus.Failed)
           acc
       }
   }

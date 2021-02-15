@@ -96,7 +96,7 @@ class AdminController @Inject()(
   def clearCollection() = Action.async { implicit request =>
     if (configLoader.cfg.clearingCollectionEnabled) {
       reportsService.clearCollection().map { res =>
-        Ok(s"ok=${res.ok}, records deleted=${res.n}, errors = ${res.writeErrors}")
+        Ok(s"records deleted=$res")
       }
     } else {
       Future.successful(Ok("Clearing reports is disabled."))

@@ -32,3 +32,6 @@ tmp
 .idea_modules
 bin
 nohup*
+.bloop/
+.metals/
+.vscode/

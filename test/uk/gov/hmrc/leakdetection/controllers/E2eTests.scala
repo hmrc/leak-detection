@@ -16,9 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
+import java.time.{Duration => JDuration}
+
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
+import org.mongodb.scala.bson.BsonDocument
+import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.featurespec.AnyFeatureSpec
 import org.scalatest.matchers.should.Matchers
@@ -30,15 +34,16 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.test.Helpers.CONTENT_TYPE
 import play.api.test.{FakeRequest, Helpers}
-import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.leakdetection.GithubStub.TestZippedFile
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import uk.gov.hmrc.leakdetection.model.Report
+import uk.gov.hmrc.leakdetection.model.{Report, PayloadDetails}
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, ReportsRepository}
 import uk.gov.hmrc.leakdetection.{GithubStub, ModelFactory}
-import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.test.MongoSupport
+import uk.gov.hmrc.workitem.WorkItem
 
-import scala.concurrent.Await
+import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
@@ -47,7 +52,7 @@ class E2eTests
     with GivenWhenThen
     with Matchers
     with GuiceOneAppPerTest
-    with MongoSpecSupport
+    with MongoSupport
     with ScalaFutures
     with BeforeAndAfterEach
     with Eventually {
@@ -56,7 +61,6 @@ class E2eTests
   implicit val timeout   = Timeout(10.seconds)
 
   Feature("Verifying Github commits") {
-
     Scenario("happy path") {
       Given("Github makes a request with all required fields incl. a link to download a zip")
       val githubStub                   = GithubStub.servingZippedFiles(List(TestZippedFile("content", "/foo/bar")))
@@ -84,7 +88,7 @@ class E2eTests
 
       And("New report will eventually be created after branch is processed")
       eventually {
-        val reports = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef)
+        val reports = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue
         reports.size shouldBe 1
       }
     }
@@ -113,7 +117,6 @@ class E2eTests
       And("Report should include info about why the request was skipped")
       val details = Json.parse(Helpers.contentAsString(res)) \ "details"
       details.as[String] shouldBe "Tag commit ignored"
-
     }
 
     Scenario("Delete branch event") {
@@ -131,7 +134,7 @@ class E2eTests
           )
 
       And("there is already a report with problems for a given repo/branch")
-      val _ = prepopulateReportWithProblems(requestPayload.repositoryName, requestPayload.branchRef)
+      prepopulateReportWithProblems(requestPayload.repositoryName, requestPayload.branchRef).futureValue
 
       When("LDS receives a request related to deleting a branch")
       val res = Helpers.route(app, signedRequest).get
@@ -142,7 +145,6 @@ class E2eTests
       And("response should inform which problem where cleared as a result of deleting a branch")
       val response = Json.parse(Helpers.contentAsString(res)).as[WebhookResponse]
       response.details shouldBe "1 report(s) successfully cleared"
-
     }
 
     Scenario("Processing a branch that no longer exists") {
@@ -155,7 +157,7 @@ class E2eTests
       val githubRequestPayload: String = asJson(payloadDetails)
 
       And("there is already a report with problems for a given repo/branch")
-      val _ = prepopulateReportWithProblems(payloadDetails.repositoryName, payloadDetails.branchRef)
+      prepopulateReportWithProblems(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue
 
       When("Github calls LDS")
       val signedRequest =
@@ -177,23 +179,21 @@ class E2eTests
 
       And("Eventually previous reports with problems will be cleared")
       eventually {
-        val report = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).head
+        val report = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue.head
         report.inspectionResults shouldBe 'empty
         report.leakResolution    shouldBe 'defined
       }
-
     }
-
   }
 
-  val queueRepo =
-    new GithubRequestsQueueRepository(Configuration(), new ReactiveMongoComponent {
-      override def mongoConnector: MongoConnector = mongoConnectorForTest
-    })
+  val queueRepo = new GithubRequestsQueueRepository(Configuration(), mongoComponent) {
+    override val inProgressRetryAfter: JDuration = JDuration.ofHours(1)
+    override lazy val retryIntervalMillis: Long      = 10000L
+  }
 
   override def afterEach(): Unit = {
     super.afterEach()
-    queueRepo.removeAll().futureValue
+    queueRepo.collection.deleteMany(BsonDocument()).toFuture.futureValue
   }
 
   override implicit val patienceConfig: PatienceConfig =
@@ -218,27 +218,23 @@ class E2eTests
             """
           ))
       )
-      .overrides(bind[ReactiveMongoComponent].toInstance(new ReactiveMongoComponent {
-        override def mongoConnector: MongoConnector = mongoConnectorForTest
-      }))
+      .overrides(bind[MongoComponent].toInstance(mongoComponent))
       .build
 
-  lazy val reportsRepo = new ReportsRepository(new ReactiveMongoComponent {
-    override def mongoConnector: MongoConnector = mongoConnectorForTest
-  })
+  lazy val reportsRepo = new ReportsRepository(mongoComponent)
 
-  def findReportsForRepoAndBranch(repositoryName: String, branchName: String): List[Report] =
+  def findReportsForRepoAndBranch(repositoryName: String, branchName: String): Future[Seq[Report]] =
     reportsRepo
-      .findAll()
-      .futureValue
-      .filter { report =>
-        report.repoName == repositoryName && report.branch == branchName
-      }
+      .collection
+      .find(
+        filter = Filters.and(
+                   Filters.equal("repoName", repositoryName),
+                   Filters.equal("branch", branchName)
+                 )
+      ).toFuture
 
-  def prepopulateReportWithProblems(repoName: String, branchName: String): Report = {
-    val report = ModelFactory.aReportWithLeaks(repoName).copy(branch = branchName)
-    Await.result(reportsRepo.insert(report), 5.seconds)
-    report
-  }
-
+  def prepopulateReportWithProblems(repoName: String, branchName: String): Future[Unit] =
+    reportsRepo
+      .saveReport(ModelFactory.aReportWithLeaks(repoName).copy(branch = branchName))
+      .map(_ => ())
 }

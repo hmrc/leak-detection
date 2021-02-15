@@ -24,7 +24,7 @@ import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult
-import uk.gov.hmrc.metrix.domain.MetricSource
+import uk.gov.hmrc.mongo.metrix.MetricSource
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -50,9 +50,11 @@ class ReportsService @Inject()(
     reportsRepository
     .findUnresolvedWithProblems(repoName, Some("master")).map(_.headOption)
 
-  def getReport(reportId: ReportId): Future[Option[Report]] = reportsRepository.findByReportId(reportId)
+  def getReport(reportId: ReportId): Future[Option[Report]] =
+    reportsRepository.findByReportId(reportId)
 
-  def clearCollection(): Future[WriteResult] = reportsRepository.removeAll()
+  def clearCollection(): Future[Long] =
+    reportsRepository.removeAll()
 
   def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[ClearingReportsResult] = {
     import deleteBranchEvent._
@@ -82,7 +84,7 @@ class ReportsService @Inject()(
   }
 
   private def markPreviousReportsAsResolved(report: Report): Future[List[Report]] = {
-    val outstandingProblems = reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch))
+    val outstandingProblems = reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch)).map(_.toList)
     outstandingProblems.flatMap { unresolvedReports =>
       val resolvedReports = unresolvedReports.map { unresolvedReport =>
         val leakResolution =
@@ -101,7 +103,7 @@ class ReportsService @Inject()(
 
   override def metrics(implicit ec: ExecutionContext): Future[Map[String, Int]] =
     for {
-      total      <- reportsRepository.count
+      total      <- reportsRepository.countAll()
       unresolved <- reportsRepository.howManyUnresolved()
       resolved   <- reportsRepository.howManyResolved()
       byRepo     <- reportsRepository.howManyUnresolvedByRepository()

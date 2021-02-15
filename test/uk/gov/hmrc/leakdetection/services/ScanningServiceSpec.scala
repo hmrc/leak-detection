@@ -18,10 +18,10 @@ package uk.gov.hmrc.leakdetection.services
 
 import java.io.{File, PrintWriter}
 import java.nio.file.Files
+import java.time.{Instant, Duration}
 
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
-import org.joda.time.{DateTime, DateTimeZone, Duration}
 import org.mockito.ArgumentMatchers.{any, eq => is}
 import org.mockito.Mockito.{times, verify, when}
 import org.mockito.MockitoSugar
@@ -38,11 +38,13 @@ import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
-import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
-import uk.gov.hmrc.workitem.Failed
+import uk.gov.hmrc.mongo.MongoConnector
+import uk.gov.hmrc.mongo.test.MongoSupport
+import uk.gov.hmrc.workitem.{WorkItem, ProcessingStatus}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import org.mongodb.scala.bson.BsonDocument
 
 class ScanningServiceSpec
     extends AnyWordSpec
@@ -50,7 +52,7 @@ class ScanningServiceSpec
     with ScalaFutures
     with MockitoSugar
     with Results
-    with MongoSpecSupport
+    with MongoSupport
     with IntegrationPatience {
 
   "scanRepository" should {
@@ -231,17 +233,17 @@ class ScanningServiceSpec
 
     "process all queued requests" in new TestSetup {
       scanningService.queueRequest(request).futureValue
-      queue.count(global).futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture.futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
       scanningService.scanAll.futureValue.size shouldBe 1
-      queue.count(global).futureValue          shouldBe 0
+      queue.collection.countDocuments().toFuture.futureValue shouldBe 0
     }
 
     "recover from exceptions expanding the zip and mark the item as failed" in new TestSetup {
       scanningService.queueRequest(request).futureValue
-      queue.count(global).futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture.futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
@@ -252,37 +254,37 @@ class ScanningServiceSpec
           is("master"))).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue.size shouldBe 0
-      queue.count(Failed).futureValue          shouldBe 1
+      queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
     }
 
     "recover from exceptions saving a report and mark the item as failed" in new TestSetup {
       scanningService.queueRequest(request).futureValue
-      queue.count(global).futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture.futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
       when(reportsService.saveReport(any())).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue.size shouldBe 0
-      queue.count(Failed).futureValue          shouldBe 1
+      queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
     }
 
     "recover from failures and mark the item as failed" in new TestSetup {
       scanningService.queueRequest(request).futureValue
-      queue.count(global).futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture.futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
       when(reportsService.saveReport(any())).thenReturn(Future.failed(new RuntimeException("Some error")))
 
       scanningService.scanAll.futureValue.size shouldBe 0
-      queue.count(Failed).futureValue          shouldBe 1
+      queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
     }
   }
 
   trait TestSetup {
 
-    val now         = new DateTime(0, DateTimeZone.UTC)
+    val now         = Instant.now() // new DateTime(0, DateTimeZone.UTC)
     val id          = ReportId.random
     implicit val hc = HeaderCarrier()
 
@@ -407,14 +409,12 @@ class ScanningServiceSpec
 
     val artifactService = mock[ArtifactService]
     val reportsService  = mock[ReportsService]
-    val queue = new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), new ReactiveMongoComponent {
-      override def mongoConnector: MongoConnector = mongoConnectorForTest
-    }) {
-      override lazy val inProgressRetryAfter: Duration = Duration.standardHours(1)
+    val queue = new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
+      override val inProgressRetryAfter: Duration = Duration.ofHours(1)
       override lazy val retryIntervalMillis: Long      = 10000L
     }
 
-    queue.removeAll().futureValue
+    queue.collection.deleteMany(BsonDocument()).toFuture.futureValue
 
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
     val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")

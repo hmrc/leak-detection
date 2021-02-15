@@ -20,124 +20,129 @@ import com.google.inject.Inject
 import javax.inject.Singleton
 import play.api.libs.json.Reads._
 import play.api.libs.json._
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.indexes.{Index, IndexType}
-import reactivemongo.api.{Cursor, ReadConcern, ReadPreference}
-import reactivemongo.play.json.ImplicitBSONHandlers
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
-import uk.gov.hmrc.mongo.ReactiveRepository
+import uk.gov.hmrc.mongo.MongoComponent
+import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
+import org.mongodb.scala.bson.BsonArray
+import com.mongodb.{ReadConcern, ReadPreference}
+import org.bson.conversions.Bson
+import org.mongodb.scala.bson.BsonDocument
+import uk.gov.hmrc.mongo.play.json.Codecs
+import org.mongodb.scala.model.{Aggregates, Filters, IndexModel, IndexOptions, Indexes}
 
 import scala.concurrent.{ExecutionContext, Future}
+import org.mongodb.scala.model.BsonField
 
 @Singleton
-class ReportsRepository @Inject()(reactiveMongoComponent: ReactiveMongoComponent)(implicit ec: ExecutionContext)
-    extends ReactiveRepository[Report, ReportId](
-      collectionName = "reports",
-      mongo          = reactiveMongoComponent.mongoConnector.db,
-      domainFormat   = Report.mongoFormat,
-      idFormat       = ReportId.format
-    ) {
-
-  import ImplicitBSONHandlers._
-
-  override def ensureIndexes(implicit ec: ExecutionContext): Future[Seq[Boolean]] =
-    Future.sequence(
-      Seq(
-        idx("repoName", IndexType.Hashed),
-        idx("timestamp", IndexType.Descending)
-      ))
-
-  private def idx(field: String, indexType: IndexType) =
-    collection.indexesManager
-      .ensure(Index(key = Seq(field -> indexType), name = Some(s"$field-idx"), background = true))
+class ReportsRepository @Inject()(
+  mongoComponent: MongoComponent
+)(implicit ec: ExecutionContext
+) extends PlayMongoRepository[Report](
+  collectionName = "reports",
+  mongoComponent = mongoComponent,
+  domainFormat   = Report.mongoFormat,
+  indexes        = Seq(
+                     IndexModel(Indexes.hashed("repoName"), IndexOptions().name("repoName-idx").background(true)),
+                     IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true))
+                   )
+) {
 
   def saveReport(report: Report): Future[Unit] =
-    insert(report).map { writeResult =>
-      val savedSuccessfully = writeResult.ok && writeResult.n == 1
-      if (savedSuccessfully) {
-        ()
-      } else {
-        throw new Exception(s"Error saving following report in db: $report")
-      }
-    }
+    collection.insertOne(report)
+      .toFuture()
+      .map(_ => ())
 
   def updateReport(report: Report): Future[Unit] =
     collection
-      .update(ordered = false)
-      .one(
-        _id(report._id),
-        Report.mongoFormat.writes(report),
-        upsert = false
+      .replaceOne(
+        filter      = Filters.equal("_id", report._id.value),
+        replacement = report
       )
+      .toFuture()
       .map { res =>
-        val updatedSuccessfully = res.ok && res.nModified == 1
-        if (updatedSuccessfully) {
+        if (res.getModifiedCount == 1)
           ()
-        } else {
+        else
           throw new Exception(s"Error saving following report in db: $report")
-        }
       }
 
   private val hasUnresolvedErrorsSelector =
-    Json.obj(
-      "inspectionResults" -> Json.obj("$gt" -> JsArray()),
-      "leakResolution"    -> JsNull
+    Filters.and(
+      Filters.gt("inspectionResults", BsonArray()),
+      Filters.exists("leakResolution", false)
     )
 
-  def findUnresolvedWithProblems(repoName: String, branch: Option[String] = None): Future[List[Report]] =
+  def findUnresolvedWithProblems(repoName: String, branch: Option[String] = None): Future[Seq[Report]] =
     collection
-      .find[JsObject, JsObject](
-        hasUnresolvedErrorsSelector ++
-          Json.obj("repoName" -> repoName) ++
-          branch.fold(Json.obj())(b => Json.obj("branch" -> b)),
-        None
+      .withReadPreference(ReadPreference.primary())
+      .find(
+        filter = Filters.and(
+                   hasUnresolvedErrorsSelector,
+                   Filters.equal("repoName", repoName),
+                   branch.fold[Bson](BsonDocument())(b => Filters.equal("branch", b))
+                 )
       )
-      .sort(Json.obj("timestamp" -> -1))
-      .cursor[Report](ReadPreference.primaryPreferred)
-      .collect[List](maxDocs = -1, err = Cursor.FailOnError[List[Report]]())
+      .sort(BsonDocument("timestamp" -> -1))
+      .toFuture
 
   def findByReportId(reportId: ReportId): Future[Option[Report]] =
-    findById(reportId)
+    collection.find(Filters.eq("_id", reportId.value)).headOption
 
-  def getDistinctRepoNames: Future[List[String]] =
+  def getDistinctRepoNames: Future[Seq[String]] =
     collection
-      .distinct[String, List](
-      key = "repoName",
-      selector = Some(hasUnresolvedErrorsSelector),
-      readConcern = ReadConcern.Majority,
-      collation = None).map(_.sorted)
+      .withReadConcern(ReadConcern.MAJORITY)
+      .distinct[String](
+        fieldName = "repoName",
+        filter = hasUnresolvedErrorsSelector
+      )
+      .toFuture
+      .map(_.sorted)
 
   def howManyUnresolved(): Future[Int] =
-    collection.count(
-      selector = Some(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))),
-      limit = None,
-      skip = 0,
-      hint = None,
-      readConcern = ReadConcern.Majority).map(_.intValue())
+    collection
+      .withReadConcern(ReadConcern.MAJORITY)
+      .countDocuments(
+        filter = Filters.gt("inspectionResults", BsonArray()),
+      )
+      .toFuture
+      .map(_.intValue)
 
   def howManyResolved(): Future[Int] =
-    collection.count(
-      selector = Some(Json.obj("leakResolution" -> Json.obj("$ne" -> JsNull))),
-      limit = None,
-      skip = 0,
-      hint = None,
-      readConcern = ReadConcern.Majority).map(_.intValue())
+    collection
+      .withReadConcern(ReadConcern.MAJORITY)
+      .countDocuments(
+        filter = Filters.exists("leakResolution"),
+      )
+      .toFuture
+      .map(_.intValue())
 
   case class CountByRepo(_id: String, count: Int)
 
   def howManyUnresolvedByRepository(): Future[Map[String, Int]] = {
+    implicit val cr: Reads[CountByRepo] = Json.reads[CountByRepo]
 
-    implicit val cr: Reads[CountByRepo]       = Json.reads[CountByRepo]
-
-    import collection.BatchCommands.AggregationFramework.{Group, Match, SumAll}
-    import reactivemongo.api.Cursor
-
-    val f = collection.aggregatorContext[CountByRepo](
-      Match(Json.obj("inspectionResults" -> Json.obj("$gt" -> JsArray()))),
-      List(Group(JsString("$repoName"))( "count" -> SumAll))).
-      prepared.cursor.collect[List](-1, Cursor.FailOnError[List[CountByRepo]]()
-    )
-
-    f.map(_.map(line => line._id -> line.count).toMap)
+    collection
+      .aggregate[BsonDocument](
+        pipeline = Seq[Bson](
+                     Aggregates.`match`(Filters.gt("inspectionResults", BsonArray())),
+                     Aggregates.group("$repoName", BsonField("count", BsonDocument("$sum" -> 1)))
+                   )
+      )
+      .toFuture
+     .map(
+       _.map { doc =>
+        val line = Codecs.fromBson[CountByRepo](doc)
+        line._id -> line.count
+       }.toMap
+     )
   }
+
+  def countAll(): Future[Int] =
+    collection.countDocuments().toFuture.map(_.toInt)
+
+  def removeAll(): Future[Long] =
+    collection
+      .deleteMany(filter = BsonDocument())
+      .toFuture
+      .map(_.getDeletedCount)
 }

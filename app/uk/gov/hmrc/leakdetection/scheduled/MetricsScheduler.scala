@@ -25,9 +25,8 @@ import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.api.DefaultDB
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.services.ReportsService
-import uk.gov.hmrc.lock.{ExclusiveTimePeriodLock, LockRepository}
-import uk.gov.hmrc.metrix.MetricOrchestrator
-import uk.gov.hmrc.metrix.persistence.MongoMetricRepository
+import uk.gov.hmrc.mongo.lock.{LockRepository, MongoLockService}
+import uk.gov.hmrc.mongo.metrix.{MetricOrchestrator, MetricRepository}
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
@@ -38,7 +37,10 @@ class MetricsScheduler @Inject()(
   metrics: Metrics,
   reactiveMongoComponent: ReactiveMongoComponent,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  reportsService: ReportsService)(implicit ec: ExecutionContext) {
+  reportsService: ReportsService,
+  lockRepository: LockRepository,
+  metricRepository: MetricRepository
+)(implicit ec: ExecutionContext) {
 
   private val key = "queue.metricsGauges.interval"
 
@@ -47,22 +49,24 @@ class MetricsScheduler @Inject()(
   val logger = Logger(this.getClass.getName)
 
   implicit lazy val mongo: () => DefaultDB = reactiveMongoComponent.mongoConnector.db
-  val lock = new ExclusiveTimePeriodLock {
-    override val repo: LockRepository = new LockRepository()
-    override val lockId: String       = "queue"
-    override val holdLockFor          = new org.joda.time.Duration(refreshIntervalMillis)
 
-  }
+  val lock = MongoLockService(
+    lockRepository = lockRepository,
+    lockId         = "queue",
+    ttl            = refreshIntervalMillis.milliseconds
+  )
+
   val metricOrchestrator = new MetricOrchestrator(
     metricSources    = List(githubRequestsQueueRepository, reportsService),
-    lock             = lock,
-    metricRepository = new MongoMetricRepository(),
+    lockService      = lock,
+    metricRepository = metricRepository,
     metricRegistry   = metrics.defaultRegistry
   )
+
   actorSystem.scheduler.schedule(1.minute, refreshIntervalMillis.milliseconds) {
     metricOrchestrator
-      .attemptToUpdateAndRefreshMetrics()
-      .map(_.andLogTheResult())
+      .attemptMetricRefresh()
+      .map(_.log())
       .recover({
         case e: RuntimeException =>
           logger.error(s"An error occurred processing metrics: ${e.getMessage}", e)
