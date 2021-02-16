@@ -16,45 +16,36 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import java.time.{Duration, Instant}
+import java.time.Instant
 
-import com.typesafe.config.ConfigFactory
+import org.scalatest.Inspectors
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{BeforeAndAfterEach, Inspectors, LoneElement}
-import play.api.Configuration
-import org.bson.types.ObjectId
+import play.api.{Configuration, Environment}
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
-import uk.gov.hmrc.workitem.{ProcessingStatus, WorkItem}
+import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class GithubRequestsQueueRepositorySpec
-    extends AnyWordSpec
-    with Matchers
-    with DefaultPlayMongoRepositorySupport[WorkItem[PayloadDetails]]
-    with BeforeAndAfterEach
-    with ScalaFutures
-    with Inspectors
-    with LoneElement
-    with IntegrationPatience {
+  extends AnyWordSpec
+     with Matchers
+     with DefaultPlayMongoRepositorySupport[WorkItem[PayloadDetails]]
+     with ScalaFutures
+     with Inspectors
+     with IntegrationPatience {
 
   val anInstant: Instant = Instant.now()
 
-  def repoAtInstant(anInstant: Instant): GithubRequestsQueueRepository =
-    new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
-      override val inProgressRetryAfter: Duration = Duration.ofHours(1)
-      override lazy val retryIntervalMillis: Long      = 10000L
-      override def now(): Instant                 = anInstant
+  override lazy val repository =
+    new GithubRequestsQueueRepository(Configuration.load(Environment.simple()), mongoComponent) {
+      override def now(): Instant = anInstant
     }
 
-  override lazy val repository = repoAtInstant(anInstant)
-
   "The github request queue repository" should {
-
     "ensure indexes are created" in {
       repository.collection.listIndexes().toFuture.futureValue.size shouldBe 4
     }
@@ -85,56 +76,6 @@ class GithubRequestsQueueRepositorySpec
         'receivedAt (anInstant),
         'updatedAt (anInstant)
       )
-    }
-
-    "pull ToDo github requests" in {
-      val payloadDetails = aPayloadDetails
-      repository.pushNew(payloadDetails, anInstant).futureValue
-
-      val repoLater: GithubRequestsQueueRepository = repoAtInstant(anInstant.plusMillis(1))
-
-      repoLater.pullOutstanding.futureValue.get should have(
-        'item (payloadDetails),
-        'status (ProcessingStatus.InProgress)
-      )
-    }
-
-    "pull nothing if no github requests exist" in {
-      repository.pullOutstanding.futureValue should be(None)
-    }
-
-    "not pull github requests failed after the failedBefore time" in {
-      val workItem: WorkItem[PayloadDetails] = repository.pushNew(aPayloadDetails, anInstant).futureValue
-      repository.markAs(workItem.id, ProcessingStatus.Failed).futureValue should be(true)
-
-      repository.pullOutstanding.futureValue should be(None)
-    }
-
-    "complete and delete a github requests if it is in progress" in {
-      //given
-      val workItem = repository.pushNew(aPayloadDetails, anInstant).futureValue
-      repository.markAs(workItem.id, ProcessingStatus.InProgress).futureValue should be(true)
-
-      //when
-      repository.complete(workItem.id).futureValue should be(true)
-
-      //then
-      repository.findById(workItem.id).futureValue shouldBe None
-    }
-
-    "not complete a github requests if it is not in progress" in {
-      //given
-      val workItem = repository.pushNew(aPayloadDetails, anInstant).futureValue
-
-      //when
-      repository.complete(workItem.id).futureValue should be(false)
-
-      //then
-      repository.findById(workItem.id).futureValue shouldBe Some(workItem)
-    }
-
-    "not complete a github requests if it cannot be found" in {
-      repository.complete(new ObjectId()).futureValue should be(false)
     }
   }
 }

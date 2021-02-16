@@ -29,7 +29,7 @@ import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails, Repor
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
-import uk.gov.hmrc.workitem.{ProcessingStatus, WorkItem}
+import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
 
 import scala.util.control.NonFatal
 
@@ -134,7 +134,7 @@ class ScanningService @Inject()(
       commitId      = request.commitId,
       authorName    = request.authorName,
       archiveUrl    = request.archiveUrl
-    ).flatMap(report => githubRequestsQueueRepository.complete(workItem.id).map(_ => Some(report)))
+    ).flatMap(report => githubRequestsQueueRepository.completeAndDelete(workItem.id).map(_ => Some(report)))
       .recoverWith {
         case NonFatal(e) =>
           logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)

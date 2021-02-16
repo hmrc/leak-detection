@@ -21,42 +21,37 @@ import javax.inject.Inject
 import akka.actor.ActorSystem
 import play.api.{Configuration, Logger}
 import uk.gov.hmrc.leakdetection.services.ScanningService
-import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.{FiniteDuration}
 import scala.util.{Failure, Success}
 
 class ScanRepositoriesScheduler @Inject()(
-  actorSystem: ActorSystem,
-  configuration: Configuration,
-  scanningService: ScanningService)(implicit ec: ExecutionContext)
-    extends ExclusiveScheduledJob {
-
+  actorSystem    : ActorSystem,
+  configuration  : Configuration,
+  scanningService: ScanningService
+)(implicit ec: ExecutionContext
+) {
   private val logger = Logger(this.getClass.getName)
 
-  override def name: String = "scanner"
-
-  override def executeInMutex(implicit ec: ExecutionContext): Future[Result] =
+  private def execute(implicit ec: ExecutionContext): Future[Result] =
     scanningService.scanAll.map(count => Result(s"Processed $count github requests"))
 
-  private def durationFromConfig(propertyKey: String): FiniteDuration = {
-    val key = s"scheduling.$name.$propertyKey"
-    configuration.get[FiniteDuration](key)
-  }
+  private lazy val initialDelay: FiniteDuration =
+    configuration.get[FiniteDuration]("scheduling.scanner.initialDelay")
 
-  lazy val initialDelay: FiniteDuration = durationFromConfig("initialDelay")
-
-  lazy val interval: FiniteDuration     = durationFromConfig("interval")
+  private lazy val interval: FiniteDuration =
+    configuration.get[FiniteDuration]("scheduling.scanner.interval")
 
   actorSystem.scheduler.schedule(initialDelay, interval) {
     logger.info("Scheduled scanning job triggered")
-    execute.onComplete({
+    execute.onComplete {
       case Success(Result(message)) =>
         logger.info(s"Completed scanning job: $message")
       case Failure(throwable) =>
         logger.error(s"Exception running scanning job", throwable)
-    })
+    }
   }
 
+  case class Result(message: String)
 }

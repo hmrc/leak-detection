@@ -24,57 +24,46 @@ sealed trait GithubRequest extends Product with Serializable
 
 final case class PayloadDetails(
   repositoryName: String,
-  isPrivate: Boolean,
-  authorName: String,
-  branchRef: String,
-  repositoryUrl: String,
-  commitId: String,
-  archiveUrl: String,
-  deleted: Boolean
+  isPrivate     : Boolean,
+  authorName    : String,
+  branchRef     : String,
+  repositoryUrl : String,
+  commitId      : String,
+  archiveUrl    : String,
+  deleted       : Boolean
 ) extends GithubRequest
 
 object PayloadDetails {
-  implicit val reads: Reads[PayloadDetails] = (
-      (__ \ "repository" \ "name"       ).read[String] and
-      (__ \ "repository" \ "private"    ).read[Boolean] and
-      (__ \ "pusher" \ "name"           ).read[String] and
-      (__ \ "ref"                       ).read[String] and
-      (__ \ "repository" \ "url"        ).read[String] and
-      (__ \ "after"                     ).read[String] and
-      (__ \ "repository" \ "archive_url").read[String] and
-      (__ \ "deleted"                   ).read[Boolean]
-  )(PayloadDetails.apply _)
-    .map(cleanBranchName)
-    .filter(JsonValidationError("Delete event is not valid"))(failIfDeleteBranchEvent)
-
-  private def failIfDeleteBranchEvent(pd: PayloadDetails): Boolean = !pd.deleted
-
-  def cleanBranchName(pd: PayloadDetails): PayloadDetails =
-    pd.copy(branchRef = pd.branchRef.stripPrefix("refs/heads/"))
+  val githubReads: Reads[PayloadDetails] =
+    ( (__ \ "repository" \ "name"       ).read[String]
+    ~ (__ \ "repository" \ "private"    ).read[Boolean]
+    ~ (__ \ "pusher"     \ "name"       ).read[String]
+    ~ (__ \ "ref"                       ).read[String].map(_.stripPrefix("refs/heads/"))
+    ~ (__ \ "repository" \ "url"        ).read[String]
+    ~ (__ \ "after"                     ).read[String]
+    ~ (__ \ "repository" \ "archive_url").read[String]
+    ~ (__ \ "deleted"                   ).read[Boolean]
+    )(PayloadDetails.apply _)
+      .filter(JsonValidationError("Delete event is not valid"))(!_.deleted)
 }
 
 final case class DeleteBranchEvent(
   repositoryName: String,
-  authorName: String,
-  branchRef: String,
-  deleted: Boolean,
-  repositoryUrl: String
+  authorName    : String,
+  branchRef     : String,
+  deleted       : Boolean,
+  repositoryUrl : String
 ) extends GithubRequest
 
 object DeleteBranchEvent {
-
-  implicit val reads: Reads[DeleteBranchEvent] = (
-    (__ \ "repository" \ "name" ).read[String] and
-      (__ \ "pusher" \ "name"   ).read[String] and
-      (__ \ "ref"               ).read[String] and
-      (__ \ "deleted"           ).read[Boolean] and
-      (__ \ "repository" \ "url").read[String]
-  )(DeleteBranchEvent.apply _)
-    .map(cleanBranchName)
-    .filter(JsonValidationError("Not a delete event"))(_.deleted)
-
-  def cleanBranchName(deleteBranchEvent: DeleteBranchEvent): DeleteBranchEvent =
-    deleteBranchEvent.copy(branchRef = deleteBranchEvent.branchRef.stripPrefix("refs/heads/"))
+  val githubReads: Reads[DeleteBranchEvent] =
+    ( (__ \ "repository" \ "name").read[String]
+    ~ (__ \ "pusher"     \ "name").read[String]
+    ~ (__ \ "ref"                ).read[String].map(_.stripPrefix("refs/heads/"))
+    ~ (__ \ "deleted"            ).read[Boolean]
+    ~ (__ \ "repository" \ "url" ).read[String]
+    )(DeleteBranchEvent.apply _)
+      .filter(JsonValidationError("Not a delete event"))(_.deleted)
 }
 
 /**
@@ -84,5 +73,6 @@ object DeleteBranchEvent {
 final case class ZenMessage(zen: String) extends GithubRequest
 
 object ZenMessage {
-  implicit val reads: Reads[ZenMessage] = Json.reads[ZenMessage]
+  val githubReads: Reads[ZenMessage] =
+    implicitly[Reads[String]].map(ZenMessage.apply)
 }

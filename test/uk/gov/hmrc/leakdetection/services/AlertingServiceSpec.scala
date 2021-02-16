@@ -40,7 +40,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
     "send alerts to both alert channel and team channel if leaks are in the report" in new Fixtures {
 
       val report = Report(
-        _id       = ReportId.random,
+        id        = ReportId.random,
         repoName  = "repo-name",
         repoUrl   = "https://github.com/hmrc/a-repo",
         commitId  = "123",
@@ -68,7 +68,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         text        = "Do not panic, but there is a leak!",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(Attachment(s"https://somewhere/reports/${report._id}"))
+        attachments = Seq(Attachment(s"https://somewhere/reports/${report.id}"))
       )
 
       val expectedMessageToAlertChannel = SlackNotificationRequest(
@@ -91,7 +91,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         defaultConfiguration ++ Configuration("alerts.slack.enabled" -> false)
 
       val report = Report(
-        _id       = ReportId.random,
+        id        = ReportId.random,
         repoName  = "a-repo",
         repoUrl   = "https://github.com/hmrc/a-repo",
         commitId  = "123",
@@ -121,7 +121,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
     "not send alerts to slack if there is no leaks" in new Fixtures {
 
       val report = Report(
-        _id               = ReportId.random,
+        id                = ReportId.random,
         repoName          = "a-repo",
         repoUrl           = "https://github.com/hmrc/a-repo",
         commitId          = "123",

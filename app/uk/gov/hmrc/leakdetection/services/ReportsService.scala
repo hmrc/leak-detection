@@ -56,13 +56,12 @@ class ReportsService @Inject()(
     reportsRepository.removeAll()
 
   def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[ClearingReportsResult] = {
-    import deleteBranchEvent._
     val reportSolvingProblems = Report.create(
-      repositoryName = repositoryName,
-      repositoryUrl  = repositoryUrl,
+      repositoryName =  deleteBranchEvent.repositoryName,
+      repositoryUrl  =  deleteBranchEvent.repositoryUrl,
       commitId       = "n/a (branch was deleted)",
-      authorName     = authorName,
-      branch         = branchRef,
+      authorName     =  deleteBranchEvent.authorName,
+      branch         =  deleteBranchEvent.branchRef,
       results        = Nil,
       leakResolution = None
     )
@@ -79,26 +78,27 @@ class ReportsService @Inject()(
       _ <- reportsRepository.saveReport(report)
       _ <- ifReportSolvesProblems(markPreviousReportsAsResolved(report).map(_ => ()))
     } yield ()
-
   }
 
-  private def markPreviousReportsAsResolved(report: Report): Future[List[Report]] = {
-    val outstandingProblems = reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch)).map(_.toList)
-    outstandingProblems.flatMap { unresolvedReports =>
-      val resolvedReports = unresolvedReports.map { unresolvedReport =>
-        val leakResolution =
-          LeakResolution(
-            timestamp = report.timestamp,
-            commitId  = report.commitId,
-            resolvedLeaks = unresolvedReport.inspectionResults.map { reportLine =>
-              ResolvedLeak(ruleId = reportLine.ruleId.getOrElse(""), description = reportLine.description)
-            }
-          )
-        unresolvedReport.copy(leakResolution = Some(leakResolution), inspectionResults = Nil)
-      }
-      traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport).map(_ => unresolvedReports)
-    }
-  }
+  private def markPreviousReportsAsResolved(report: Report): Future[List[Report]] =
+    for {
+      unresolvedReports <- reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch)).map(_.toList)
+      resolvedReports   =  unresolvedReports.map { unresolvedReport =>
+                             val leakResolution =
+                               LeakResolution(
+                                 timestamp = report.timestamp,
+                                 commitId  = report.commitId,
+                                 resolvedLeaks = unresolvedReport.inspectionResults.map { reportLine =>
+                                   ResolvedLeak(
+                                     ruleId      = reportLine.ruleId.getOrElse(""),
+                                     description = reportLine.description
+                                   )
+                                 }
+                               )
+                             unresolvedReport.copy(leakResolution = Some(leakResolution), inspectionResults = Nil)
+                           }
+        _               <- traverseFuturesSequentially(resolvedReports)(reportsRepository.updateReport)
+    } yield unresolvedReports
 
   override def metrics(implicit ec: ExecutionContext): Future[Map[String, Int]] =
     for {
@@ -109,11 +109,9 @@ class ReportsService @Inject()(
       teams      <- teamsAndRepositoriesConnector.teamsWithRepositories()
     } yield {
 
-      def ownedRepos(team: Team): Seq[String] = {
-
-        val allRepos = team.repos.fold(Seq.empty[String])(_.values.toSeq.flatten)
-        allRepos.filterNot(repositoriesToIgnore.contains(_))
-      }
+      def ownedRepos(team: Team): Seq[String] =
+        team.repos.fold(Seq.empty[String])(_.values.toSeq.flatten)
+          .filterNot(repositoriesToIgnore.contains)
 
       val byTeamStats = teams
         .map(t => s"reports.teams.${t.normalisedName}.unresolved" -> ownedRepos(t).map(r => byRepo.getOrElse(r, 0)).sum)

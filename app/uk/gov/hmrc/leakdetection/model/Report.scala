@@ -55,44 +55,54 @@ object ResolvedLeak {
 }
 
 final case class LeakResolution(
-  timestamp: Instant,
-  commitId: String,
+  timestamp    : Instant,
+  commitId     : String,
   resolvedLeaks: Seq[ResolvedLeak]
 )
 
 object LeakResolution {
   def create(reportWithLeaks: Report, cleanReport: Report): LeakResolution = {
-    val resolvedLeaks = reportWithLeaks.inspectionResults.map { reportLine =>
-      ResolvedLeak(ruleId = reportLine.ruleId.getOrElse(""), description = reportLine.description)
-    }
-    LeakResolution(timestamp = cleanReport.timestamp, commitId = cleanReport.commitId, resolvedLeaks = resolvedLeaks)
+    val resolvedLeaks =
+      reportWithLeaks.inspectionResults
+        .map(reportLine =>
+          ResolvedLeak(
+            ruleId      = reportLine.ruleId.getOrElse(""),
+            description = reportLine.description
+          )
+        )
+    LeakResolution(
+      timestamp     = cleanReport.timestamp,
+      commitId      = cleanReport.commitId,
+      resolvedLeaks = resolvedLeaks
+    )
   }
 }
 
 final case class Report(
-  _id: ReportId,
-  repoName: String,
-  repoUrl: String,
-  commitId: String,
-  branch: String,
-  timestamp: Instant,
-  author: String,
+  id               : ReportId,
+  repoName         : String,
+  repoUrl          : String,
+  commitId         : String,
+  branch           : String,
+  timestamp        : Instant,
+  author           : String,
   inspectionResults: Seq[ReportLine],
-  leakResolution: Option[LeakResolution]
+  leakResolution   : Option[LeakResolution]
 )
 
 object Report {
 
   def create(
     repositoryName: String,
-    repositoryUrl: String,
-    commitId: String,
-    authorName: String,
-    branch: String,
-    results: Seq[Result],
-    leakResolution: Option[LeakResolution] = None): Report =
+    repositoryUrl : String,
+    commitId      : String,
+    authorName    : String,
+    branch        : String,
+    results       : Seq[Result],
+    leakResolution: Option[LeakResolution] = None
+  ): Report =
     Report(
-      _id       = ReportId.random,
+      id        = ReportId.random,
       repoName  = repositoryName,
       repoUrl   = repositoryUrl,
       commitId  = commitId,
@@ -111,7 +121,7 @@ object Report {
       leakResolution = leakResolution
     )
 
-  implicit val format: Format[Report] = {
+  val apiFormat: Format[Report] = {
     // default Instant Reads is fine, but we want Writes to include .SSS even when 000
     val instantFormatter =
       java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
@@ -119,32 +129,41 @@ object Report {
     implicit val instantWrites: Writes[Instant] =
       (instant: Instant) => JsString(instantFormatter.format(instant))
 
-    implicit val leakResolutionFormat = Json.format[LeakResolution]
-    Json.format[Report]
+    reportFormat
   }
 
-  val mongoFormat: OFormat[Report] = {
-    implicit val mongoDateFormats = MongoJavatimeFormats.instantFormats
-    implicit val reads: Reads[LeakResolution] =
-      ( (__ \ "timestamp"    ).read[Instant]
-      ~ (__ \ "commitId"     ).read[String]
-      ~ (__ \ "resolvedLeaks").read[Seq[ResolvedLeak]]
-    )(LeakResolution.apply _)
+  val mongoFormat: OFormat[Report] =
+    reportFormat(MongoJavatimeFormats.instantFormats)
 
-    implicit val writes: OWrites[LeakResolution] = Json.writes[LeakResolution]
-    Json.format[Report]
+  private def reportFormat(implicit instantFormat: Format[Instant]): OFormat[Report] = {
+    implicit val leakResolutionFormat: Format[LeakResolution] =
+      ( (__ \ "timestamp"    ).format[Instant]
+      ~ (__ \ "commitId"     ).format[String]
+      ~ (__ \ "resolvedLeaks").format[Seq[ResolvedLeak]]
+      )(LeakResolution.apply, unlift(LeakResolution.unapply))
+
+    ( (__ \ "_id"              ).format[ReportId]
+    ~ (__ \ "repoName"         ).format[String]
+    ~ (__ \ "repoUrl"          ).format[String]
+    ~ (__ \ "commitId"         ).format[String]
+    ~ (__ \ "branch"           ).format[String]
+    ~ (__ \ "timestamp"        ).format[Instant]
+    ~ (__ \ "author"           ).format[String]
+    ~ (__ \ "inspectionResults").format[Seq[ReportLine]]
+    ~ (__ \ "leakResolution"   ).formatNullable[LeakResolution]
+    )(Report.apply, unlift(Report.unapply))
   }
 }
 
 final case class ReportLine(
-  filePath: String,
-  scope: String,
-  lineNumber: Int,
+  filePath   : String,
+  scope      : String,
+  lineNumber : Int,
   urlToSource: String,
-  ruleId: Option[String],
+  ruleId     : Option[String],
   description: String,
-  lineText: String,
-  matches: List[Match],
+  lineText   : String,
+  matches    : List[Match],
   isTruncated: Option[Boolean] // todo(konrad) Option due to backwards compatibility, remove after collection cleared
 )
 

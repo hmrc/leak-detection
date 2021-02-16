@@ -32,7 +32,7 @@ class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
       val expectedPayloadDetails = aPayloadDetails
       val validJson              = asJson(expectedPayloadDetails)
 
-      val res = Json.parse(validJson).as[PayloadDetails](PayloadDetails.reads)
+      val res = Json.parse(validJson).as[PayloadDetails](PayloadDetails.githubReads)
 
       res           shouldBe expectedPayloadDetails
       res.branchRef should not startWith "refs/heads/"
@@ -44,7 +44,7 @@ class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
       val expectedDeleteBranchEvent = aDeleteBranchEvent
       val validJson                 = asJson(expectedDeleteBranchEvent)
 
-      val res = Json.parse(validJson).as[DeleteBranchEvent](DeleteBranchEvent.reads)
+      val res = Json.parse(validJson).as[DeleteBranchEvent](DeleteBranchEvent.githubReads)
 
       res           shouldBe expectedDeleteBranchEvent
       res.branchRef should not startWith "refs/heads/"
@@ -52,7 +52,9 @@ class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
   }
 
   "Validating payload signature" should {
-    "fail if signature invalid" in new TestSetup {
+    val webhookRequestValidator = new WebhookRequestValidator()(ExecutionContext.global)
+
+    "fail if signature invalid" in {
       val secret           = aString()
       val payload          = aString()
       val invalidSignature = aString()
@@ -63,7 +65,8 @@ class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
         res shouldBe false
       }
     }
-    "succeed if valid" in new TestSetup {
+
+    "succeed if valid" in {
       val secret         = aString()
       val payload        = aString()
       val validSignature = "sha1=" + new HmacUtils(HmacAlgorithms.HMAC_SHA_1, secret).hmacHex(payload)
@@ -75,9 +78,4 @@ class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
       }
     }
   }
-
-  trait TestSetup {
-    val webhookRequestValidator = new WebhookRequestValidator()(ExecutionContext.global)
-  }
-
 }

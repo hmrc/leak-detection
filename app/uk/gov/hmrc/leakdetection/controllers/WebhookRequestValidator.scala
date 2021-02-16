@@ -54,11 +54,10 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
       .get("X-Hub-Signature")
       .map { signature =>
         val payloadAsString = payload.utf8String
-        if (isValidSignature(payloadAsString, signature, webhookSecret)) {
+        if (isValidSignature(payloadAsString, signature, webhookSecret))
           f(payloadAsString).asRight
-        } else {
+        else
           BadRequest(errorParsingRequest("Invalid Signature")).asLeft
-        }
       }
       .getOrElse(
         BadRequest(errorParsingRequest("Signature not found in headers")).asLeft
@@ -80,12 +79,13 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
   private def errorParsingRequest(errorMsg: String): JsValue =
     Json.obj("error" -> "Error parsing request", "details" -> errorMsg)
 
-  class Extract[T](implicit reads: Reads[T]) {
-    def unapply(json: JsValue): Option[T] = reads.reads(json).asOpt
+  class Extract[T](reads: Reads[T]) {
+    def unapply(json: JsValue): Option[T] =
+       reads.reads(json).asOpt
   }
 
-  val ExtractPayloadDetails    = new Extract[PayloadDetails]
-  val ExtractZenMessage        = new Extract[ZenMessage]
-  val ExtractDeleteBranchEvent = new Extract[DeleteBranchEvent]
+  val ExtractPayloadDetails    = new Extract[PayloadDetails   ](PayloadDetails.githubReads)
+  val ExtractZenMessage        = new Extract[ZenMessage       ](ZenMessage.githubReads)
+  val ExtractDeleteBranchEvent = new Extract[DeleteBranchEvent](DeleteBranchEvent.githubReads)
 
 }
