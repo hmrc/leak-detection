@@ -1,4 +1,4 @@
-@*
+/*
  * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,26 +12,25 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *@
+ */
 
-@import uk.gov.hmrc.leakdetection.controllers.routes
+package uk.gov.hmrc.play.scheduling
 
-@(repos: List[String])
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.FiniteDuration
 
-@main {
+trait ScheduledJob {
+  def name: String
+  def execute(implicit ec: ExecutionContext): Future[Result]
+  def isRunning: Future[Boolean]
 
-    <br/>
-    <h1>Repositories</h1>
-    <p>Following repositories contain potentially sensitive data</p>
+  case class Result(message: String)
 
-    <div class="list-group">
-        @repos.map { repoName =>
-        <a href="@routes.ReportsController.reportsForRepository(repoName)"
-           class="list-group-item list-group-item-action">
-            @repoName
-        </a>
-        }
-    </div>
-    <br/>
+  def configKey: String = name
 
+  def initialDelay: FiniteDuration
+
+  def interval: FiniteDuration
+
+  override def toString() = s"$name after $initialDelay every $interval"
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
     "succeed if valid" in new TestSetup {
       val secret         = aString()
       val payload        = aString()
-      val validSignature = "sha1=" + new HmacUtils(HmacAlgorithms.HMAC_SHA_1, secret).hmacHex(payload)
+      val validSignature = "sha1=" + HmacUtils.hmacSha1Hex(secret, payload)
 
       val res = webhookRequestValidator.isValidSignature(payload, validSignature, secret)
 

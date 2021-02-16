@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,22 +38,23 @@ class ArtifactService @Inject()(metrics: Metrics) {
   def getZipAndExplode(
     githubPersonalAccessToken: String,
     archiveUrl: String,
-    branchRef: String): Either[BranchNotFound, ExplodedZip] = {
+    branchRef: String
+  ): Either[BranchNotFound, ExplodedZip] = {
 
     logger.info("starting zip process....")
     val savedZipFilePath = Files.createTempDirectory("unzipped_").toString
     val downloadResult   = getZip(githubPersonalAccessToken, archiveUrl, branchRef, savedZipFilePath)
-    downloadResult.map { _ =>
+    downloadResult.map(_ =>
       explodeZip(savedZipFilePath)
-    }
-
+    )
   }
 
   def getZip(
     githubPersonalAccessToken: String,
     archiveUrl: String,
     branch: String,
-    savedZipFilePath: String): Either[BranchNotFound, DownloadedZip] = {
+    savedZipFilePath: String
+  ): Either[BranchNotFound, DownloadedZip] = {
     val githubZipUri = getArtifactUrl(archiveUrl, branch)
     logger.info(s"Getting code archive from: $githubZipUri")
 
@@ -71,7 +72,8 @@ class ArtifactService @Inject()(metrics: Metrics) {
     githubAccessToken: String,
     url: String,
     filename: String,
-    branch: String): Either[BranchNotFound, DownloadedZip] = {
+    branch: String
+  ): Either[BranchNotFound, DownloadedZip] = {
     val resp =
       Http(url)
         .header("Authorization", s"token $githubAccessToken")

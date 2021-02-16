@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,31 +18,31 @@ package uk.gov.hmrc.leakdetection.services
 
 import java.time.LocalDateTime
 
-import org.mockito.Mockito.when
 import org.mockito.MockitoSugar
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, GivenWhenThen}
 import play.api.Configuration
-import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, aReportWithResolvedLeaks, few}
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
-import uk.gov.hmrc.leakdetection.model.ResolvedLeak
+import uk.gov.hmrc.leakdetection.model.{Report, ResolvedLeak}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
+import uk.gov.hmrc.mongo.test.{PlayMongoRepositorySupport, CleanMongoCollectionSupport}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
 class ReportsServiceSpec
     extends AnyWordSpec
     with Matchers
     with ScalaFutures
+    with IntegrationPatience
     with MockitoSugar
-    with MongoSpecSupport
+    //with DefaultPlayMongoRepositorySupport[Report] // TODO we have non-indexed queries...
+    with PlayMongoRepositorySupport[Report]
+    with CleanMongoCollectionSupport
     with BeforeAndAfterEach
     with GivenWhenThen
     with IncreasingTimestamps {
@@ -64,8 +64,9 @@ class ReportsServiceSpec
       And("it also contains problems on a different branch")
       val reportsWithLeaksAnotherBranch = genReports().map(_.copy(branch = anotherBranch))
 
-      repo
-        .bulkInsert(reportsWithLeaks ::: reportsWithPreviouslyResolvedLeaks ::: reportsWithLeaksAnotherBranch)
+      repository
+        .collection.insertMany(reportsWithLeaks ::: reportsWithPreviouslyResolvedLeaks ::: reportsWithLeaksAnotherBranch)
+        .toFuture
         .futureValue
 
       val reportFixingLeaks = genReports().map(_.copy(inspectionResults = Nil)).head
@@ -73,7 +74,7 @@ class ReportsServiceSpec
       When("a new report is saved that fixes problems on a given branch")
       val _ = reportsService.saveReport(reportFixingLeaks).futureValue
 
-      val reportsAfterUpdates = repo.findAll().futureValue
+      val reportsAfterUpdates = repository.collection.find().toFuture.futureValue
 
       val reportsWithResolvedLeaks =
         reportsAfterUpdates.filter(r => reportsWithLeaks.exists(_._id == r._id))
@@ -122,14 +123,14 @@ class ReportsServiceSpec
       Given("LDS repo contains some outstanding problems for a given branch")
       val reportsWithLeaks = genReports().map(_.copy(leakResolution = None))
 
-      repo.bulkInsert(reportsWithLeaks).futureValue
+      repository.collection.insertMany(reportsWithLeaks).toFuture.futureValue
 
       val reportWithLeaks = genReports().head
 
       When(s"a new report is saved that still indicates problems")
       val _ = reportsService.saveReport(reportWithLeaks).futureValue
 
-      val reportsAfterUpdates = repo.findAll().futureValue
+      val reportsAfterUpdates = repository.collection.find().toFuture.futureValue
 
       val reportsWithLeaksAfterUpdates =
         reportsAfterUpdates.filter(r => reportsWithLeaks.exists(_._id == r._id))
@@ -161,7 +162,7 @@ class ReportsServiceSpec
           aReportWithResolvedLeaks().copy(branch = branch2, timestamp = increasingTimestamp())
         )
 
-      repo.bulkInsert(reportsWithLeaksBranch1 ::: reportsWithResolvedLeaksBranch2).futureValue
+      repository.collection.insertMany(reportsWithLeaksBranch1 ::: reportsWithResolvedLeaksBranch2).toFuture.futureValue
 
       val expectedResult = reportsWithLeaksBranch1.last :: Nil
       reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
@@ -179,8 +180,9 @@ class ReportsServiceSpec
       And("it also contains some already resolved reports")
       val reportsWithPreviouslyResolvedLeaks = few(() => aReportWithResolvedLeaks())
 
-      repo
-        .bulkInsert(reportsWithLeaks ::: reportsWithPreviouslyResolvedLeaks)
+      repository
+        .collection.insertMany(reportsWithLeaks ::: reportsWithPreviouslyResolvedLeaks)
+        .toFuture
         .futureValue
 
       reportsService.metrics.futureValue should contain allOf (
@@ -193,7 +195,7 @@ class ReportsServiceSpec
     "produce metrics grouped by team" in {
 
       val reports = List(aReport("r1"), aReport("r2"), aReport("r1"))
-      repo.bulkInsert(reports).futureValue
+      repository.collection.insertMany(reports).toFuture.futureValue
 
       val now = Some(LocalDateTime.now)
       val teams: Seq[Team] = Seq(
@@ -210,7 +212,7 @@ class ReportsServiceSpec
     "normalise team names" in {
 
       val reports = List(aReport("r1"), aReport("r2"), aReport("r1"))
-      repo.bulkInsert(reports).futureValue
+      repository.collection.insertMany(reports).toFuture.futureValue
 
       val now = Some(LocalDateTime.now)
       val teams: Seq[Team] = Seq(
@@ -227,16 +229,18 @@ class ReportsServiceSpec
     "ignore shared repositories" in {
 
       val reports = List(aReport("r1"), aReport("r2"), aReport("r1"))
-      repo.bulkInsert(reports).futureValue
+      repository.collection.insertMany(reports).toFuture.futureValue
 
       val now = Some(LocalDateTime.now)
       val teams: Seq[Team] = Seq(
         Team("T1", now, now, now, Some(Map("services" -> Seq("r1")))),
         Team("T2", now, now, now, Some(Map("services" -> Seq("r2")))))
-      when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
+      when(teamsAndRepositoriesConnector.teamsWithRepositories())
+        .thenReturn(Future.successful(teams))
 
       val reportsService =
-        new ReportsService(repo, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"))
+        new ReportsService(repository, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"))
+
       reportsService.metrics.futureValue should contain allOf (
         "reports.teams.t1.unresolved"    -> 0,
         "reports.teams.t2.unresolved"    -> 1
@@ -245,19 +249,11 @@ class ReportsServiceSpec
 
   }
 
-  override def beforeEach(): Unit =
-    repo.removeAll().futureValue
-
-  override implicit val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = 5.seconds)
-
-  val repo = new ReportsRepository(new ReactiveMongoComponent {
-    override def mongoConnector: MongoConnector = mongoConnectorForTest
-  })
+  override val repository = new ReportsRepository(mongoComponent)
 
   private val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
-  when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(Seq.empty))
+  when(teamsAndRepositoriesConnector.teamsWithRepositories())
+    .thenReturn(Future.successful(Seq.empty))
 
-  val reportsService = new ReportsService(repo, teamsAndRepositoriesConnector, Configuration())
-
+  val reportsService = new ReportsService(repository, teamsAndRepositoriesConnector, Configuration())
 }

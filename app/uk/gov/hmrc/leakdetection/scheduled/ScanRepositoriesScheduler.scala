@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import play.api.{Configuration, Logger}
 import uk.gov.hmrc.leakdetection.services.ScanningService
 import uk.gov.hmrc.play.scheduling.ExclusiveScheduledJob
 
-import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.{FiniteDuration}
 import scala.util.{Failure, Success}
 
 class ScanRepositoriesScheduler @Inject()(
@@ -38,7 +38,7 @@ class ScanRepositoriesScheduler @Inject()(
   override def name: String = "scanner"
 
   override def executeInMutex(implicit ec: ExecutionContext): Future[Result] =
-    scanningService.scanAll.map(reports => Result(s"Processed ${reports.size} github requests"))
+    scanningService.scanAll.map(count => Result(s"Processed $count github requests"))
 
   private def durationFromConfig(propertyKey: String): FiniteDuration = {
     val key = s"scheduling.$name.$propertyKey"

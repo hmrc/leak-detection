@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 
 package uk.gov.hmrc.leakdetection
 
-import org.joda.time.{DateTime, DateTimeZone}
+import java.time.Instant
+
 import play.api.libs.json.{Json, Writes}
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, LeakResolution, PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
-import uk.gov.hmrc.time.DateTimeUtils
 import scala.util.Random
 
 object ModelFactory {
@@ -100,7 +100,7 @@ object ModelFactory {
   def aReportWithResolvedLeaks(repoName: String = aString("repositoryName")): Report = {
     val report = aReport(repoName)
     val cleanReport =
-      aReportWithoutLeaks(repoName).copy(timestamp = DateTimeUtils.now, commitId = aString("commitId"))
+      aReportWithoutLeaks(repoName).copy(timestamp = Instant.now(), commitId = aString("commitId"))
     report.copy(leakResolution = Some(LeakResolution.create(report, cleanReport)), inspectionResults = Nil)
   }
 

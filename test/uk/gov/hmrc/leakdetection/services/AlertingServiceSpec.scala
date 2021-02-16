@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,23 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import java.time.Instant
+
 import org.mockito.{ArgumentCaptor, MockitoSugar}
 import org.mockito.ArgumentMatchers.{any, eq => is}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
-
-import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
-import uk.gov.hmrc.time.DateTimeUtils
 
 import scala.collection.JavaConverters._
+import scala.concurrent.{ExecutionContext, Future}
 
 class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar {
 
@@ -45,7 +45,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         repoUrl   = "https://github.com/hmrc/a-repo",
         commitId  = "123",
         branch    = "master",
-        timestamp = DateTimeUtils.now,
+        timestamp = Instant.now(),
         author    = "me",
         inspectionResults = Seq(
           ReportLine(
@@ -96,7 +96,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         repoUrl   = "https://github.com/hmrc/a-repo",
         commitId  = "123",
         branch    = "master",
-        timestamp = DateTimeUtils.now,
+        timestamp = Instant.now(),
         author    = "me",
         inspectionResults = Seq(
           ReportLine(
@@ -126,7 +126,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         repoUrl           = "https://github.com/hmrc/a-repo",
         commitId          = "123",
         branch            = "master",
-        timestamp         = DateTimeUtils.now,
+        timestamp         = Instant.now(),
         author            = "me",
         inspectionResults = Nil,
         None

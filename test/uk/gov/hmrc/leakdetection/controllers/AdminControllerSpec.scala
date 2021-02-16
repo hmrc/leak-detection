@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import org.joda.time.{DateTime, DateTimeZone}
+import java.time.Instant
+
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
@@ -26,12 +27,12 @@ import play.api.libs.json.JsValue
 import play.api.mvc.Results
 import play.api.test.FakeRequest
 import uk.gov.hmrc.http.HttpClient
-
-import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 
 class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
@@ -44,7 +45,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
       case (repoType, isPrivate) =>
         s"scan the git $repoType repository and return an empty report" in new TestSetup {
 
-          val now = new DateTime(0, DateTimeZone.UTC)
+          val now = Instant.EPOCH
           val id  = ReportId.random
 
           when(
@@ -68,7 +69,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
         s"scan the git $repoType repository and some report" in new TestSetup {
 
-          val now = new DateTime(0, DateTimeZone.UTC)
+          val now = Instant.EPOCH
           val id  = ReportId.random
 
           when(

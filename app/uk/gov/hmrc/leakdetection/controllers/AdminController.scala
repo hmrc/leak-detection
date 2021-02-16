@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ class AdminController @Inject()(
   def clearCollection() = Action.async { implicit request =>
     if (configLoader.cfg.clearingCollectionEnabled) {
       reportsService.clearCollection().map { res =>
-        Ok(s"ok=${res.ok}, records deleted=${res.n}, errors = ${res.writeErrors}")
+        Ok(s"records deleted=$res")
       }
     } else {
       Future.successful(Ok("Clearing reports is disabled."))

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,65 +16,56 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import java.time.{Duration, Instant}
+
 import com.typesafe.config.ConfigFactory
-import org.joda.time.{DateTime, Duration}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, Inspectors, LoneElement}
 import play.api.Configuration
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.api.ReadPreference
-import reactivemongo.bson.BSONObjectID
+import org.bson.types.ObjectId
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
-import uk.gov.hmrc.mongo.{MongoConnector, MongoSpecSupport}
-import uk.gov.hmrc.time.DateTimeUtils
-import uk.gov.hmrc.workitem.WorkItem
+import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
+import uk.gov.hmrc.workitem.{ProcessingStatus, WorkItem}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class GithubRequestsQueueRepositorySpec
     extends AnyWordSpec
     with Matchers
-    with MongoSpecSupport
+    with DefaultPlayMongoRepositorySupport[WorkItem[PayloadDetails]]
     with BeforeAndAfterEach
     with ScalaFutures
     with Inspectors
     with LoneElement
     with IntegrationPatience {
 
-  val anInstant = DateTimeUtils.now
+  val anInstant: Instant = Instant.now()
 
-  def repoAtInstant(anInstant: DateTime): GithubRequestsQueueRepository =
-    new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), new ReactiveMongoComponent {
-      override def mongoConnector: MongoConnector = mongoConnectorForTest
-    }) {
-      override lazy val inProgressRetryAfter: Duration = Duration.standardHours(1)
+  def repoAtInstant(anInstant: Instant): GithubRequestsQueueRepository =
+    new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
+      override val inProgressRetryAfter: Duration = Duration.ofHours(1)
       override lazy val retryIntervalMillis: Long      = 10000L
-      override def now: DateTime                       = anInstant
+      override def now(): Instant                 = anInstant
     }
 
-  lazy val repo = repoAtInstant(anInstant)
-
-  override protected def beforeEach(): Unit = {
-    repo.drop.futureValue
-    repo.ensureIndexes.futureValue
-  }
+  override lazy val repository = repoAtInstant(anInstant)
 
   "The github request queue repository" should {
 
     "ensure indexes are created" in {
-      repo.collection.indexesManager.list().futureValue.size shouldBe 4
+      repository.collection.listIndexes().toFuture.futureValue.size shouldBe 4
     }
 
     "be able to save and reload a github request" in {
       val payloadDetails = aPayloadDetails
-      val workItem       = repo.pushNew(payloadDetails, anInstant).futureValue
+      val workItem       = repository.pushNew(payloadDetails, anInstant).futureValue
 
-      repo.findById(workItem.id).futureValue.get should have(
+      repository.findById(workItem.id).futureValue.get should have(
         'item (payloadDetails),
-        'status (uk.gov.hmrc.workitem.ToDo),
+        'status (ProcessingStatus.ToDo),
         'receivedAt (anInstant),
         'updatedAt (anInstant)
       )
@@ -82,15 +73,15 @@ class GithubRequestsQueueRepositorySpec
 
     "be able to save the same requests twice" in {
       val payloadDetails = aPayloadDetails
-      repo.pushNew(payloadDetails, anInstant).futureValue
-      repo.pushNew(payloadDetails, anInstant).futureValue
+      repository.pushNew(payloadDetails, anInstant).futureValue
+      repository.pushNew(payloadDetails, anInstant).futureValue
 
-      val requests = repo.findAll(ReadPreference.primaryPreferred).futureValue
+      val requests = repository.collection.find().toFuture.futureValue
       requests should have(size(2))
 
       every(requests) should have(
         'item (payloadDetails),
-        'status (uk.gov.hmrc.workitem.ToDo),
+        'status (ProcessingStatus.ToDo),
         'receivedAt (anInstant),
         'updatedAt (anInstant)
       )
@@ -98,53 +89,52 @@ class GithubRequestsQueueRepositorySpec
 
     "pull ToDo github requests" in {
       val payloadDetails = aPayloadDetails
-      repo.pushNew(payloadDetails, anInstant).futureValue
+      repository.pushNew(payloadDetails, anInstant).futureValue
 
       val repoLater: GithubRequestsQueueRepository = repoAtInstant(anInstant.plusMillis(1))
 
       repoLater.pullOutstanding.futureValue.get should have(
         'item (payloadDetails),
-        'status (uk.gov.hmrc.workitem.InProgress)
+        'status (ProcessingStatus.InProgress)
       )
     }
 
     "pull nothing if no github requests exist" in {
-      repo.pullOutstanding.futureValue should be(None)
+      repository.pullOutstanding.futureValue should be(None)
     }
 
     "not pull github requests failed after the failedBefore time" in {
-      val workItem: WorkItem[PayloadDetails] = repo.pushNew(aPayloadDetails, anInstant).futureValue
-      repo.markAs(workItem.id, uk.gov.hmrc.workitem.Failed).futureValue should be(true)
+      val workItem: WorkItem[PayloadDetails] = repository.pushNew(aPayloadDetails, anInstant).futureValue
+      repository.markAs(workItem.id, ProcessingStatus.Failed).futureValue should be(true)
 
-      repo.pullOutstanding.futureValue should be(None)
+      repository.pullOutstanding.futureValue should be(None)
     }
 
     "complete and delete a github requests if it is in progress" in {
       //given
-      val workItem = repo.pushNew(aPayloadDetails, anInstant).futureValue
-      repo.markAs(workItem.id, uk.gov.hmrc.workitem.InProgress).futureValue should be(true)
+      val workItem = repository.pushNew(aPayloadDetails, anInstant).futureValue
+      repository.markAs(workItem.id, ProcessingStatus.InProgress).futureValue should be(true)
 
       //when
-      repo.complete(workItem.id).futureValue should be(true)
+      repository.complete(workItem.id).futureValue should be(true)
 
       //then
-      repo.findById(workItem.id).futureValue shouldBe None
+      repository.findById(workItem.id).futureValue shouldBe None
     }
 
     "not complete a github requests if it is not in progress" in {
       //given
-      val workItem = repo.pushNew(aPayloadDetails, anInstant).futureValue
+      val workItem = repository.pushNew(aPayloadDetails, anInstant).futureValue
 
       //when
-      repo.complete(workItem.id).futureValue should be(false)
+      repository.complete(workItem.id).futureValue should be(false)
 
       //then
-      repo.findById(workItem.id).futureValue shouldBe Some(workItem)
+      repository.findById(workItem.id).futureValue shouldBe Some(workItem)
     }
 
     "not complete a github requests if it cannot be found" in {
-      repo.complete(BSONObjectID.generate).futureValue should be(false)
+      repository.complete(new ObjectId()).futureValue should be(false)
     }
   }
-
 }

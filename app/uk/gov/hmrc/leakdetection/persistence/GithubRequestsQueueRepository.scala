@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,60 +16,63 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import java.time.{Duration, Instant}
 import javax.inject.{Inject, Singleton}
 
-import org.joda.time.{DateTime, Duration}
 import play.api.Configuration
-import play.api.libs.json.{JsObject, Json}
-import play.modules.reactivemongo.ReactiveMongoComponent
-import reactivemongo.bson.BSONObjectID
-import reactivemongo.play.json.ImplicitBSONHandlers._
+import play.api.libs.json.Json
+import org.bson.types.ObjectId
+import org.mongodb.scala.model.Filters
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import uk.gov.hmrc.time.DateTimeUtils
+import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.workitem._
 
 import scala.concurrent.{ExecutionContext, Future}
 
 object MongoPayloadDetailsFormats {
-  implicit val pf = Json.format[PayloadDetails]
-  val formats     = WorkItem.workItemMongoFormat[PayloadDetails]
+  val workItemFieldNames = WorkItemFieldNames.default
+
+  val formats = {
+    implicit val pf = Json.format[PayloadDetails]
+    import uk.gov.hmrc.mongo.play.json.formats.MongoFormats.Implicits.objectIdFormats
+    import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats.Implicits.jatInstantFormats
+    WorkItem.formatForFields[PayloadDetails](workItemFieldNames)
+  }
 }
 
 @Singleton
 class GithubRequestsQueueRepository @Inject()(
   configuration: Configuration,
-  reactiveMongoComponent: ReactiveMongoComponent)
-    extends WorkItemRepository[PayloadDetails, BSONObjectID](
-      collectionName = "githubRequestsQueue",
-      mongo = reactiveMongoComponent.mongoConnector.db,
-      itemFormat = MongoPayloadDetailsFormats.formats,
-      config = configuration.underlying
-    ) {
-  override def now: DateTime = DateTimeUtils.now
+  mongoComponent: MongoComponent
+)(implicit ec: ExecutionContext
+) extends WorkItemRepository[PayloadDetails, ObjectId](
+  collectionName = "githubRequestsQueue",
+  mongoComponent = mongoComponent,
+  itemFormat     = MongoPayloadDetailsFormats.formats,
+  workItemFields = MongoPayloadDetailsFormats.workItemFieldNames
+) {
+  override def now(): Instant =
+    Instant.now
 
-  override lazy val workItemFields: WorkItemFieldNames = new WorkItemFieldNames {
-    val receivedAt   = "receivedAt"
-    val updatedAt    = "updatedAt"
-    val availableAt  = "receivedAt"
-    val status       = "status"
-    val id           = "_id"
-    val failureCount = "failureCount"
-  }
+  lazy val retryIntervalMillis =
+    configuration.getMillis("queue.retryAfter")
 
-  val failureRetryAfterProperty: String    = "queue.retryAfter"
-  val inProgressRetryAfterProperty: String = failureRetryAfterProperty
+  override val inProgressRetryAfter: Duration =
+    Duration.ofMillis(retryIntervalMillis)
 
-  lazy val retryIntervalMillis: Long = configuration.getMillis(failureRetryAfterProperty)
+  def pullOutstanding: Future[Option[WorkItem[PayloadDetails]]] =
+    super.pullOutstanding(
+      failedBefore    = now.minusMillis(retryIntervalMillis.toInt),
+      availableBefore = now
+    )
 
-  override lazy val inProgressRetryAfter: Duration = Duration.millis(retryIntervalMillis)
-
-  def pullOutstanding(implicit ec: ExecutionContext): Future[Option[WorkItem[PayloadDetails]]] =
-    super.pullOutstanding(now.minusMillis(retryIntervalMillis.toInt), now)
-
-  def complete(id: BSONObjectID)(implicit ec: ExecutionContext): Future[Boolean] = {
-    val selector = JsObject(
-      Seq("_id" -> Json.toJson(id)(ReactiveMongoFormats.objectIdFormats), "status" -> Json.toJson(InProgress)))
-    collection.delete().one(selector).map(_.n > 0)
-  }
+  // TODO add a completeAndDelete function to work-item-repo
+  def complete(id: ObjectId): Future[Boolean] =
+    collection.deleteOne(
+      Filters.and(
+        Filters.equal("_id", id),
+        Filters.equal("status", ProcessingStatus.toBson(ProcessingStatus.InProgress))
+      )
+    ).toFuture
+     .map(_.getDeletedCount > 0)
 }
