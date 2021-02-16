@@ -37,7 +37,7 @@ import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
 import uk.gov.hmrc.mongo.test.MongoSupport
-import uk.gov.hmrc.workitem.ProcessingStatus
+import uk.gov.hmrc.mongo.workitem.ProcessingStatus
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

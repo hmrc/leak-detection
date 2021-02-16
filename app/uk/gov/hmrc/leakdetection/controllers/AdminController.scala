@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import java.io.File
 
-import ammonite.ops.{Path, mkdir, tmp, write}
+import ammonite.ops.{mkdir, tmp, write}
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json.{Format, JsValue, Json}

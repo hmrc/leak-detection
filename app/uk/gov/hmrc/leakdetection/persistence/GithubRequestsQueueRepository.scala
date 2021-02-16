@@ -21,23 +21,15 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.Configuration
 import play.api.libs.json.Json
-import org.bson.types.ObjectId
-import org.mongodb.scala.model.Filters
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
 import uk.gov.hmrc.mongo.MongoComponent
-import uk.gov.hmrc.workitem._
+import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 object MongoPayloadDetailsFormats {
-  val workItemFieldNames = WorkItemFieldNames.default
-
-  val formats = {
-    implicit val pf = Json.format[PayloadDetails]
-    import uk.gov.hmrc.mongo.play.json.formats.MongoFormats.Implicits.objectIdFormats
-    import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats.Implicits.jatInstantFormats
-    WorkItem.formatForFields[PayloadDetails](workItemFieldNames)
-  }
+  val formats =
+    Json.format[PayloadDetails]
 }
 
 @Singleton
@@ -45,11 +37,11 @@ class GithubRequestsQueueRepository @Inject()(
   configuration: Configuration,
   mongoComponent: MongoComponent
 )(implicit ec: ExecutionContext
-) extends WorkItemRepository[PayloadDetails, ObjectId](
+) extends WorkItemRepository[PayloadDetails](
   collectionName = "githubRequestsQueue",
   mongoComponent = mongoComponent,
   itemFormat     = MongoPayloadDetailsFormats.formats,
-  workItemFields = MongoPayloadDetailsFormats.workItemFieldNames
+  workItemFields = WorkItemFields.default
 ) {
   override def now(): Instant =
     Instant.now
@@ -65,14 +57,4 @@ class GithubRequestsQueueRepository @Inject()(
       failedBefore    = now.minusMillis(retryIntervalMillis.toInt),
       availableBefore = now
     )
-
-  // TODO add a completeAndDelete function to work-item-repo
-  def complete(id: ObjectId): Future[Boolean] =
-    collection.deleteOne(
-      Filters.and(
-        Filters.equal("_id", id),
-        Filters.equal("status", ProcessingStatus.toBson(ProcessingStatus.InProgress))
-      )
-    ).toFuture
-     .map(_.getDeletedCount > 0)
 }
