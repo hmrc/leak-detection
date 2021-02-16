@@ -27,11 +27,11 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import scala.concurrent.{ExecutionContext, Future}
 
 case class Team(
-  name: String,
-  firstActiveDate: Option[LocalDateTime],
-  lastActiveDate: Option[LocalDateTime],
+  name                    : String,
+  firstActiveDate         : Option[LocalDateTime],
+  lastActiveDate          : Option[LocalDateTime],
   firstServiceCreationDate: Option[LocalDateTime],
-  repos: Option[Map[String, Seq[String]]]
+  repos                   : Option[Map[String, Seq[String]]]
 ) {
   def normalisedName = name.toLowerCase.replaceAll(" ", "_")
 }
@@ -43,9 +43,10 @@ object Team {
 @Singleton class TeamsAndRepositoriesConnector @Inject()(
   http: HttpClient,
   servicesConfig: ServicesConfig,
-  environment: Environment)(implicit ec: ExecutionContext) {
+  environment: Environment
+)(implicit ec: ExecutionContext) {
 
-  def teamsWithRepositories()(implicit ec: ExecutionContext): Future[Seq[Team]] = {
+  def teamsWithRepositories(): Future[Seq[Team]] = {
     implicit val hc = HeaderCarrier()
     http.GET[Seq[Team]](s"${servicesConfig.baseUrl("teams-and-repositories")}/api/teams_with_repositories")
   }

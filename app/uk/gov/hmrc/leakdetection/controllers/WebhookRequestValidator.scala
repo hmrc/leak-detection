@@ -27,9 +27,7 @@ import play.api.libs.json.{JsValue, Json, Reads}
 import play.api.libs.streams.Accumulator
 import play.api.mvc.Results._
 import play.api.mvc.{BodyParser, Headers, Result}
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
-import uk.gov.hmrc.play.HeaderCarrierConverter
 
 import scala.concurrent.ExecutionContext
 
@@ -37,9 +35,6 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
 
   def parser(webhookSecret: String): BodyParser[GithubRequest] =
     BodyParser { rh =>
-      implicit val hc: HeaderCarrier =
-        HeaderCarrierConverter.fromHeadersAndSession(rh.headers)
-
       val sink = Sink.fold[ByteString, ByteString](ByteString.empty)(_ ++ _)
 
       Accumulator(sink).map { bytes =>

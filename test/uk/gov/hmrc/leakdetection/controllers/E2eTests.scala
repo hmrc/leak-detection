@@ -34,11 +34,11 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.test.Helpers.CONTENT_TYPE
 import play.api.test.{FakeRequest, Helpers}
+import uk.gov.hmrc.leakdetection.{GithubStub, ModelFactory}
 import uk.gov.hmrc.leakdetection.GithubStub.TestZippedFile
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import uk.gov.hmrc.leakdetection.model.{Report, PayloadDetails}
+import uk.gov.hmrc.leakdetection.model.Report
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, ReportsRepository}
-import uk.gov.hmrc.leakdetection.{GithubStub, ModelFactory}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.MongoSupport
 

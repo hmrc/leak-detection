@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.connectors
 import com.google.common.io.BaseEncoding
 import javax.inject.{Inject, Singleton}
 import play.api.libs.json._
-import play.api.{Configuration, Environment, Logger}
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig

@@ -93,7 +93,7 @@ class AdminController @Inject()(
     simulatedExplodedDir.toIO
   }
 
-  def clearCollection() = Action.async { implicit request =>
+  def clearCollection() = Action.async {
     if (configLoader.cfg.clearingCollectionEnabled) {
       reportsService.clearCollection().map { res =>
         Ok(s"records deleted=$res")
@@ -112,7 +112,7 @@ class AdminController @Inject()(
       .map(Ok(_))
   }
 
-  def stats = Action.async { implicit request =>
+  def stats = Action.async {
     reportsService.metrics.map(stats => Ok(Json.toJson(stats)))
   }
 }

@@ -116,7 +116,7 @@ object Report {
     val instantFormatter =
       java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
 
-      implicit val instantWrites: Writes[Instant] =
+    implicit val instantWrites: Writes[Instant] =
       (instant: Instant) => JsString(instantFormatter.format(instant))
 
     implicit val leakResolutionFormat = Json.format[LeakResolution]
