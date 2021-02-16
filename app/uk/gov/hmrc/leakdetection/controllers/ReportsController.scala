@@ -21,7 +21,7 @@ import javax.inject.Singleton
 import play.api.libs.json.Json
 import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.ReportId
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.leakdetection.views.html
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -51,6 +51,7 @@ class ReportsController @Inject()(configLoader: ConfigLoader,
   }
 
   def reportForRepositoryMaster(repoName: String) = Action.async {
+    implicit val rf = Report.apiFormat
     for {
       findLatestMasterReport <- reportsService.getLatestReportForMaster(repoName)
       result = findLatestMasterReport.map(report => Ok(Json.toJson(report))).getOrElse(NotFound)

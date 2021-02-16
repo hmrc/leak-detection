@@ -47,7 +47,7 @@ class ReportsRepositorySpec
       val withSomeDuplicates =
         reportsWithResolvedProblems :::
           reportsWithUnresolvedProblems :::
-          reportsWithUnresolvedProblems.map(_.copy(_id = ReportId.random)) :::
+          reportsWithUnresolvedProblems.map(_.copy(id = ReportId.random)) :::
           reportsWithoutProblems
 
       repository.collection.insertMany(withSomeDuplicates).toFuture.futureValue

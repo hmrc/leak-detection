@@ -20,7 +20,7 @@ import java.time.{Duration, Instant}
 import javax.inject.{Inject, Singleton}
 
 import play.api.Configuration
-import play.api.libs.json.Json
+import play.api.libs.json.__
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
@@ -28,8 +28,17 @@ import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
 import scala.concurrent.{ExecutionContext, Future}
 
 object MongoPayloadDetailsFormats {
+  import play.api.libs.functional.syntax._
   val formats =
-    Json.format[PayloadDetails]
+    ( (__ \ "repositoryName").format[String]
+    ~ (__ \ "isPrivate"     ).format[Boolean]
+    ~ (__ \ "authorName"    ).format[String]
+    ~ (__ \ "branchRef"     ).format[String]
+    ~ (__ \ "repositoryUrl" ).format[String]
+    ~ (__ \ "commitId"      ).format[String]
+    ~ (__ \ "archiveUrl"    ).format[String]
+    ~ (__ \ "deleted"       ).format[Boolean]
+    )(PayloadDetails.apply _, unlift(PayloadDetails.unapply _))
 }
 
 @Singleton

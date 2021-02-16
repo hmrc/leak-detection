@@ -77,7 +77,7 @@ class ReportsServiceSpec
       val reportsAfterUpdates = repository.collection.find().toFuture.futureValue
 
       val reportsWithResolvedLeaks =
-        reportsAfterUpdates.filter(r => reportsWithLeaks.exists(_._id == r._id))
+        reportsAfterUpdates.filter(r => reportsWithLeaks.exists(_.id == r.id))
 
       Then(s"reports with problems are resolved")
       reportsWithResolvedLeaks should not be empty
@@ -110,7 +110,7 @@ class ReportsServiceSpec
 
       And("problems already resolved are untouched")
       val alreadyResolvedAfterUpdates =
-        reportsAfterUpdates.filter(r => reportsWithPreviouslyResolvedLeaks.exists(_._id == r._id))
+        reportsAfterUpdates.filter(r => reportsWithPreviouslyResolvedLeaks.exists(_.id == r.id))
       alreadyResolvedAfterUpdates should contain theSameElementsAs reportsWithPreviouslyResolvedLeaks
     }
 
@@ -133,7 +133,7 @@ class ReportsServiceSpec
       val reportsAfterUpdates = repository.collection.find().toFuture.futureValue
 
       val reportsWithLeaksAfterUpdates =
-        reportsAfterUpdates.filter(r => reportsWithLeaks.exists(_._id == r._id))
+        reportsAfterUpdates.filter(r => reportsWithLeaks.exists(_.id == r.id))
 
       Then(s"reports with problems are NOT resolved")
       reportsWithLeaksAfterUpdates should not be empty

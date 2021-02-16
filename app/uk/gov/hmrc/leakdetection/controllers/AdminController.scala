@@ -26,6 +26,7 @@ import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.model.Report
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -63,6 +64,7 @@ class AdminController @Inject()(
         archiveUrl    = s"https://api.github.com/repos/hmrc/$repository/{archive_format}{/ref}"
       )
       .map { report =>
+        implicit val rf = Report.apiFormat
         Ok(Json.toJson(report))
       }
   }

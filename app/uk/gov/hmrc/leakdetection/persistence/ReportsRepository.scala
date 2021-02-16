@@ -55,7 +55,7 @@ class ReportsRepository @Inject()(
   def updateReport(report: Report): Future[Unit] =
     collection
       .replaceOne(
-        filter      = Filters.equal("_id", report._id.value),
+        filter      = Filters.equal("_id", report.id.value),
         replacement = report
       )
       .toFuture()

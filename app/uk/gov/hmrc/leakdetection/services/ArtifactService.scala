@@ -40,7 +40,6 @@ class ArtifactService @Inject()(metrics: Metrics) {
     archiveUrl: String,
     branchRef: String
   ): Either[BranchNotFound, ExplodedZip] = {
-
     logger.info("starting zip process....")
     val savedZipFilePath = Files.createTempDirectory("unzipped_").toString
     val downloadResult   = getZip(githubPersonalAccessToken, archiveUrl, branchRef, savedZipFilePath)
@@ -57,7 +56,6 @@ class ArtifactService @Inject()(metrics: Metrics) {
   ): Either[BranchNotFound, DownloadedZip] = {
     val githubZipUri = getArtifactUrl(archiveUrl, branch)
     logger.info(s"Getting code archive from: $githubZipUri")
-
     downloadFile(githubPersonalAccessToken, githubZipUri, savedZipFilePath, branch)
   }
 
