@@ -20,7 +20,7 @@ import java.time.{Duration => JDuration}
 
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.apache.commons.codec.digest.HmacUtils
+import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
@@ -199,7 +199,7 @@ class E2eTests
     PatienceConfig(timeout = 5.seconds)
 
   val secret: String = aString()
-  private def generateHmac(payload: String) = HmacUtils.hmacSha1Hex(secret, payload)
+  private def generateHmac(payload: String) = new HmacUtils(HmacAlgorithms.HMAC_SHA_1, secret).hmacHex(payload)
 
   override def newAppForTest(testData: TestData): Application =
     new GuiceApplicationBuilder()

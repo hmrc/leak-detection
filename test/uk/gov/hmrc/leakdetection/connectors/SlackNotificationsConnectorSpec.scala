@@ -21,8 +21,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
-import uk.gov.hmrc.http.logging.Authorization
+import uk.gov.hmrc.http.{Authorization, HeaderCarrier, HttpClient}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -39,7 +38,7 @@ class SlackNotificationsConnectorSpec extends AnyWordSpec with Matchers with Moc
       val argumentCaptor:ArgumentCaptor[HeaderCarrier] = ArgumentCaptor.forClass(classOf[HeaderCarrier])
       when(
         httpClient
-          .POST[SlackNotificationRequest, SlackNotificationResponse](any(), any(), any())(
+          .POST[SlackNotificationRequest, SlackNotificationResponse](any(), any())(
             any(),
             any(),
             argumentCaptor.capture(),

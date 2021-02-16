@@ -21,7 +21,8 @@ import java.time.LocalDateTime
 import javax.inject.{Inject, Singleton}
 import play.api.Environment
 import play.api.libs.json._
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, StringContextOps}
+import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -41,13 +42,13 @@ object Team {
 }
 
 @Singleton class TeamsAndRepositoriesConnector @Inject()(
-  http: HttpClient,
+  http          : HttpClient,
   servicesConfig: ServicesConfig,
-  environment: Environment
+  environment   : Environment
 )(implicit ec: ExecutionContext) {
 
   def teamsWithRepositories(): Future[Seq[Team]] = {
     implicit val hc = HeaderCarrier()
-    http.GET[Seq[Team]](s"${servicesConfig.baseUrl("teams-and-repositories")}/api/teams_with_repositories")
+    http.GET[Seq[Team]](url"${servicesConfig.baseUrl("teams-and-repositories")}/api/teams_with_repositories")
   }
 }
