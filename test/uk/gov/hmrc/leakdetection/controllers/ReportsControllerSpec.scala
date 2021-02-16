@@ -16,23 +16,18 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import akka.util.Timeout
 import org.mockito.MockitoSugar
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-
-import concurrent.duration._
 import play.api.libs.json.Json
 import play.api.test.{FakeRequest, Helpers}
 import play.api.test.Helpers._
+import uk.gov.hmrc.leakdetection.services.ReportsService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import uk.gov.hmrc.leakdetection.services.ReportsService
 
 class ReportsControllerSpec extends AnyWordSpec with Matchers with MockitoSugar {
-
-
 
   "Reports list" should {
 

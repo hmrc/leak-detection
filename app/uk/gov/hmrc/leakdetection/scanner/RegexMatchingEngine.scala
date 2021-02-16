@@ -25,7 +25,6 @@ import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.services.RulesExemptionParser
 
 import scala.io.{Codec, Source}
-import scala.util.control.NonFatal
 
 case class Result(filePath: String, scanResults: MatchedResult)
 
@@ -111,5 +110,3 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
     rules.filter(_.scope == ruleScope).map(RegexScanner(_, maxLineLength))
 
 }
-
-

@@ -187,7 +187,7 @@ class ScanningServiceSpec
     "trigger alerts" in new TestSetup {
       override val privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)
 
-      val startIndex = file2.getName.indexOf("id_rsa")
+      file2.getName.contains("id_rsa") shouldBe true
       generateReport.inspectionResults.size shouldBe 2
       verify(alertingService).alert(any[Report])(any())
     }

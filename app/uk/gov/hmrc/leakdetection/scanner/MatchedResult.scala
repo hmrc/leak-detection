@@ -83,7 +83,7 @@ object MatchedResult {
         .reverse
 
     val (_, matchesWithReadjustedIndexes) =
-      joinedConsecutiveMatches.zipWithIndex.foldLeft(0, List.empty[Match]) {
+      joinedConsecutiveMatches.zipWithIndex.foldLeft((0, List.empty[Match])) {
         case ((totalLength, acc), (m, index)) =>
           if (index == 0) {
             val startPos = totalLength + "[…] ".length

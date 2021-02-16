@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.controllers
 import com.google.inject.Inject
 import javax.inject.Singleton
 import play.api.libs.json.Json
-import play.api.mvc.{Action, ControllerComponents}
+import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.ReportId
 import uk.gov.hmrc.leakdetection.services.ReportsService
@@ -44,13 +44,13 @@ class ReportsController @Inject()(configLoader: ConfigLoader,
     }
   }
 
-  def reportsForRepository(repoName: String) = Action.async { implicit request =>
+  def reportsForRepository(repoName: String) = Action.async {
     reportsService.getLatestReportsForEachBranch(repoName).map { reports =>
       Ok(html.reports_for_repo(repoName, reports))
     }
   }
 
-  def reportForRepositoryMaster(repoName: String) = Action.async { implicit request =>
+  def reportForRepositoryMaster(repoName: String) = Action.async {
     for {
       findLatestMasterReport <- reportsService.getLatestReportForMaster(repoName)
       result = findLatestMasterReport.map(report => Ok(Json.toJson(report))).getOrElse(NotFound)
@@ -61,9 +61,9 @@ class ReportsController @Inject()(configLoader: ConfigLoader,
     Redirect(routes.ReportsController.repositories())
   }
 
-  def showReport(reportId: ReportId) = Action.async { implicit request =>
-    reportsService.getReport(reportId).map { maybeReport =>
-      maybeReport
+  def showReport(reportId: ReportId) = Action.async {
+    reportsService.getReport(reportId)
+      .map(_
         .map { r =>
           val leakFrequencies =
             r.leakResolution
@@ -72,6 +72,6 @@ class ReportsController @Inject()(configLoader: ConfigLoader,
           Ok(html.report(r, leakFrequencies, configLoader.cfg.leakResolutionUrl))
         }
         .getOrElse(NotFound(Json.obj("msg" -> s"Report w/id $reportId not found")))
-    }
+     )
   }
 }

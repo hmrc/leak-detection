@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.controllers
 import javax.inject.{Inject, Singleton}
 import play.api.libs.json.Json
 import play.api.libs.json.Json.toJson
-import play.api.mvc.{Action, BodyParser, ControllerComponents}
+import play.api.mvc.{BodyParser, ControllerComponents}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
 import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult

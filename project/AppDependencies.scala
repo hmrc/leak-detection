@@ -3,10 +3,11 @@ import sbt._
 
 object AppDependencies {
 
+  val bootstrapVersion = "4.0.0"
   val hmrcMongoVersion = "0.39.0"
 
   val compile = Seq(
-    "uk.gov.hmrc"           %% "bootstrap-backend-play-27"         % "2.23.0",
+    "uk.gov.hmrc"           %% "bootstrap-backend-play-27"         % bootstrapVersion,
     "uk.gov.hmrc"           %% "play-ui"                           % "8.12.0-play-27",
     "uk.gov.hmrc.mongo"     %% "hmrc-mongo-work-item-repo-play-27" % hmrcMongoVersion, // TODO rename to work-item-repo-play-27? the organisation alredy include mongo...
     "com.github.pureconfig" %% "pureconfig"                        % "0.8.0",
@@ -21,15 +22,14 @@ object AppDependencies {
   )
 
   val test = Seq(
-    "uk.gov.hmrc"            %% "bootstrap-test-play-27"   % "2.23.0"            % Test,
-    "org.scalatest"          %% "scalatest"                % "3.1.2"             % Test,
-    "com.vladsch.flexmark"   %  "flexmark-all"             % "0.35.10"           % Test,
+    "uk.gov.hmrc"            %% "bootstrap-test-play-27"   % bootstrapVersion    % Test,
     "com.typesafe.play"      %% "play-test"                % PlayVersion.current % Test,
     "org.mockito"            %% "mockito-scala"            % "1.10.2"            % Test,
     "uk.gov.hmrc.mongo"      %% "hmrc-mongo-test-play-27"  % hmrcMongoVersion    % Test,
     "org.scalatestplus.play" %% "scalatestplus-play"       % "4.0.3"             % Test,
     "org.scalatestplus"      %% "scalatestplus-scalacheck" % "3.1.0.0-RC2"       % Test,
     "org.scalacheck"         %% "scalacheck"               % "1.13.4"            % Test,
+    "com.vladsch.flexmark"   %  "flexmark-all"             % "0.35.10"           % Test,
     "com.github.tomakehurst"  % "wiremock-standalone"      % "2.27.1"            % Test
   )
 }

@@ -20,7 +20,7 @@ import java.time.{Duration => JDuration}
 
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.apache.commons.codec.digest.HmacUtils
+import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
@@ -34,11 +34,11 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.test.Helpers.CONTENT_TYPE
 import play.api.test.{FakeRequest, Helpers}
+import uk.gov.hmrc.leakdetection.{GithubStub, ModelFactory}
 import uk.gov.hmrc.leakdetection.GithubStub.TestZippedFile
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import uk.gov.hmrc.leakdetection.model.{Report, PayloadDetails}
+import uk.gov.hmrc.leakdetection.model.Report
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, ReportsRepository}
-import uk.gov.hmrc.leakdetection.{GithubStub, ModelFactory}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.test.MongoSupport
 
@@ -199,7 +199,7 @@ class E2eTests
     PatienceConfig(timeout = 5.seconds)
 
   val secret: String = aString()
-  private def generateHmac(payload: String) = HmacUtils.hmacSha1Hex(secret, payload)
+  private def generateHmac(payload: String) = new HmacUtils(HmacAlgorithms.HMAC_SHA_1, secret).hmacHex(payload)
 
   override def newAppForTest(testData: TestData): Application =
     new GuiceApplicationBuilder()

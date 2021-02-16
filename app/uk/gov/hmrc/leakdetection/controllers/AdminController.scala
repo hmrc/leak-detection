@@ -24,6 +24,7 @@ import play.api.Logger
 import play.api.libs.json.{Format, JsValue, Json}
 import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.http.HttpClient
+import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
@@ -33,12 +34,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class AdminController @Inject()(
-  configLoader: ConfigLoader,
+  configLoader   : ConfigLoader,
   scanningService: ScanningService,
-  reportsService: ReportsService,
-  httpClient: HttpClient,
-  cc: ControllerComponents)(implicit ec: ExecutionContext)
-    extends BackendController(cc) {
+  reportsService : ReportsService,
+  httpClient     : HttpClient,
+  cc             : ControllerComponents
+)(implicit ec: ExecutionContext
+) extends BackendController(cc) {
 
   val logger = Logger(this.getClass.getName)
 
@@ -86,21 +88,18 @@ class AdminController @Inject()(
     val repoDir              = simulatedExplodedDir / "repo_dir"
     mkdir ! repoDir
     val filePathSegments = fileName.split("/").filterNot(_.isEmpty)
-    val actualFile = filePathSegments.foldLeft(repoDir: Path) { (acc, current) =>
-      acc / current
-    }
+    val actualFile = filePathSegments.foldLeft(repoDir)(_ / _)
     write(actualFile, fileContent)
     simulatedExplodedDir.toIO
   }
 
-  def clearCollection() = Action.async { implicit request =>
-    if (configLoader.cfg.clearingCollectionEnabled) {
-      reportsService.clearCollection().map { res =>
+  def clearCollection() = Action.async {
+    if (configLoader.cfg.clearingCollectionEnabled)
+      reportsService.clearCollection().map( res =>
         Ok(s"records deleted=$res")
-      }
-    } else {
+      )
+    else
       Future.successful(Ok("Clearing reports is disabled."))
-    }
   }
 
   def checkGithubRateLimits = Action.async { implicit request =>
@@ -112,7 +111,7 @@ class AdminController @Inject()(
       .map(Ok(_))
   }
 
-  def stats = Action.async { implicit request =>
+  def stats = Action.async {
     reportsService.metrics.map(stats => Ok(Json.toJson(stats)))
   }
 }
