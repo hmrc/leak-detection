@@ -112,19 +112,13 @@ object Report {
     )
 
   implicit val format: Format[Report] = {
+    // default Instant Reads is fine, but we want Writes to include .SSS even when 000
+    val instantFormatter =
+      java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
 
-    implicit val restInstantWrites: Writes[Instant] =
-      new Writes[Instant] {
-        private val restDateTimeFormat =
-          // preserving millis which Instant.toString doesn't when 000
-          java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
+      implicit val instantWrites: Writes[Instant] =
+      (instant: Instant) => JsString(instantFormatter.format(instant))
 
-        def writes(instant: Instant): JsValue =
-          JsString(restDateTimeFormat.format(instant))
-      }
-
-
-    //implicit val restDateTimeFormats  = uk.gov.hmrc.http.controllers.RestFormats.dateTimeFormats
     implicit val leakResolutionFormat = Json.format[LeakResolution]
     Json.format[Report]
   }
@@ -132,9 +126,9 @@ object Report {
   val mongoFormat: OFormat[Report] = {
     implicit val mongoDateFormats = MongoJavatimeFormats.instantFormats
     implicit val reads: Reads[LeakResolution] =
-      ( (__ \ "timestamp").read[Instant]
-      ~ (__ \ "commitId").read[String]
-      ~ (__ \ "resolvedLeaks").readNullable[Seq[ResolvedLeak]].map(_.getOrElse(Seq.empty[ResolvedLeak]))
+      ( (__ \ "timestamp"    ).read[Instant]
+      ~ (__ \ "commitId"     ).read[String]
+      ~ (__ \ "resolvedLeaks").read[Seq[ResolvedLeak]]
     )(LeakResolution.apply _)
 
     implicit val writes: OWrites[LeakResolution] = Json.writes[LeakResolution]

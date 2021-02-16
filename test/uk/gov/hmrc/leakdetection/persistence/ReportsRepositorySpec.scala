@@ -50,7 +50,6 @@ class ReportsRepositorySpec
           reportsWithUnresolvedProblems.map(_.copy(_id = ReportId.random)) :::
           reportsWithoutProblems
 
-      println(s">>>> Inserting ${withSomeDuplicates.map{r => r._id + "," + r.repoName}}")
       repository.collection.insertMany(withSomeDuplicates).toFuture.futureValue
 
       val foundNames = repository.getDistinctRepoNames.futureValue
@@ -84,45 +83,6 @@ class ReportsRepositorySpec
 
       foundReports should contain theSameElementsAs reportsWithUnresolvedProblems
     }
-
-    /*
-    "read reports with missing resolved leaks (testing backwards compatibility)" in {
-
-      val mongoDateTimeWrites = uk.gov.hmrc.mongo.json.ReactiveMongoFormats.dateTimeWrite
-
-      object GenericRepo
-          extends ReactiveRepository[JsValue, String](
-            collectionName = "reports",
-            mongo          = reactiveMongoComponent.mongoConnector.db,
-            domainFormat   = implicitly[Format[JsValue]],
-            idFormat       = implicitly[Format[String]]
-          )
-
-      val leakResWithoutResolvedLeaks = Json.obj(
-        "_id"       -> "n/a",
-        "timestamp" -> mongoDateTimeWrites.writes(DateTimeUtils.now),
-        "commitId"  -> "n/a"
-      )
-      val reportId = "id"
-      val report: JsValue =
-        Json.obj(
-          "_id"               -> reportId,
-          "repoName"          -> "n/a",
-          "repoUrl"           -> "n/a",
-          "commitId"          -> "n/a",
-          "branch"            -> "n/a",
-          "timestamp"         -> mongoDateTimeWrites.writes(DateTimeUtils.now),
-          "author"            -> "n/a",
-          "inspectionResults" -> JsArray(Nil),
-          "leakResolution"    -> leakResWithoutResolvedLeaks
-        )
-
-      GenericRepo.insert(report).futureValue
-
-      noException shouldBe thrownBy {
-        repository.findByReportId(ReportId(reportId)).futureValue
-      }
-    }*/
 
     "produce stats grouped by repository" in {
       val reports = List(aReportWithResolvedLeaks("r1"), aReport("r2"), aReport("r1"), aReportWithResolvedLeaks("r3"))

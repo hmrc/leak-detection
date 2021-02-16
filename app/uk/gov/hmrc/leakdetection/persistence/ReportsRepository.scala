@@ -66,9 +66,10 @@ class ReportsRepository @Inject()(
           throw new Exception(s"Error saving following report in db: $report")
       }
 
+  // TODO no index for inspectionResults or leakResolution (consider a derived boolean `isDefined` field rather than indexing the arrays)
   private val hasUnresolvedErrorsSelector =
     Filters.and(
-      Filters.gt("inspectionResults", BsonArray()),
+      Filters.gt("inspectionResults", BsonArray()), // also: {"inspectionResults": {"$gt": {"$size": 0}}}
       Filters.exists("leakResolution", false)
     )
 
