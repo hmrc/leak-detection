@@ -22,7 +22,7 @@ object AppDependencies {
   )
 
   val test = Seq(
-    "uk.gov.hmrc"            %% "bootstrap-test-play-27"   % bootstrapVersion    % Test,
+    "uk.gov.hmrc"            %% "bootstrap-test-play-27"   % bootstrapVersion    % Test exclude ("uk.gov.hmrc", "auth-client_2.12"),
     "com.typesafe.play"      %% "play-test"                % PlayVersion.current % Test,
     "org.mockito"            %% "mockito-scala"            % "1.10.2"            % Test,
     "uk.gov.hmrc.mongo"      %% "hmrc-mongo-test-play-27"  % hmrcMongoVersion    % Test,
