@@ -59,7 +59,7 @@ class ReportsController @Inject()(configLoader: ConfigLoader,
   }
 
   def redirectToRepositories = Action {
-    Redirect(routes.ReportsController.repositories())
+    Redirect(routes.ReportsController.repositories)
   }
 
   def showReport(reportId: ReportId) = Action.async {
