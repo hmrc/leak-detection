@@ -133,7 +133,7 @@ object Report {
   }
 
   val mongoFormat: OFormat[Report] =
-    reportFormat(MongoJavatimeFormats.instantFormats)
+    reportFormat(MongoJavatimeFormats.instantFormat)
 
   private def reportFormat(implicit instantFormat: Format[Instant]): OFormat[Report] = {
     implicit val leakResolutionFormat: Format[LeakResolution] =

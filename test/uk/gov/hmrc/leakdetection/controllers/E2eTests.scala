@@ -214,6 +214,7 @@ class E2eTests
                 initialDelay = 5 millis
                 interval = 1 seconds
               }
+              metrics.jvm = false
             """
           ))
       )
