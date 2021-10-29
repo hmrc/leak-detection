@@ -50,7 +50,7 @@ class ReportsController @Inject()(configLoader: ConfigLoader,
     }
   }
 
-  def reportForRepositoryMaster(repoName: String) = Action.async {
+  def reportForRepositoryMaster(repoName: String) = Action.async { implicit request =>
     implicit val rf = Report.apiFormat
     for {
       findLatestMasterReport <- reportsService.getLatestReportForMaster(repoName)

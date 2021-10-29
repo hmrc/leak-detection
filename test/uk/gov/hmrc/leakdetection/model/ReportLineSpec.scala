@@ -92,7 +92,7 @@ class ReportLineSpec extends AnyFreeSpec with Matchers with OptionValues {
     }
 
     "when creating from reports" - {
-      val branch     = "master"
+      val branch     = "main"
       val repoUrl    = "url"
       val urlToFile  = "/filePath"
       val lineNumber = 1

@@ -51,7 +51,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
           when(
             scanningService.scanRepository(
               eqTo("repoName"),
-              eqTo("master"),
+              eqTo("main"),
               eqTo(isPrivate),
               eqTo("https://github.com/hmrc/repoName"),
               eqTo("n/a"),
@@ -59,12 +59,12 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
               eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
             )(any()))
             .thenReturn(
-              Future.successful(Report(id, "repoName", "someUrl", "n/a", "master", now, "n/a", Seq.empty, None)))
+              Future.successful(Report(id, "repoName", "someUrl", "n/a", "main", now, "n/a", Seq.empty, None)))
 
-          val result       = controller.validate("repoName", "master", isPrivate)(FakeRequest())
+          val result       = controller.validate("repoName", "main", isPrivate)(FakeRequest())
           val json: String = contentAsString(result)
 
-          json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"n/a","branch":"master","timestamp":"1970-01-01T00:00:00.000Z","author":"n/a","inspectionResults":[]}"""
+          json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"n/a","branch":"main","timestamp":"1970-01-01T00:00:00.000Z","author":"n/a","inspectionResults":[]}"""
         }
 
         s"scan the git $repoType repository and some report" in new TestSetup {
@@ -75,7 +75,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
           when(
             scanningService.scanRepository(
               eqTo("repoName"),
-              eqTo("master"),
+              eqTo("main"),
               eqTo(isPrivate),
               eqTo("https://github.com/hmrc/repoName"),
               eqTo("n/a"),
@@ -87,7 +87,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
               "repoName",
               "someUrl",
               "n/a",
-              "master",
+              "main",
               now,
               "n/a",
               inspectionResults = Seq(
@@ -106,7 +106,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
               None
             )))
 
-          val result        = controller.validate("repoName", "master", isPrivate)(FakeRequest())
+          val result        = controller.validate("repoName", "main", isPrivate)(FakeRequest())
           val json: JsValue = contentAsJson(result)
 
           (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","ruleId":"rule id","description":"a description","lineText":"the line","matches":[{"start":0,"end":1}],"isTruncated":false}]"""

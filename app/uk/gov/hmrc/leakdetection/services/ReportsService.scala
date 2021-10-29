@@ -18,6 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import play.api.Configuration
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
@@ -30,7 +31,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class ReportsService @Inject()(
   reportsRepository: ReportsRepository,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
-  configuration: Configuration)(implicit ec: ExecutionContext)
+  configuration: Configuration,
+  githubService: GithubService)(implicit ec: ExecutionContext)
     extends MetricSource {
 
   lazy val repositoriesToIgnore: Seq[String] =
@@ -45,9 +47,12 @@ class ReportsService @Inject()(
         case (_, reports) => reports.head
       }.toList)
 
-  def getLatestReportForMaster(repoName: String): Future[Option[Report]] =
-    reportsRepository
-    .findUnresolvedWithProblems(repoName, Some("master")).map(_.headOption)
+  def getLatestReportForMaster(repoName: String)(implicit hc: HeaderCarrier): Future[Option[Report]] = {
+    githubService.getDefaultBranchName(repoName) flatMap { defaultBranchName =>
+      reportsRepository
+        .findUnresolvedWithProblems(repoName, Some(defaultBranchName)).map(_.headOption)
+    }
+  }
 
   def getReport(reportId: ReportId): Future[Option[Report]] =
     reportsRepository.findByReportId(reportId)
