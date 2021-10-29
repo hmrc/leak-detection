@@ -16,9 +16,9 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import play.api.libs.json.{Json, OFormat}
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
+import play.api.libs.json._
 import uk.gov.hmrc.http.HttpReads.Implicits._
+import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 
 import javax.inject.Inject
@@ -37,14 +37,15 @@ class GithubService @Inject()(httpClient: HttpClient, configLoader: ConfigLoader
       headers = Seq(("Authorization", s"token $githubAccessToken"))) recover {
       case _ => None
     } map {
-      case Some(value) => value.default_branch
+      case Some(value) => value.defaultBranch
       case None => "main"
     }
   }
 }
 
-final case class RepoInfo(default_branch: String)
+final case class RepoInfo(defaultBranch: String = "main")
 
 object RepoInfo {
-  implicit def format: OFormat[RepoInfo] = Json.format[RepoInfo]
+  implicit val reads: Reads[RepoInfo] =
+    (__ \ "default_branch").readWithDefault[String]("main").map(RepoInfo(_))
 }

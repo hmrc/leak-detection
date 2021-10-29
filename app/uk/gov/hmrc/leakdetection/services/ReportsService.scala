@@ -47,7 +47,7 @@ class ReportsService @Inject()(
         case (_, reports) => reports.head
       }.toList)
 
-  def getLatestReportForMaster(repoName: String)(implicit hc: HeaderCarrier): Future[Option[Report]] = {
+  def getLatestReportForDefaultBranch(repoName: String)(implicit hc: HeaderCarrier): Future[Option[Report]] = {
     githubService.getDefaultBranchName(repoName) flatMap { defaultBranchName =>
       reportsRepository
         .findUnresolvedWithProblems(repoName, Some(defaultBranchName)).map(_.headOption)

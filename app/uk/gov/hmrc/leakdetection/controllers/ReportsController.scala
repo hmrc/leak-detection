@@ -50,11 +50,11 @@ class ReportsController @Inject()(configLoader: ConfigLoader,
     }
   }
 
-  def reportForRepositoryMaster(repoName: String) = Action.async { implicit request =>
+  def reportForRepositoryDefaultBranch(repoName: String) = Action.async { implicit request =>
     implicit val rf = Report.apiFormat
     for {
-      findLatestMasterReport <- reportsService.getLatestReportForMaster(repoName)
-      result = findLatestMasterReport.map(report => Ok(Json.toJson(report))).getOrElse(NotFound)
+      findLatestDefaultBranchReport <- reportsService.getLatestReportForDefaultBranch(repoName)
+      result = findLatestDefaultBranchReport.map(report => Ok(Json.toJson(report))).getOrElse(NotFound)
     } yield result
   }
 

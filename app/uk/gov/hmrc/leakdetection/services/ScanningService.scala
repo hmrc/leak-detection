@@ -105,10 +105,10 @@ class ScanningService @Inject()(
           alertingService.alertAboutRepoVisibility(repoName, author)
         } else {
           logger.info(s"repo: $repoName, branch: $branchName, dir: ${dir.getAbsolutePath}. No action needed")
-          Future.successful(())
+          Future.unit
         }
       } else {
-        Future.successful(())
+        Future.unit
       }
     }
 
