@@ -208,10 +208,10 @@ class ScanningServiceSpec
       verify(alertingService).alertAboutRepoVisibility(repoName = "repoName", author = "me")(hc)
     }
 
-    "not send alerts if the branch is not master" in new TestSetup {
+    "not send alerts if the branch is not main" in new TestSetup {
       when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(false)
 
-      override val branch = "not-master"
+      override val branch = "not-main"
       when(
         artifactService.getZipAndExplode(
           is(githubSecrets.personalAccessToken),
@@ -246,7 +246,7 @@ class ScanningServiceSpec
         artifactService.getZipAndExplode(
           is(githubSecrets.personalAccessToken),
           is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          is("master"))).thenThrow(new RuntimeException("Some error"))
+          is("main"))).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
@@ -285,7 +285,7 @@ class ScanningServiceSpec
 
     def generateReport = performScan()
 
-    def branch = "master"
+    def branch = "main"
 
     def performScan() =
       scanningService
@@ -395,7 +395,8 @@ class ScanningServiceSpec
         githubSecrets             = githubSecrets,
         leakResolutionUrl         = leakResolutionUrl,
         maxLineLength             = Int.MaxValue,
-        clearingCollectionEnabled = false
+        clearingCollectionEnabled = false,
+        github = Github("", "")
       )
 
     lazy val configLoader = new ConfigLoader {
@@ -447,15 +448,18 @@ class ScanningServiceSpec
     val repoVisiblityChecker = mock[RepoVisiblityChecker]
     when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(false)
 
+    private val githubService = mock[GithubService]
+    when(githubService.getDefaultBranchName(any())(any(), any())).thenReturn(Future.successful("main"))
+
     lazy val scanningService =
       new ScanningService(
-        configuration,
         artifactService,
         configLoader,
         reportsService,
         alertingService,
         queue,
-        repoVisiblityChecker)
+        repoVisiblityChecker,
+        githubService)
   }
 
   def write(content: String, destination: File) =

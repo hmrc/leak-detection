@@ -40,6 +40,7 @@ class PlayConfigLoader @Inject()(configuration: Configuration) extends ConfigLoa
 final case class Cfg(
   allRules: AllRules,
   githubSecrets: GithubSecrets,
+  github: Github,
   leakResolutionUrl: LeakResolutionUrl,
   maxLineLength: Int,
   clearingCollectionEnabled: Boolean
@@ -66,6 +67,11 @@ object Rule {
     val FILE_NAME    = "fileName"
   }
 }
+
+final case class Github(
+  url: String,
+  apiUrl: String
+)
 
 final case class GithubSecrets(
   personalAccessToken: String,

@@ -16,20 +16,23 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import java.time.LocalDateTime
+import org.mockito.ArgumentMatchers.any
 
+import java.time.LocalDateTime
 import org.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, GivenWhenThen}
 import play.api.Configuration
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, aReportWithResolvedLeaks, few}
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.{Report, ResolvedLeak}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
-import uk.gov.hmrc.mongo.test.{PlayMongoRepositorySupport, CleanMongoCollectionSupport}
+import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -50,7 +53,7 @@ class ReportsServiceSpec
   "Reports service" should {
     "resolve previous problems if the new report contains no leaks" in {
       val repoName      = "repo"
-      val branchName    = "master"
+      val branchName    = "main"
       val anotherBranch = "another-branch"
 
       def genReports() = few(() => aReport(repoName).copy(branch = branchName))
@@ -116,7 +119,7 @@ class ReportsServiceSpec
 
     "don't resolve previous problems on the same repo/branch if report still has errors" in {
       val repoName   = "repo"
-      val branchName = "master"
+      val branchName = "main"
 
       def genReports() = few(() => aReport(repoName).copy(branch = branchName))
 
@@ -145,7 +148,7 @@ class ReportsServiceSpec
 
     "provide a list of reports for a repo showing only the latest one per branch" in {
       val repoName = "repo"
-      val branch1  = "master"
+      val branch1  = "main"
       val branch2  = "another-branch"
 
       def genReport(branchName: String) =
@@ -170,7 +173,7 @@ class ReportsServiceSpec
 
     "produce metrics" in {
       val repoName   = "repo"
-      val branchName = "master"
+      val branchName = "main"
 
       def genReports() = few(() => aReport(repoName).copy(branch = branchName))
 
@@ -239,7 +242,7 @@ class ReportsServiceSpec
         .thenReturn(Future.successful(teams))
 
       val reportsService =
-        new ReportsService(repository, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"))
+        new ReportsService(repository, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"), githubService)
 
       reportsService.metrics.futureValue should contain allOf (
         "reports.teams.t1.unresolved"    -> 0,
@@ -254,6 +257,20 @@ class ReportsServiceSpec
   private val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
   when(teamsAndRepositoriesConnector.teamsWithRepositories())
     .thenReturn(Future.successful(Seq.empty))
+  implicit val hc = new HeaderCarrier()
+  private val githubService = mock[GithubService]
+  when(githubService.getDefaultBranchName(any())(any(), any())).thenReturn(Future.successful("main"))
 
-  val reportsService = new ReportsService(repository, teamsAndRepositoriesConnector, Configuration())
+  private val configuration: Configuration = Configuration(
+    "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
+    "githubSecrets.webhookSecretKey"         -> "PLACEHOLDER",
+    "github.url"                             -> "url",
+    "github.apiUrl"                          -> "url",
+    "allRules.privateRules"                  -> List(),
+    "allRules.publicRules"                   -> List(),
+    "leakResolutionUrl"                      -> "PLACEHOLDER",
+    "maxLineLength"                          -> 2147483647,
+    "clearingCollectionEnabled"              -> false)
+  val configLoader: ConfigLoader = new PlayConfigLoader(configuration)
+  val reportsService = new ReportsService(repository, teamsAndRepositoriesConnector, configuration, githubService)
 }

@@ -17,7 +17,6 @@
 package uk.gov.hmrc.leakdetection.services
 
 import java.time.Instant
-
 import org.mockito.{ArgumentCaptor, MockitoSugar}
 import org.mockito.ArgumentMatchers.{any, eq => is}
 import org.scalatest.concurrent.ScalaFutures
@@ -26,7 +25,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
-import uk.gov.hmrc.leakdetection.config.Rule
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
@@ -36,6 +35,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar {
 
+  implicit val hc = HeaderCarrier()
+
   "The alerting service" should {
     "send alerts to both alert channel and team channel if leaks are in the report" in new Fixtures {
 
@@ -44,7 +45,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         repoName  = "repo-name",
         repoUrl   = "https://github.com/hmrc/a-repo",
         commitId  = "123",
-        branch    = "master",
+        branch    = "main",
         timestamp = Instant.now(),
         author    = "me",
         inspectionResults = Seq(
@@ -52,7 +53,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
             filePath    = "/README.md",
             scope       = Rule.Scope.FILE_CONTENT,
             lineNumber  = 2,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/master/README.md#L2",
+            urlToSource = s"https://github.com/hmrc/repoName/blame/main/README.md#L2",
             ruleId      = Some("no nulls allowed"),
             description = "uses nulls!",
             lineText    = " var x = null",
@@ -95,7 +96,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         repoName  = "a-repo",
         repoUrl   = "https://github.com/hmrc/a-repo",
         commitId  = "123",
-        branch    = "master",
+        branch    = "main",
         timestamp = Instant.now(),
         author    = "me",
         inspectionResults = Seq(
@@ -103,7 +104,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
             filePath    = "/README.md",
             scope       = Rule.Scope.FILE_CONTENT,
             lineNumber  = 2,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/master/README.md#L2",
+            urlToSource = s"https://github.com/hmrc/repoName/blame/main/README.md#L2",
             ruleId      = Some("no nulls allowed"),
             description = "uses nulls!",
             lineText    = " var x = null",
@@ -125,7 +126,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         repoName          = "a-repo",
         repoUrl           = "https://github.com/hmrc/a-repo",
         commitId          = "123",
-        branch            = "master",
+        branch            = "main",
         timestamp         = Instant.now(),
         author            = "me",
         inspectionResults = Nil,
@@ -230,10 +231,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
   trait Fixtures {
 
-    implicit val hc = HeaderCarrier()
-
     val slackConnector = mock[SlackNotificationsConnector]
     when(slackConnector.sendMessage(any())(any())).thenReturn(Future.successful(SlackNotificationResponse(Nil)))
+
+    val githubService = mock[GithubService]
+    when(githubService.getDefaultBranchName(any())(any(),any())).thenReturn(Future.successful("main"))
+
 
     val defaultConfiguration = Configuration(
       "alerts.slack.leakDetectionUri"          -> "https://somewhere",
@@ -246,12 +249,22 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
       "alerts.slack.sendToTeamChannels"        -> true,
       "alerts.slack.sendToAlertChannel"        -> true,
       "alerts.slack.repoVisibilityMessageText" -> "Repo visiblity problem detected",
-      "alerts.slack.enabledForRepoVisibility"  -> false
+      "alerts.slack.enabledForRepoVisibility"  -> false,
+      "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
+      "githubSecrets.webhookSecretKey"         -> "PLACEHOLDER",
+      "github.url"                             -> "url",
+      "github.apiUrl"                          -> "url",
+      "allRules.privateRules"                  -> List(),
+      "allRules.publicRules"                   -> List(),
+      "leakResolutionUrl"                      -> "PLACEHOLDER",
+      "maxLineLength"                          -> 2147483647,
+      "clearingCollectionEnabled"              -> false
     )
 
     val configuration = defaultConfiguration
+    val configLoader: ConfigLoader = new PlayConfigLoader(defaultConfiguration)
 
-    lazy val service = new AlertingService(configuration, slackConnector)(ExecutionContext.global)
+    lazy val service = new AlertingService(configuration, slackConnector, githubService)(ExecutionContext.global)
 
   }
 }

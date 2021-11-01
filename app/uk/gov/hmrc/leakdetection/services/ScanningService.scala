@@ -20,7 +20,7 @@ import java.io.File
 
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.io.FileUtils
-import play.api.{Configuration, Logger}
+import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
@@ -35,13 +35,13 @@ import scala.util.control.NonFatal
 
 @Singleton
 class ScanningService @Inject()(
-  configuration: Configuration,
   artifactService: ArtifactService,
   configLoader: ConfigLoader,
   reportsService: ReportsService,
   alertingService: AlertingService,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  repoVisibilityChecker: RepoVisiblityChecker
+  repoVisibilityChecker: RepoVisiblityChecker,
+  githubService: GithubService
 )(implicit ec: ExecutionContext) {
 
   import configLoader.cfg
@@ -97,17 +97,19 @@ class ScanningService @Inject()(
     author: String,
     dir: File,
     isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (branchName == "master") {
-      if (!repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate)) {
-        logger.warn(
-          s"Incorrect configuration for repo $repoName on $branchName branch! File path: ${dir.getAbsolutePath}. Sending alert")
-        alertingService.alertAboutRepoVisibility(repoName, author)
+    githubService.getDefaultBranchName(repoName) flatMap { defaultBranchName =>
+      if (branchName == defaultBranchName) {
+        if (!repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate)) {
+          logger.warn(
+            s"Incorrect configuration for repo $repoName on $branchName branch! File path: ${dir.getAbsolutePath}. Sending alert")
+          alertingService.alertAboutRepoVisibility(repoName, author)
+        } else {
+          logger.info(s"repo: $repoName, branch: $branchName, dir: ${dir.getAbsolutePath}. No action needed")
+          Future.unit
+        }
       } else {
-        logger.info(s"repo: $repoName, branch: $branchName, dir: ${dir.getAbsolutePath}. No action needed")
-        Future.successful(())
+        Future.unit
       }
-    } else {
-      Future.successful(())
     }
 
   def queueRequest(p: PayloadDetails): Future[Boolean] =

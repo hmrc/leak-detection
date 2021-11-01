@@ -36,3 +36,4 @@ nohup*
 .metals/
 .vscode/
 project/metals.sbt
+.bsp/

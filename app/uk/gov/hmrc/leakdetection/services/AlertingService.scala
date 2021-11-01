@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import javax.inject.{Inject, Singleton}
 import play.api.{Configuration, Logger}
 import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
@@ -24,10 +23,13 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.Report
 
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class AlertingService @Inject()(configuration: Configuration, slackConnector: SlackNotificationsConnector)(
+class AlertingService @Inject()(configuration: Configuration,
+                                slackConnector: SlackNotificationsConnector,
+                                githubService: GithubService)(
   implicit ec: ExecutionContext) {
 
   private val logger = Logger(this.getClass.getName)
@@ -55,11 +57,12 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
           attachments = Seq()
         )
 
-      val commitInfo = CommitInfo(author, "master", repoName)
-
-      Future
-        .traverse(prepareSlackNotifications(messageDetails, commitInfo, author))(sendSlackMessage)
-        .map(_ => ())
+      githubService.getDefaultBranchName(repoName) flatMap { defaultBranchName =>
+        val commitInfo = CommitInfo(author, defaultBranchName, repoName)
+        Future
+          .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
+          .map(_ => ())
+      }
     }
 
   def alert(report: Report)(implicit hc: HeaderCarrier): Future[Unit] =
@@ -80,27 +83,27 @@ class AlertingService @Inject()(configuration: Configuration, slackConnector: Sl
           attachments = Seq(Attachment(s"$leakDetectionUri/reports/${report.id}")))
 
       Future
-        .traverse(prepareSlackNotifications(messageDetails, CommitInfo.fromReport(report), report.author))(
+        .traverse(prepareSlackNotifications(messageDetails, CommitInfo.fromReport(report)))(
           sendSlackMessage)
         .map(_ => ())
     }
 
   private def prepareSlackNotifications(
     messageDetails: MessageDetails,
-    commitInfo: CommitInfo,
-    author: String): Seq[SlackNotificationAndErrorMessage] = {
+    commitInfo: CommitInfo): Seq[SlackNotificationAndErrorMessage] = {
 
     val alertChannelNotification =
       if (sendToAlertChannel) Some(notificationForAlertChannel(messageDetails, commitInfo)) else None
 
     val teamChannelNotification =
-      if (sendToTeamChannels) Some(notificationForTeam(messageDetails, commitInfo, author)) else None
+      if (sendToTeamChannels) Some(notificationForTeam(messageDetails, commitInfo)) else None
 
     List(alertChannelNotification, teamChannelNotification).flatten
 
   }
 
-  private def notificationForTeam(messageDetails: MessageDetails, commitInfo: CommitInfo, author: String) = {
+  private def notificationForTeam(messageDetails: MessageDetails, commitInfo: CommitInfo) = {
+    val author = commitInfo.author
     val request =
       SlackNotificationRequest(channelLookup = ChannelLookup.TeamsOfGithubUser(author), messageDetails = messageDetails)
 
