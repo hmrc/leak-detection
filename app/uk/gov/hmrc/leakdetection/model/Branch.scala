@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.leakdetection.services
+package uk.gov.hmrc.leakdetection.model
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import uk.gov.hmrc.leakdetection.model.Branch
+import play.api.libs.json.{Reads, __}
 
+import scala.language.implicitConversions
 
-class ArtifactServiceSpec extends AnyFlatSpec with Matchers {
+case class Branch(val asString: String) extends AnyVal {}
 
-  "Branch names" should "be url-encoded" in {
-    val nonEscapedBranchName = "feature/#10_DeathToConcrete" // real life example
-    val artifactService      = new ArtifactService(null)
-    val result               = artifactService.getArtifactUrl("github-link{/ref}", Branch(nonEscapedBranchName))
+object Branch {
+  def apply(name: String): Branch = new Branch(name)
 
-    result shouldBe "github-link/feature%2F%2310_DeathToConcrete"
-  }
+  val main: Branch = Branch("main")
 
+  implicit def reads: Reads[Branch] =
+    (__ \ "default_branch").readWithDefault[String]("main").map(Branch(_))
 }

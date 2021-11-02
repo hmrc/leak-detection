@@ -17,9 +17,7 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import java.time.Instant
-
-import org.mockito.ArgumentMatchers.{any, eq => eqTo}
-import org.mockito.MockitoSugar
+import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -28,14 +26,14 @@ import play.api.mvc.Results
 import play.api.test.FakeRequest
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
+class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatchersSugar with ScalaFutures with MockitoSugar with Results {
 
   import play.api.test.Helpers._
 
@@ -51,17 +49,17 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
           when(
             scanningService.scanRepository(
               eqTo("repoName"),
-              eqTo("main"),
+              Branch(eqTo("main")),
               eqTo(isPrivate),
               eqTo("https://github.com/hmrc/repoName"),
               eqTo("n/a"),
               eqTo("n/a"),
               eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-            )(any()))
+            )(any))
             .thenReturn(
               Future.successful(Report(id, "repoName", "someUrl", "n/a", "main", now, "n/a", Seq.empty, None)))
 
-          val result       = controller.validate("repoName", "main", isPrivate)(FakeRequest())
+          val result       = controller.validate("repoName", Branch.main, isPrivate)(FakeRequest())
           val json: String = contentAsString(result)
 
           json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"n/a","branch":"main","timestamp":"1970-01-01T00:00:00.000Z","author":"n/a","inspectionResults":[]}"""
@@ -75,13 +73,13 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
           when(
             scanningService.scanRepository(
               eqTo("repoName"),
-              eqTo("main"),
+              Branch(eqTo("main")),
               eqTo(isPrivate),
               eqTo("https://github.com/hmrc/repoName"),
               eqTo("n/a"),
               eqTo("n/a"),
               eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-            )(any()))
+            )(any))
             .thenReturn(Future.successful(Report(
               id,
               "repoName",
@@ -106,7 +104,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
               None
             )))
 
-          val result        = controller.validate("repoName", "main", isPrivate)(FakeRequest())
+          val result        = controller.validate("repoName", Branch.main, isPrivate)(FakeRequest())
           val json: JsValue = contentAsJson(result)
 
           (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","ruleId":"rule id","description":"a description","lineText":"the line","matches":[{"start":0,"end":1}],"isTruncated":false}]"""

@@ -30,7 +30,7 @@ import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, aReportWithResolvedLeaks, few}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
-import uk.gov.hmrc.leakdetection.model.{Report, ResolvedLeak}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ResolvedLeak}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
@@ -259,7 +259,7 @@ class ReportsServiceSpec
     .thenReturn(Future.successful(Seq.empty))
   implicit val hc = new HeaderCarrier()
   private val githubService = mock[GithubService]
-  when(githubService.getDefaultBranchName(any())(any(), any())).thenReturn(Future.successful("main"))
+  when(githubService.getDefaultBranchName(any())(any(), any())).thenReturn(Future.successful(Branch.main))
 
   private val configuration: Configuration = Configuration(
     "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",

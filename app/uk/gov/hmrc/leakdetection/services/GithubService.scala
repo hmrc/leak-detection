@@ -16,10 +16,10 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import play.api.libs.json._
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.model.Branch
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
@@ -29,23 +29,13 @@ class GithubService @Inject()(httpClient: HttpClient, configLoader: ConfigLoader
 
   import configLoader.cfg
 
-  def getDefaultBranchName(repository: String)(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[String] = {
+  def getDefaultBranchName(repository: String)(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Branch] = {
     val githubAccessToken = cfg.githubSecrets.personalAccessToken
     val url = s"${cfg.github.apiUrl}/$repository"
-    httpClient.GET[Option[RepoInfo]](
+    httpClient.GET[Option[Branch]](
       url = url,
-      headers = Seq(("Authorization", s"token $githubAccessToken"))) recover {
-      case _ => None
-    } map {
-      case Some(value) => value.defaultBranch
-      case None => "main"
+      headers = Seq(("Authorization", s"token $githubAccessToken"))) map {
+      _.getOrElse(Branch.main)
     }
   }
-}
-
-final case class RepoInfo(defaultBranch: String = "main")
-
-object RepoInfo {
-  implicit val reads: Reads[RepoInfo] =
-    (__ \ "default_branch").readWithDefault[String]("main").map(RepoInfo(_))
 }

@@ -20,9 +20,10 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import play.api.Configuration
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse, Upstream5xxResponse}
 import uk.gov.hmrc.http.test.{ExternalWireMockSupport, HttpClientSupport}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
+import uk.gov.hmrc.leakdetection.model.Branch
 
 class GithubServiceSpec extends AsyncWordSpec with Matchers with ExternalWireMockSupport with HttpClientSupport {
 
@@ -50,25 +51,25 @@ class GithubServiceSpec extends AsyncWordSpec with Matchers with ExternalWireMoc
         externalWireMockServer.stubFor(get(s"/$repository")
           .willReturn(okJson("""{"default_branch": "default1"}""")))
       val service = new GithubService(httpClient, configLoader)
-      service.getDefaultBranchName("repo") map { branchName => branchName shouldBe "default1"}
+      service.getDefaultBranchName("repo") map { branchName => branchName shouldBe Branch("default1")}
     }
     "return main when github sends 404 response" in {
       externalWireMockServer.stubFor(get(s"/$repository")
         .willReturn(notFound()))
       val service = new GithubService(httpClient, configLoader)
-      service.getDefaultBranchName("repo") map { branchName => branchName shouldBe "main"}
+      service.getDefaultBranchName("repo") map { branchName => branchName shouldBe Branch.main}
     }
     "return main when github sends 403 response" in {
       externalWireMockServer.stubFor(get(s"/$repository")
         .willReturn(forbidden()))
       val service = new GithubService(httpClient, configLoader)
-      service.getDefaultBranchName("repo") map { branchName => branchName shouldBe "main"}
+      service.getDefaultBranchName("repo").failed map { _ shouldBe an[Upstream4xxResponse] }
     }
     "return main when github sends 503 response" in {
       externalWireMockServer.stubFor(get(s"/$repository")
         .willReturn(serviceUnavailable()))
       val service = new GithubService(httpClient, configLoader)
-      service.getDefaultBranchName("repo") map { branchName => branchName shouldBe "main"}
+      service.getDefaultBranchName("repo").failed map { _ shouldBe an[Upstream5xxResponse] }
     }
   }
 }
