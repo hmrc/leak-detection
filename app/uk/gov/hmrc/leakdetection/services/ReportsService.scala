@@ -87,7 +87,7 @@ class ReportsService @Inject()(
 
   private def markPreviousReportsAsResolved(report: Report): Future[List[Report]] =
     for {
-      unresolvedReports <- reportsRepository.findUnresolvedWithProblems(report.repoName, Some(report.branch)).map(_.toList)
+      unresolvedReports <- reportsRepository.findUnresolvedWithProblems(report.repoName, Some(Branch(report.branch))).map(_.toList)
       resolvedReports   =  unresolvedReports.map { unresolvedReport =>
                              val leakResolution =
                                LeakResolution(

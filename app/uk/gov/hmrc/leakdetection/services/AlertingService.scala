@@ -178,7 +178,7 @@ final case class CommitInfo(
       text = "",
       fields = List(
         Attachment.Field(title = "author", value     = author, short     = true),
-        Attachment.Field(title = "branch", value     = branch, short     = true),
+        Attachment.Field(title = "branch", value     = branch.asString, short     = true),
         Attachment.Field(title = "repository", value = repository, short = true)
       )
     )
@@ -191,7 +191,7 @@ object CommitInfo {
   def fromReport(report: Report): CommitInfo =
     CommitInfo(
       author     = report.author,
-      branch     = report.branch,
+      branch     = Branch(report.branch),
       repository = report.repoName
     )
 }

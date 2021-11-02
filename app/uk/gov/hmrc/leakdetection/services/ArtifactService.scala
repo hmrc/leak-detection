@@ -39,11 +39,11 @@ class ArtifactService @Inject()(metrics: Metrics) {
   def getZipAndExplode(
     githubPersonalAccessToken: String,
     archiveUrl: String,
-    branchRef: Branch
+    branch: Branch
   ): Either[BranchNotFound, ExplodedZip] = {
     logger.info("starting zip process....")
     val savedZipFilePath = Files.createTempDirectory("unzipped_").toString
-    val downloadResult   = getZip(githubPersonalAccessToken, archiveUrl, branchRef, savedZipFilePath)
+    val downloadResult   = getZip(githubPersonalAccessToken, archiveUrl, branch, savedZipFilePath)
     downloadResult.map(_ =>
       explodeZip(savedZipFilePath)
     )
@@ -98,7 +98,7 @@ class ArtifactService @Inject()(metrics: Metrics) {
   }
 
   def getArtifactUrl(archiveUrl: String, branch: Branch): String = {
-    val urlEncodedBranchName = URLEncoder.encode(branch, "UTF-8")
+    val urlEncodedBranchName = URLEncoder.encode(branch.asString, "UTF-8")
     archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$urlEncodedBranchName")
   }
 }

@@ -20,16 +20,15 @@ import play.api.libs.json.{Reads, __}
 
 import scala.language.implicitConversions
 
-class Branch(val name: String) extends AnyVal {
-}
+class Branch(val asString: String) extends AnyVal {}
 
 object Branch {
   def apply(name: String): Branch = {
     new Branch(name)
   }
+
+  val main: Branch = Branch("main")
+
   implicit def reads: Reads[Branch] =
     (__ \ "default_branch").readWithDefault[String]("main").map(Branch(_))
-
-  implicit def asString(branch: Branch): String = branch.name
-  implicit def fromString(name: String): Branch = Branch(name)
 }

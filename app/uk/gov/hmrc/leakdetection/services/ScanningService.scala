@@ -66,7 +66,7 @@ class ScanningService @Inject()(
               DeleteBranchEvent(
                 repositoryName = repository,
                 authorName     = authorName,
-                branchRef      = branch,
+                branchRef      = branch.asString,
                 deleted        = true,
                 repositoryUrl  = repositoryUrl)
             )
@@ -76,10 +76,10 @@ class ScanningService @Inject()(
           val processingResult =
             for {
               results <- Future { regexMatchingEngine.run(dir) }
-              report = Report.create(repository, repositoryUrl, commitId, authorName, branch, results)
+              report = Report.create(repository, repositoryUrl, commitId, authorName, branch.asString, results)
               _ <- reportsService.saveReport(report)
               _ <- alertingService.alert(report)
-              _ <- alertAboutRepoVisibility(repoName = repository, branchName = branch, authorName, dir, isPrivate)
+              _ <- alertAboutRepoVisibility(repoName = repository, branch = branch, authorName, dir, isPrivate)
             } yield {
               report
             }
@@ -91,19 +91,19 @@ class ScanningService @Inject()(
     }
 
   private def alertAboutRepoVisibility(
-    repoName: String,
-    branchName: Branch,
-    author: String,
-    dir: File,
-    isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+                                        repoName: String,
+                                        branch: Branch,
+                                        author: String,
+                                        dir: File,
+                                        isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
     githubService.getDefaultBranchName(repoName) flatMap { defaultBranchName =>
-      if (branchName == defaultBranchName) {
+      if (branch == defaultBranchName) {
         if (!repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate)) {
           logger.warn(
-            s"Incorrect configuration for repo $repoName on $branchName branch! File path: ${dir.getAbsolutePath}. Sending alert")
+            s"Incorrect configuration for repo $repoName on $branch branch! File path: ${dir.getAbsolutePath}. Sending alert")
           alertingService.alertAboutRepoVisibility(repoName, author)
         } else {
-          logger.info(s"repo: $repoName, branch: $branchName, dir: ${dir.getAbsolutePath}. No action needed")
+          logger.info(s"repo: $repoName, branch: $branch, dir: ${dir.getAbsolutePath}. No action needed")
           Future.unit
         }
       } else {
@@ -129,7 +129,7 @@ class ScanningService @Inject()(
     implicit val hc = HeaderCarrier()
     scanRepository(
       repository    = request.repositoryName,
-      branch        = request.branchRef,
+      branch        = Branch(request.branchRef),
       isPrivate     = request.isPrivate,
       repositoryUrl = request.repositoryUrl,
       commitId      = request.commitId,

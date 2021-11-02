@@ -18,6 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import uk.gov.hmrc.leakdetection.model.Branch
 
 
 class ArtifactServiceSpec extends AnyFlatSpec with Matchers {
@@ -25,7 +26,7 @@ class ArtifactServiceSpec extends AnyFlatSpec with Matchers {
   "Branch names" should "be url-encoded" in {
     val nonEscapedBranchName = "feature/#10_DeathToConcrete" // real life example
     val artifactService      = new ArtifactService(null)
-    val result               = artifactService.getArtifactUrl("github-link{/ref}", nonEscapedBranchName)
+    val result               = artifactService.getArtifactUrl("github-link{/ref}", Branch(nonEscapedBranchName))
 
     result shouldBe "github-link/feature%2F%2310_DeathToConcrete"
   }

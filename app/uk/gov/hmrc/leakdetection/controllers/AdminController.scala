@@ -52,11 +52,11 @@ class AdminController @Inject()(
     Ok(Json.toJson(cfg.allRules))
   }
 
-  def validate(repository: String, branch: Branch, isPrivate: Boolean) = Action.async { implicit request =>
+  def validate(repository: String, branch: String, isPrivate: Boolean) = Action.async { implicit request =>
     scanningService
       .scanRepository(
         repository    = repository,
-        branch        = branch,
+        branch        = Branch(branch),
         isPrivate     = isPrivate,
         repositoryUrl = s"https://github.com/hmrc/$repository",
         commitId      = NOT_APPLICABLE,

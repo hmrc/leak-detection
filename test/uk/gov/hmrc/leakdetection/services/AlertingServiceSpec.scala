@@ -17,8 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 import java.time.Instant
-import org.mockito.{ArgumentCaptor, MockitoSugar}
-import org.mockito.ArgumentMatchers.{any, eq => is}
+import org.mockito.{ArgumentCaptor, ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -27,13 +26,13 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
-class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar {
+class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatchersSugar with ScalaFutures with MockitoSugar {
 
   implicit val hc = HeaderCarrier()
 
@@ -82,8 +81,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         messageDetails = messageDetails
       )
 
-      verify(slackConnector).sendMessage(is(expectedMessageToAlertChannel))(any())
-      verify(slackConnector).sendMessage(is(expectedMessageToTeamChannel))(any())
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
 
     "not send leak alerts to slack if not enabled" in new Fixtures {
@@ -152,13 +151,13 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
       errorsRequiringAlerting.foreach { error =>
         val report = ModelFactory.aReportWithLeaks()
 
-        when(slackConnector.sendMessage(any())(any()))
+        when(slackConnector.sendMessage(any)(any))
           .thenReturn(Future.successful(SlackNotificationResponse(errors = List(error))))
 
         service.alert(report).futureValue
 
         val expectedNumberOfMessages = 4 // 1 for alert channel, 1 for team channel, since both failed 2 further for admin channel
-        verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(any())(any())
+        verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(any)(any)
         reset(slackConnector)
       }
 
@@ -169,7 +168,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
       val report = ModelFactory.aReportWithLeaks()
 
-      when(slackConnector.sendMessage(any())(any()))
+      when(slackConnector.sendMessage(any)(any))
         .thenReturn(Future.successful(SlackNotificationResponse(errors = List(errorRequiringAlert))))
 
       service.alert(report).futureValue
@@ -178,7 +177,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
       val expectedNumberOfMessages = 4 // 1 for alert channel, 1 for team channel, since both failed 2 further for admin channel
 
-      verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(slackMessageCaptor.capture())(any())
+      verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(slackMessageCaptor.capture())(any)
 
       val values = slackMessageCaptor.getAllValues.asScala
 
@@ -217,8 +216,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
         messageDetails = messageDetails
       )
 
-      verify(slackConnector).sendMessage(is(expectedMessageToAlertChannel))(any())
-      verify(slackConnector).sendMessage(is(expectedMessageToTeamChannel))(any())
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
 
     "not send repo visibility alerts if not enabled" in new Fixtures {
@@ -232,10 +231,10 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
   trait Fixtures {
 
     val slackConnector = mock[SlackNotificationsConnector]
-    when(slackConnector.sendMessage(any())(any())).thenReturn(Future.successful(SlackNotificationResponse(Nil)))
+    when(slackConnector.sendMessage(any)(any)).thenReturn(Future.successful(SlackNotificationResponse(Nil)))
 
     val githubService = mock[GithubService]
-    when(githubService.getDefaultBranchName(any())(any(),any())).thenReturn(Future.successful("main"))
+    when(githubService.getDefaultBranchName(any)(any,any)).thenReturn(Future.successful(Branch.main))
 
 
     val defaultConfiguration = Configuration(

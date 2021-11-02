@@ -81,7 +81,7 @@ class ReportsRepository @Inject()(
         filter = Filters.and(
                    hasUnresolvedErrorsSelector,
                    Filters.equal("repoName", repoName),
-                   branch.fold[Bson](BsonDocument())(b => Filters.equal("branch", b.name))
+                   branch.fold[Bson](BsonDocument())(b => Filters.equal("branch", b.asString))
                  )
       )
       .sort(BsonDocument("timestamp" -> -1))

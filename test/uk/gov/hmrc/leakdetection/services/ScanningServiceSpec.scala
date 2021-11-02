@@ -21,8 +21,7 @@ import java.nio.file.Files
 import java.time.{Duration, Instant}
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
-import org.mockito.ArgumentMatchers.{any, eq => is}
-import org.mockito.MockitoSugar
+import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -46,7 +45,8 @@ class ScanningServiceSpec
     extends AnyWordSpec
     with Matchers
     with ScalaFutures
-    with MockitoSugar
+    with MockitoSugar 
+    with ArgumentMatchersSugar
     with Results
     with MongoSupport
     with IntegrationPatience {
@@ -188,19 +188,19 @@ class ScanningServiceSpec
 
       file2.getName.contains("id_rsa") shouldBe true
       generateReport.inspectionResults.size shouldBe 2
-      verify(alertingService).alert(any[Report])(any())
+      verify(alertingService).alert(any[Report])(any)
     }
 
     "send an alert if there were problems with repository.yaml" in new TestSetup {
-      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(true)
+      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(true)
 
       performScan()
 
-      verify(alertingService, times(0)).alertAboutRepoVisibility(any(), any())(any())
+      verify(alertingService, times(0)).alertAboutRepoVisibility(any, any)(any)
     }
 
     "not send alerts if repoVisibility correctly defined in repository.yaml" in new TestSetup {
-      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(false)
+      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(false)
 
       performScan()
 
@@ -208,18 +208,18 @@ class ScanningServiceSpec
     }
 
     "not send alerts if the branch is not main" in new TestSetup {
-      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(false)
+      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(false)
 
       override val branch = "not-main"
       when(
         artifactService.getZipAndExplode(
-          is(githubSecrets.personalAccessToken),
-          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          Branch(is(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+          eqTo(githubSecrets.personalAccessToken),
+          eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+          Branch(eqTo(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
 
       performScan()
 
-      verify(alertingService, times(0)).alertAboutRepoVisibility(any(), any())(any())
+      verify(alertingService, times(0)).alertAboutRepoVisibility(any, any)(any)
     }
 
   }
@@ -243,9 +243,9 @@ class ScanningServiceSpec
 
       when(
         artifactService.getZipAndExplode(
-          is(githubSecrets.personalAccessToken),
-          is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          Branch(is("main")))).thenThrow(new RuntimeException("Some error"))
+          eqTo(githubSecrets.personalAccessToken),
+          eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+          Branch(eqTo("main")))).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
@@ -257,7 +257,7 @@ class ScanningServiceSpec
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
-      when(reportsService.saveReport(any())).thenThrow(new RuntimeException("Some error"))
+      when(reportsService.saveReport(any)).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
@@ -269,7 +269,7 @@ class ScanningServiceSpec
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
-      when(reportsService.saveReport(any())).thenReturn(Future.failed(new RuntimeException("Some error")))
+      when(reportsService.saveReport(any)).thenReturn(Future.failed(new RuntimeException("Some error")))
 
       scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
@@ -290,7 +290,7 @@ class ScanningServiceSpec
       scanningService
         .scanRepository(
           repository    = "repoName",
-          branch        = branch,
+          branch        = Branch(branch),
           isPrivate     = true,
           repositoryUrl = "https://github.com/hmrc/repoName",
           commitId      = "3d9c100",
@@ -430,25 +430,25 @@ class ScanningServiceSpec
       write(contents, projectConfigurationYaml)
     }
 
-    when(reportsService.saveReport(any())).thenReturn(Future.successful(()))
+    when(reportsService.saveReport(any)).thenReturn(Future.successful(()))
 
     when(
       artifactService.getZipAndExplode(
-        is(githubSecrets.personalAccessToken),
-        is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        Branch(is(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+        eqTo(githubSecrets.personalAccessToken),
+        eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+        Branch(eqTo(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
 
     val alertingService = mock[AlertingService]
-    when(alertingService.alert(any())(any())).thenReturn(Future.successful(()))
-    when(alertingService.alertAboutRepoVisibility(any(), any())(any())).thenReturn(Future.successful(()))
+    when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))
+    when(alertingService.alertAboutRepoVisibility(any, any)(any)).thenReturn(Future.successful(()))
 
     val configuration = Configuration()
 
     val repoVisiblityChecker = mock[RepoVisiblityChecker]
-    when(repoVisiblityChecker.hasCorrectVisibilityDefined(any(), any())).thenReturn(false)
+    when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(false)
 
     private val githubService = mock[GithubService]
-    when(githubService.getDefaultBranchName(any())(any(), any())).thenReturn(Future.successful("main"))
+    when(githubService.getDefaultBranchName(any)(any, any)).thenReturn(Future.successful(Branch.main))
 
     lazy val scanningService =
       new ScanningService(

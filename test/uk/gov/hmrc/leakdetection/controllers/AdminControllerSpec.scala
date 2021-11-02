@@ -17,8 +17,7 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import java.time.Instant
-import org.mockito.ArgumentMatchers.{any, eq => eqTo}
-import org.mockito.MockitoSugar
+import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -34,7 +33,7 @@ import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar with Results {
+class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatchersSugar with ScalaFutures with MockitoSugar with Results {
 
   import play.api.test.Helpers._
 
@@ -56,7 +55,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
               eqTo("n/a"),
               eqTo("n/a"),
               eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-            )(any()))
+            )(any))
             .thenReturn(
               Future.successful(Report(id, "repoName", "someUrl", "n/a", "main", now, "n/a", Seq.empty, None)))
 
@@ -80,7 +79,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
               eqTo("n/a"),
               eqTo("n/a"),
               eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
-            )(any()))
+            )(any))
             .thenReturn(Future.successful(Report(
               id,
               "repoName",

@@ -34,10 +34,8 @@ class GithubService @Inject()(httpClient: HttpClient, configLoader: ConfigLoader
     val url = s"${cfg.github.apiUrl}/$repository"
     httpClient.GET[Option[Branch]](
       url = url,
-      headers = Seq(("Authorization", s"token $githubAccessToken"))) recover {
-      case _ => Some(Branch("main"))
-    } map {
-      _.getOrElse(Branch("main"))
+      headers = Seq(("Authorization", s"token $githubAccessToken"))) map {
+      _.getOrElse(Branch.main)
     }
   }
 }
