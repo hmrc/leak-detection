@@ -19,13 +19,14 @@ package uk.gov.hmrc.leakdetection.services
 import java.io.File
 import java.net.URLEncoder
 import java.nio.file.Files
-
 import com.kenshoo.play.metrics.Metrics
+
 import javax.inject.Inject
 import org.apache.commons.io.FileUtils
 import org.zeroturnaround.zip.ZipUtil
 import play.api.Logger
 import scalaj.http._
+import uk.gov.hmrc.leakdetection.model.Branch
 
 class ArtifactService @Inject()(metrics: Metrics) {
 
@@ -38,7 +39,7 @@ class ArtifactService @Inject()(metrics: Metrics) {
   def getZipAndExplode(
     githubPersonalAccessToken: String,
     archiveUrl: String,
-    branchRef: String
+    branchRef: Branch
   ): Either[BranchNotFound, ExplodedZip] = {
     logger.info("starting zip process....")
     val savedZipFilePath = Files.createTempDirectory("unzipped_").toString
@@ -51,7 +52,7 @@ class ArtifactService @Inject()(metrics: Metrics) {
   def getZip(
     githubPersonalAccessToken: String,
     archiveUrl: String,
-    branch: String,
+    branch: Branch,
     savedZipFilePath: String
   ): Either[BranchNotFound, DownloadedZip] = {
     val githubZipUri = getArtifactUrl(archiveUrl, branch)
@@ -70,7 +71,7 @@ class ArtifactService @Inject()(metrics: Metrics) {
     githubAccessToken: String,
     url: String,
     filename: String,
-    branch: String
+    branch: Branch
   ): Either[BranchNotFound, DownloadedZip] = {
     val resp =
       Http(url)
@@ -96,14 +97,14 @@ class ArtifactService @Inject()(metrics: Metrics) {
     }
   }
 
-  def getArtifactUrl(archiveUrl: String, branch: String): String = {
+  def getArtifactUrl(archiveUrl: String, branch: Branch): String = {
     val urlEncodedBranchName = URLEncoder.encode(branch, "UTF-8")
     archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$urlEncodedBranchName")
   }
 }
 
 object ArtifactService {
-  final case class BranchNotFound(branchName: String)
+  final case class BranchNotFound(branchName: Branch)
 
   final case class DownloadedZip(file: File)
   final case class ExplodedZip(dir: File)

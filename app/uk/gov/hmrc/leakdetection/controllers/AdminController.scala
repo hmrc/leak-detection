@@ -17,8 +17,8 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import java.io.File
-
 import ammonite.ops.{mkdir, tmp, write}
+
 import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json.{Format, JsValue, Json}
@@ -26,7 +26,7 @@ import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
-import uk.gov.hmrc.leakdetection.model.Report
+import uk.gov.hmrc.leakdetection.model.{Branch, Report}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -52,7 +52,7 @@ class AdminController @Inject()(
     Ok(Json.toJson(cfg.allRules))
   }
 
-  def validate(repository: String, branch: String, isPrivate: Boolean) = Action.async { implicit request =>
+  def validate(repository: String, branch: Branch, isPrivate: Boolean) = Action.async { implicit request =>
     scanningService
       .scanRepository(
         repository    = repository,

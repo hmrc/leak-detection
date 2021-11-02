@@ -21,7 +21,7 @@ import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.Report
+import uk.gov.hmrc.leakdetection.model.{Branch, Report}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -170,7 +170,7 @@ final case class SlackNotificationAndErrorMessage(
 
 final case class CommitInfo(
   author: String,
-  branch: String,
+  branch: Branch,
   repository: String
 ) {
   def toAttachment: Attachment =

@@ -17,7 +17,6 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import java.time.Instant
-
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
 import org.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
@@ -28,7 +27,7 @@ import play.api.mvc.Results
 import play.api.test.FakeRequest
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId, ReportLine}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 
@@ -51,7 +50,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
           when(
             scanningService.scanRepository(
               eqTo("repoName"),
-              eqTo("main"),
+              Branch(eqTo("main")),
               eqTo(isPrivate),
               eqTo("https://github.com/hmrc/repoName"),
               eqTo("n/a"),
@@ -75,7 +74,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ScalaFutures wi
           when(
             scanningService.scanRepository(
               eqTo("repoName"),
-              eqTo("main"),
+              Branch(eqTo("main")),
               eqTo(isPrivate),
               eqTo("https://github.com/hmrc/repoName"),
               eqTo("n/a"),

@@ -17,7 +17,6 @@
 package uk.gov.hmrc.leakdetection.services
 
 import java.io.File
-
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.io.FileUtils
 import play.api.Logger
@@ -25,7 +24,7 @@ import play.api.Logger
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.model.{Branch, DeleteBranchEvent, PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
@@ -53,7 +52,7 @@ class ScanningService @Inject()(
 
   def scanRepository(
     repository: String,
-    branch: String,
+    branch: Branch,
     isPrivate: Boolean,
     repositoryUrl: String,
     commitId: String,
@@ -93,7 +92,7 @@ class ScanningService @Inject()(
 
   private def alertAboutRepoVisibility(
     repoName: String,
-    branchName: String,
+    branchName: Branch,
     author: String,
     dir: File,
     isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =

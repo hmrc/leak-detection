@@ -18,8 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import java.io.{File, PrintWriter}
 import java.nio.file.Files
-import java.time.{Instant, Duration}
-
+import java.time.{Duration, Instant}
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
 import org.mockito.ArgumentMatchers.{any, eq => is}
@@ -31,7 +30,7 @@ import play.api.Configuration
 import play.api.mvc.Results
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.model.{PayloadDetails, Report, ReportId, ReportLine}
+import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, ReportId, ReportLine}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
@@ -216,7 +215,7 @@ class ScanningServiceSpec
         artifactService.getZipAndExplode(
           is(githubSecrets.personalAccessToken),
           is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          is(branch))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+          Branch(is(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
 
       performScan()
 
@@ -246,7 +245,7 @@ class ScanningServiceSpec
         artifactService.getZipAndExplode(
           is(githubSecrets.personalAccessToken),
           is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          is("main"))).thenThrow(new RuntimeException("Some error"))
+          Branch(is("main")))).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
@@ -437,7 +436,7 @@ class ScanningServiceSpec
       artifactService.getZipAndExplode(
         is(githubSecrets.personalAccessToken),
         is("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        is(branch))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+        Branch(is(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any())(any())).thenReturn(Future.successful(()))

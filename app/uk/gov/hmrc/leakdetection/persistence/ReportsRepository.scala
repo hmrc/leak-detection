@@ -17,10 +17,11 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import com.google.inject.Inject
+
 import javax.inject.Singleton
 import play.api.libs.json.Reads._
 import play.api.libs.json._
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import org.mongodb.scala.bson.BsonArray
@@ -73,14 +74,14 @@ class ReportsRepository @Inject()(
       Filters.exists("leakResolution", false)
     )
 
-  def findUnresolvedWithProblems(repoName: String, branch: Option[String] = None): Future[Seq[Report]] =
+  def findUnresolvedWithProblems(repoName: String, branch: Option[Branch] = None): Future[Seq[Report]] =
     collection
       .withReadPreference(ReadPreference.primary())
       .find(
         filter = Filters.and(
                    hasUnresolvedErrorsSelector,
                    Filters.equal("repoName", repoName),
-                   branch.fold[Bson](BsonDocument())(b => Filters.equal("branch", b))
+                   branch.fold[Bson](BsonDocument())(b => Filters.equal("branch", b.name))
                  )
       )
       .sort(BsonDocument("timestamp" -> -1))
