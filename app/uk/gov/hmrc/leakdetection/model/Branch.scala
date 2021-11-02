@@ -23,8 +23,6 @@ import scala.language.implicitConversions
 case class Branch(val asString: String) extends AnyVal {}
 
 object Branch {
-  def apply(name: String): Branch = new Branch(name)
-
   val main: Branch = Branch("main")
 
   implicit def reads: Reads[Branch] =
