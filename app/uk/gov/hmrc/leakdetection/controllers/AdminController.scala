@@ -26,7 +26,7 @@ import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
-import uk.gov.hmrc.leakdetection.model.{Branch, Report}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -52,16 +52,16 @@ class AdminController @Inject()(
     Ok(Json.toJson(cfg.allRules))
   }
 
-  def validate(repository: String, branch: Branch, isPrivate: Boolean) = Action.async { implicit request =>
+  def validate(repository: Repository, branch: Branch, isPrivate: Boolean) = Action.async { implicit request =>
     scanningService
       .scanRepository(
         repository    = repository,
         branch        = branch,
         isPrivate     = isPrivate,
-        repositoryUrl = s"https://github.com/hmrc/$repository",
+        repositoryUrl = s"https://github.com/hmrc/${repository.asString}",
         commitId      = NOT_APPLICABLE,
         authorName    = NOT_APPLICABLE,
-        archiveUrl    = s"https://api.github.com/repos/hmrc/$repository/{archive_format}{/ref}"
+        archiveUrl    = s"https://api.github.com/repos/hmrc/${repository.asString}/{archive_format}{/ref}"
       )
       .map { report =>
         implicit val rf = Report.apiFormat
