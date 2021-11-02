@@ -23,9 +23,7 @@ import scala.language.implicitConversions
 class Branch(val asString: String) extends AnyVal {}
 
 object Branch {
-  def apply(name: String): Branch = {
-    new Branch(name)
-  }
+  def apply(name: String): Branch = new Branch(name)
 
   val main: Branch = Branch("main")
 
