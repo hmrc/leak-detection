@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId, Repository}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -64,7 +64,7 @@ class ReportsRepositorySpec
 
       repository.collection.insertMany(Random.shuffle(reports)).toFuture.futureValue
 
-      val foundReports: Seq[Report] = repository.findUnresolvedWithProblems(repoName).futureValue
+      val foundReports: Seq[Report] = repository.findUnresolvedWithProblems(Repository(repoName)).futureValue
 
       foundReports shouldBe reports.reverse
     }
@@ -79,7 +79,7 @@ class ReportsRepositorySpec
 
       repository.collection.insertMany(all).toFuture.futureValue
 
-      val foundReports = repository.findUnresolvedWithProblems(repoName).futureValue
+      val foundReports = repository.findUnresolvedWithProblems(Repository(repoName)).futureValue
 
       foundReports should contain theSameElementsAs reportsWithUnresolvedProblems
     }

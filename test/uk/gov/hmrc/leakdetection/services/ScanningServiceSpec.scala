@@ -29,7 +29,7 @@ import play.api.Configuration
 import play.api.mvc.Results
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, ReportId, ReportLine}
+import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, ReportId, ReportLine, Repository}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
@@ -196,7 +196,7 @@ class ScanningServiceSpec
 
       performScan()
 
-      verify(alertingService, times(0)).alertAboutRepoVisibility(any, any)(any)
+      verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
     }
 
     "not send alerts if repoVisibility correctly defined in repository.yaml" in new TestSetup {
@@ -204,7 +204,7 @@ class ScanningServiceSpec
 
       performScan()
 
-      verify(alertingService).alertAboutRepoVisibility(repoName = "repoName", author = "me")(hc)
+      verify(alertingService).alertAboutRepoVisibility(repository = Repository("repoName"), author = "me")(hc)
     }
 
     "not send alerts if the branch is not main" in new TestSetup {
@@ -219,7 +219,7 @@ class ScanningServiceSpec
 
       performScan()
 
-      verify(alertingService, times(0)).alertAboutRepoVisibility(any, any)(any)
+      verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
     }
 
   }
@@ -289,7 +289,7 @@ class ScanningServiceSpec
     def performScan() =
       scanningService
         .scanRepository(
-          repository    = "repoName",
+          repository    = Repository("repoName"),
           branch        = Branch(branch),
           isPrivate     = true,
           repositoryUrl = "https://github.com/hmrc/repoName",
@@ -440,7 +440,7 @@ class ScanningServiceSpec
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))
-    when(alertingService.alertAboutRepoVisibility(any, any)(any)).thenReturn(Future.successful(()))
+    when(alertingService.alertAboutRepoVisibility(Repository(any), any)(any)).thenReturn(Future.successful(()))
 
     val configuration = Configuration()
 
@@ -448,7 +448,7 @@ class ScanningServiceSpec
     when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(false)
 
     private val githubService = mock[GithubService]
-    when(githubService.getDefaultBranchName(any)(any, any)).thenReturn(Future.successful(Branch.main))
+    when(githubService.getDefaultBranchName(Repository(any))(any, any)).thenReturn(Future.successful(Branch.main))
 
     lazy val scanningService =
       new ScanningService(

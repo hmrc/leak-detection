@@ -17,11 +17,12 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import com.google.inject.Inject
+
 import javax.inject.Singleton
 import play.api.libs.json.Json
 import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId, Repository}
 import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.leakdetection.views.html
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -44,16 +45,16 @@ class ReportsController @Inject()(configLoader: ConfigLoader,
     }
   }
 
-  def reportsForRepository(repoName: String) = Action.async {
-    reportsService.getLatestReportsForEachBranch(repoName).map { reports =>
-      Ok(html.reports_for_repo(repoName, reports))
+  def reportsForRepository(repository: Repository) = Action.async {
+    reportsService.getLatestReportsForEachBranch(repository).map { reports =>
+      Ok(html.reports_for_repo(repository.asString, reports))
     }
   }
 
-  def reportForRepositoryDefaultBranch(repoName: String) = Action.async { implicit request =>
+  def reportForRepositoryDefaultBranch(repository: Repository) = Action.async { implicit request =>
     implicit val rf = Report.apiFormat
     for {
-      findLatestDefaultBranchReport <- reportsService.getLatestReportForDefaultBranch(repoName)
+      findLatestDefaultBranchReport <- reportsService.getLatestReportForDefaultBranch(repository)
       result = findLatestDefaultBranchReport.map(report => Ok(Json.toJson(report))).getOrElse(NotFound)
     } yield result
   }

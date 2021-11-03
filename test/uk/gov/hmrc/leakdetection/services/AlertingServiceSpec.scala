@@ -26,7 +26,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, ReportLine}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, ReportLine, Repository}
 import uk.gov.hmrc.leakdetection.scanner.Match
 
 import scala.collection.JavaConverters._
@@ -197,7 +197,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         defaultConfiguration ++ Configuration("alerts.slack.enabledForRepoVisibility" -> true)
 
       val author = "me"
-      service.alertAboutRepoVisibility(repoName = "a-repo", author = author).futureValue
+      service.alertAboutRepoVisibility(repository = Repository("a-repo"), author = author).futureValue
 
       val messageDetails = MessageDetails(
         text        = "Repo visiblity problem detected",
@@ -221,7 +221,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     }
 
     "not send repo visibility alerts if not enabled" in new Fixtures {
-      service.alertAboutRepoVisibility("repo-doesnt-matter", "author-doesnt-matter").futureValue
+      service.alertAboutRepoVisibility(Repository("repo-doesnt-matter"), "author-doesnt-matter").futureValue
 
       verifyZeroInteractions(slackConnector)
     }
@@ -234,7 +234,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     when(slackConnector.sendMessage(any)(any)).thenReturn(Future.successful(SlackNotificationResponse(Nil)))
 
     val githubService = mock[GithubService]
-    when(githubService.getDefaultBranchName(any)(any,any)).thenReturn(Future.successful(Branch.main))
+    when(githubService.getDefaultBranchName(Repository(any))(any,any)).thenReturn(Future.successful(Branch.main))
 
 
     val defaultConfiguration = Configuration(

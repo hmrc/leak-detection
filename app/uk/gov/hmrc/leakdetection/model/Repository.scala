@@ -1,4 +1,4 @@
-@*
+/*
  * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,27 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *@
+ */
 
-@import uk.gov.hmrc.leakdetection.controllers.routes
-@import uk.gov.hmrc.leakdetection.model.Repository
+package uk.gov.hmrc.leakdetection.model
 
-@(repos: List[String])
-
-@main {
-
-    <br/>
-    <h1>Repositories</h1>
-    <p>Following repositories contain potentially sensitive data</p>
-
-    <div class="list-group">
-        @repos.map { repoName =>
-        <a href="@routes.ReportsController.reportsForRepository(Repository(repoName))"
-           class="list-group-item list-group-item-action">
-            @repoName
-        </a>
-        }
-    </div>
-    <br/>
-
-}
+case class Repository(val asString: String) extends AnyVal{}

@@ -16,10 +16,9 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import org.mockito.ArgumentMatchers.any
 
 import java.time.LocalDateTime
-import org.mockito.MockitoSugar
+import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -30,7 +29,7 @@ import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, aReportWithResolvedLeaks, few}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, ResolvedLeak}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository, ResolvedLeak}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
@@ -40,6 +39,7 @@ import scala.concurrent.Future
 class ReportsServiceSpec
     extends AnyWordSpec
     with Matchers
+    with ArgumentMatchersSugar
     with ScalaFutures
     with IntegrationPatience
     with MockitoSugar
@@ -168,7 +168,7 @@ class ReportsServiceSpec
       repository.collection.insertMany(reportsWithLeaksBranch1 ::: reportsWithResolvedLeaksBranch2).toFuture.futureValue
 
       val expectedResult = reportsWithLeaksBranch1.last :: Nil
-      reportsService.getLatestReportsForEachBranch(repoName).futureValue should contain theSameElementsAs expectedResult
+      reportsService.getLatestReportsForEachBranch(Repository(repoName)).futureValue should contain theSameElementsAs expectedResult
     }
 
     "produce metrics" in {
@@ -259,7 +259,7 @@ class ReportsServiceSpec
     .thenReturn(Future.successful(Seq.empty))
   implicit val hc = new HeaderCarrier()
   private val githubService = mock[GithubService]
-  when(githubService.getDefaultBranchName(any())(any(), any())).thenReturn(Future.successful(Branch.main))
+  when(githubService.getDefaultBranchName(Repository(any))(any, any)).thenReturn(Future.successful(Branch.main))
 
   private val configuration: Configuration = Configuration(
     "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",

@@ -40,17 +40,17 @@ class ReportsService @Inject()(
 
   def getRepositories = reportsRepository.getDistinctRepoNames
 
-  def getLatestReportsForEachBranch(repoName: String): Future[List[Report]] =
+  def getLatestReportsForEachBranch(repository: Repository): Future[List[Report]] =
     reportsRepository
-      .findUnresolvedWithProblems(repoName)
+      .findUnresolvedWithProblems(repository)
       .map(_.groupBy(_.branch).map {
         case (_, reports) => reports.head
       }.toList)
 
-  def getLatestReportForDefaultBranch(repoName: String)(implicit hc: HeaderCarrier): Future[Option[Report]] = {
-    githubService.getDefaultBranchName(repoName) flatMap { defaultBranchName =>
+  def getLatestReportForDefaultBranch(repository: Repository)(implicit hc: HeaderCarrier): Future[Option[Report]] = {
+    githubService.getDefaultBranchName(repository) flatMap { defaultBranchName =>
       reportsRepository
-        .findUnresolvedWithProblems(repoName, Some(defaultBranchName)).map(_.headOption)
+        .findUnresolvedWithProblems(repository, Some(defaultBranchName)).map(_.headOption)
     }
   }
 
@@ -87,7 +87,7 @@ class ReportsService @Inject()(
 
   private def markPreviousReportsAsResolved(report: Report): Future[List[Report]] =
     for {
-      unresolvedReports <- reportsRepository.findUnresolvedWithProblems(report.repoName, Some(Branch(report.branch))).map(_.toList)
+      unresolvedReports <- reportsRepository.findUnresolvedWithProblems(Repository(report.repoName), Some(Branch(report.branch))).map(_.toList)
       resolvedReports   =  unresolvedReports.map { unresolvedReport =>
                              val leakResolution =
                                LeakResolution(

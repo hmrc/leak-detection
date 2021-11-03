@@ -21,7 +21,7 @@ import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.{Branch, Report}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -45,20 +45,20 @@ class AlertingService @Inject()(configuration: Configuration,
 
   import slackConfig._
 
-  def alertAboutRepoVisibility(repoName: String, author: String)(implicit hc: HeaderCarrier): Future[Unit] =
+  def alertAboutRepoVisibility(repository: Repository, author: String)(implicit hc: HeaderCarrier): Future[Unit] =
     if (!enabledForRepoVisibility) {
       Future.successful(())
     } else {
       val messageDetails =
         MessageDetails(
-          text        = repoVisibilityMessageText.replace("{repo}", repoName),
+          text        = repoVisibilityMessageText.replace("{repo}", repository.asString),
           username    = username,
           iconEmoji   = iconEmoji,
           attachments = Seq()
         )
 
-      githubService.getDefaultBranchName(repoName) flatMap { defaultBranchName =>
-        val commitInfo = CommitInfo(author, defaultBranchName, repoName)
+      githubService.getDefaultBranchName(repository) flatMap { defaultBranchName =>
+        val commitInfo = CommitInfo(author, defaultBranchName, repository)
         Future
           .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
           .map(_ => ())
@@ -171,7 +171,7 @@ final case class SlackNotificationAndErrorMessage(
 final case class CommitInfo(
   author: String,
   branch: Branch,
-  repository: String
+  repository: Repository
 ) {
   def toAttachment: Attachment =
     Attachment(
@@ -179,12 +179,12 @@ final case class CommitInfo(
       fields = List(
         Attachment.Field(title = "author", value     = author, short     = true),
         Attachment.Field(title = "branch", value     = branch.asString, short     = true),
-        Attachment.Field(title = "repository", value = repository, short = true)
+        Attachment.Field(title = "repository", value = repository.asString, short = true)
       )
     )
 
   override def toString: String =
-    s"author: $author, branch: $branch, repository: $repository"
+    s"author: $author, branch: ${branch.asString}, repository: ${repository.asString}"
 }
 
 object CommitInfo {
@@ -192,7 +192,7 @@ object CommitInfo {
     CommitInfo(
       author     = report.author,
       branch     = Branch(report.branch),
-      repository = report.repoName
+      repository = Repository(report.repoName)
     )
 }
 

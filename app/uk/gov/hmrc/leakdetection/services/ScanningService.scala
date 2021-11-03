@@ -24,7 +24,7 @@ import play.api.Logger
 import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.{Branch, DeleteBranchEvent, PayloadDetails, Report}
+import uk.gov.hmrc.leakdetection.model.{Branch, DeleteBranchEvent, PayloadDetails, Report, Repository}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
@@ -51,7 +51,7 @@ class ScanningService @Inject()(
   lazy val publicMatchingEngine  = new RegexMatchingEngine(cfg.allRules.publicRules, cfg.maxLineLength)
 
   def scanRepository(
-    repository: String,
+    repository: Repository,
     branch: Branch,
     isPrivate: Boolean,
     repositoryUrl: String,
@@ -64,7 +64,7 @@ class ScanningService @Inject()(
           reportsService
             .clearReportsAfterBranchDeleted(
               DeleteBranchEvent(
-                repositoryName = repository,
+                repositoryName = repository.asString,
                 authorName     = authorName,
                 branchRef      = branch.asString,
                 deleted        = true,
@@ -76,10 +76,10 @@ class ScanningService @Inject()(
           val processingResult =
             for {
               results <- Future { regexMatchingEngine.run(dir) }
-              report = Report.create(repository, repositoryUrl, commitId, authorName, branch.asString, results)
+              report = Report.create(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
               _ <- reportsService.saveReport(report)
               _ <- alertingService.alert(report)
-              _ <- alertAboutRepoVisibility(repoName = repository, branch = branch, authorName, dir, isPrivate)
+              _ <- alertAboutRepoVisibility(repository = repository, branch = branch, authorName, dir, isPrivate)
             } yield {
               report
             }
@@ -91,19 +91,19 @@ class ScanningService @Inject()(
     }
 
   private def alertAboutRepoVisibility(
-                                        repoName: String,
+                                        repository: Repository,
                                         branch: Branch,
                                         author: String,
                                         dir: File,
                                         isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
-    githubService.getDefaultBranchName(repoName) flatMap { defaultBranchName =>
+    githubService.getDefaultBranchName(repository) flatMap { defaultBranchName =>
       if (branch == defaultBranchName) {
         if (!repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate)) {
           logger.warn(
-            s"Incorrect configuration for repo $repoName on $branch branch! File path: ${dir.getAbsolutePath}. Sending alert")
-          alertingService.alertAboutRepoVisibility(repoName, author)
+            s"Incorrect configuration for repo ${repository.asString} on ${branch.asString} branch! File path: ${dir.getAbsolutePath}. Sending alert")
+          alertingService.alertAboutRepoVisibility(repository, author)
         } else {
-          logger.info(s"repo: $repoName, branch: $branch, dir: ${dir.getAbsolutePath}. No action needed")
+          logger.info(s"repo: ${repository.asString}, branch: ${branch.asString}, dir: ${dir.getAbsolutePath}. No action needed")
           Future.unit
         }
       } else {
@@ -128,7 +128,7 @@ class ScanningService @Inject()(
     val request     = workItem.item
     implicit val hc = HeaderCarrier()
     scanRepository(
-      repository    = request.repositoryName,
+      repository    = Repository(request.repositoryName),
       branch        = Branch(request.branchRef),
       isPrivate     = request.isPrivate,
       repositoryUrl = request.repositoryUrl,
