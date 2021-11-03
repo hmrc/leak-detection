@@ -28,7 +28,7 @@ class ArtifactServiceSpec extends AnyFlatSpec with Matchers {
     val artifactService      = new ArtifactService(null)
     val result               = artifactService.getArtifactUrl("github-link{/ref}", Branch(nonEscapedBranchName))
 
-    result shouldBe "github-link/feature%2F%2310_DeathToConcrete"
+    result shouldBe "github-link/refs/heads/feature%2F%2310_DeathToConcrete"
   }
 
 }
