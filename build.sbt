@@ -25,7 +25,8 @@ lazy val microservice = Project("leak-detection", file("."))
     scalacOptions += "-P:silencer:pathFilters=views;routes",
     libraryDependencies ++= Seq(
       compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
-      "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
+      "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full,
+      ws
     )
   )
 

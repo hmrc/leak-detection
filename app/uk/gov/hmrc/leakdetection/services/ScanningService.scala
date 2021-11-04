@@ -45,7 +45,7 @@ class ScanningService @Inject()(
 
   import configLoader.cfg
 
-  val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   lazy val privateMatchingEngine = new RegexMatchingEngine(cfg.allRules.privateRules, cfg.maxLineLength)
   lazy val publicMatchingEngine  = new RegexMatchingEngine(cfg.allRules.publicRules, cfg.maxLineLength)
@@ -59,7 +59,7 @@ class ScanningService @Inject()(
     authorName: String,
     archiveUrl: String)(implicit hc: HeaderCarrier): Future[Report] =
     try {
-      artifactService.getZipAndExplode(cfg.githubSecrets.personalAccessToken, archiveUrl, branch) match {
+      artifactService.getZipAndExplode(cfg.githubSecrets.personalAccessToken, archiveUrl, branch).value flatMap {
         case Left(BranchNotFound(_)) =>
           reportsService
             .clearReportsAfterBranchDeleted(

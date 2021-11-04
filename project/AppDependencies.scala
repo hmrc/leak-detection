@@ -15,7 +15,6 @@ object AppDependencies {
     "org.zeroturnaround"    %  "zt-zip"                            % "1.14",
     "commons-lang"          %  "commons-lang"                      % "2.6",
     "commons-io"            %  "commons-io"                        % "2.5",
-    "org.scalaj"            %% "scalaj-http"                       % "2.3.0",
     "org.typelevel"         %% "cats-core"                         % "0.9.0",
     "org.yaml"              %  "snakeyaml"                         % "1.17",
     "com.lihaoyi"           %% "pprint"                            % "0.5.3",

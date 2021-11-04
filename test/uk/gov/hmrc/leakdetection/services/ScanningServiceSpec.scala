@@ -215,7 +215,7 @@ class ScanningServiceSpec
         artifactService.getZipAndExplode(
           eqTo(githubSecrets.personalAccessToken),
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          Branch(eqTo(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+          Branch(eqTo(branch)))).thenReturn(Future.successful(Right(ExplodedZip(unzippedTmpDirectory.toFile))))
 
       performScan()
 
@@ -436,7 +436,7 @@ class ScanningServiceSpec
       artifactService.getZipAndExplode(
         eqTo(githubSecrets.personalAccessToken),
         eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        Branch(eqTo(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+        Branch(eqTo(branch)))).thenReturn(Future.successful(Right(ExplodedZip(unzippedTmpDirectory.toFile))))
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))
