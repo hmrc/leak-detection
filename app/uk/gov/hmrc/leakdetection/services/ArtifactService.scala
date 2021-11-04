@@ -116,6 +116,6 @@ object ArtifactService {
 
   def getArtifactUrl(archiveUrl: String, branch: Branch): String = {
     val urlEncodedBranchName = URLEncoder.encode(branch.asString, "UTF-8")
-    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$urlEncodedBranchName")
+    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/refs/heads/$urlEncodedBranchName")
   }
 }
