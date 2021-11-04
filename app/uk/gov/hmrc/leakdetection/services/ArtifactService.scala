@@ -45,14 +45,15 @@ class ArtifactService @Inject()(ws: WSClient, metrics: Metrics)(implicit  ec: Ex
     githubPersonalAccessToken: String,
     archiveUrl: String,
     branch: Branch
-  ): EitherT[Future, BranchNotFound, ExplodedZip] = {
+  ): Future[Either[BranchNotFound, ExplodedZip]] = {
     logger.info("starting zip process....")
     val savedZipFilePath = Files.createTempDirectory("unzipped_").toString
     val downloadResult = EitherT(getZip(githubPersonalAccessToken, archiveUrl, branch, savedZipFilePath))
-    downloadResult map {
+    val explodedZip = downloadResult map {
       _ =>
         explodeZip(savedZipFilePath)
     }
+    explodedZip.value
   }
 
   def getZip(
@@ -105,11 +106,6 @@ class ArtifactService @Inject()(ws: WSClient, metrics: Metrics)(implicit  ec: Ex
         }
     }
   }
-
-  def getArtifactUrl(archiveUrl: String, branch: Branch): String = {
-    val urlEncodedBranchName = URLEncoder.encode(branch.asString, "UTF-8")
-    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$urlEncodedBranchName")
-  }
 }
 
 object ArtifactService {
@@ -117,4 +113,9 @@ object ArtifactService {
 
   final case class DownloadedZip(file: File)
   final case class ExplodedZip(dir: File)
+
+  def getArtifactUrl(archiveUrl: String, branch: Branch): String = {
+    val urlEncodedBranchName = URLEncoder.encode(branch.asString, "UTF-8")
+    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/$urlEncodedBranchName")
+  }
 }

@@ -59,7 +59,7 @@ class ScanningService @Inject()(
     authorName: String,
     archiveUrl: String)(implicit hc: HeaderCarrier): Future[Report] =
     try {
-      artifactService.getZipAndExplode(cfg.githubSecrets.personalAccessToken, archiveUrl, branch).value flatMap {
+      artifactService.getZipAndExplode(cfg.githubSecrets.personalAccessToken, archiveUrl, branch) flatMap {
         case Left(BranchNotFound(_)) =>
           reportsService
             .clearReportsAfterBranchDeleted(
