@@ -20,6 +20,7 @@ import java.io.{File, PrintWriter}
 import java.nio.file.Files
 import java.time.{Duration, Instant}
 import ammonite.ops.Path
+import cats.data.EitherT
 import com.typesafe.config.ConfigFactory
 import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
@@ -33,7 +34,7 @@ import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, ReportId
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
-import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
+import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus
 
@@ -215,7 +216,7 @@ class ScanningServiceSpec
         artifactService.getZipAndExplode(
           eqTo(githubSecrets.personalAccessToken),
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          Branch(eqTo(branch)))).thenReturn(Future.successful(Right(ExplodedZip(unzippedTmpDirectory.toFile))))
+          Branch(eqTo(branch)))).thenReturn(EitherT(Future.successful[Either[BranchNotFound, ExplodedZip]](Right(ExplodedZip(unzippedTmpDirectory.toFile)))))
 
       performScan()
 
@@ -436,7 +437,7 @@ class ScanningServiceSpec
       artifactService.getZipAndExplode(
         eqTo(githubSecrets.personalAccessToken),
         eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        Branch(eqTo(branch)))).thenReturn(Future.successful(Right(ExplodedZip(unzippedTmpDirectory.toFile))))
+        Branch(eqTo(branch)))).thenReturn(EitherT(Future.successful[Either[BranchNotFound, ExplodedZip]](Right(ExplodedZip(unzippedTmpDirectory.toFile)))))
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))
