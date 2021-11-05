@@ -25,8 +25,7 @@ class ArtifactServiceSpec extends AnyFlatSpec with Matchers {
 
   "Branch names" should "be url-encoded" in {
     val nonEscapedBranchName = "feature/#10_DeathToConcrete" // real life example
-    val artifactService      = new ArtifactService(null)
-    val result               = artifactService.getArtifactUrl("github-link{/ref}", Branch(nonEscapedBranchName))
+    val result               = ArtifactService.getArtifactUrl("github-link{/ref}", Branch(nonEscapedBranchName))
 
     result shouldBe "github-link/refs/heads/feature%2F%2310_DeathToConcrete"
   }

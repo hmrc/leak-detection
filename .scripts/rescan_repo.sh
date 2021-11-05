@@ -32,7 +32,7 @@ mkdir -p "${TMP_REPO_DIR}"
 touch "${TMP_REPO_DIR}/${REPO_NAME}"
 
 # Test access to GitHub directly
-HTTP_STATUS_CODE_GITHUB=$(curl --silent -i -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/user | grep "HTTP/.* 200 OK")
+HTTP_STATUS_CODE_GITHUB=$(curl --silent -i -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/user | grep "HTTP/.* 200")
 if [[ "${HTTP_STATUS_CODE_GITHUB}" == "" ]]; then
     echo "Test to GitHub failed. HTTP status code is ${HTTP_STATUS_CODE}"
     exit 1

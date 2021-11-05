@@ -20,6 +20,7 @@ import java.io.{File, PrintWriter}
 import java.nio.file.Files
 import java.time.{Duration, Instant}
 import ammonite.ops.Path
+import cats.data.EitherT
 import com.typesafe.config.ConfigFactory
 import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
@@ -33,7 +34,6 @@ import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, ReportId
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.scanner.Match
-import uk.gov.hmrc.leakdetection.services.ArtifactService.ExplodedZip
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus
 
@@ -212,10 +212,10 @@ class ScanningServiceSpec
 
       override val branch = "not-main"
       when(
-        artifactService.getZipAndExplode(
+        artifactService.getZip(
           eqTo(githubSecrets.personalAccessToken),
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          Branch(eqTo(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+          Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
 
       performScan()
 
@@ -242,7 +242,7 @@ class ScanningServiceSpec
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
       when(
-        artifactService.getZipAndExplode(
+        artifactService.getZip(
           eqTo(githubSecrets.personalAccessToken),
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
           Branch(eqTo("main")))).thenThrow(new RuntimeException("Some error"))
@@ -433,10 +433,10 @@ class ScanningServiceSpec
     when(reportsService.saveReport(any)).thenReturn(Future.successful(()))
 
     when(
-      artifactService.getZipAndExplode(
+      artifactService.getZip(
         eqTo(githubSecrets.personalAccessToken),
         eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        Branch(eqTo(branch)))).thenReturn(Right(ExplodedZip(unzippedTmpDirectory.toFile)))
+        Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))

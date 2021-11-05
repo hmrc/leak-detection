@@ -1,3 +1,4 @@
+import play.sbt.routes.RoutesKeys
 import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
 
 val silencerVersion = "1.7.2"
@@ -24,6 +25,12 @@ lazy val microservice = Project("leak-detection", file("."))
     scalacOptions += "-P:silencer:pathFilters=views;routes",
     libraryDependencies ++= Seq(
       compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
-      "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
+      "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full,
+      ws
     )
   )
+
+RoutesKeys.routesImport ++= Seq(
+  "uk.gov.hmrc.leakdetection.model.Branch",
+  "uk.gov.hmrc.leakdetection.model.Repository",
+  "uk.gov.hmrc.leakdetection.model.ReportId")

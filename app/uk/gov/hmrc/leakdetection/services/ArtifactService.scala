@@ -16,19 +16,21 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import akka.stream.Materializer
+import akka.stream.scaladsl.FileIO
+import com.kenshoo.play.metrics.Metrics
+import org.zeroturnaround.zip.ZipUtil
+import play.api.Logger
+import play.api.libs.ws._
+import uk.gov.hmrc.leakdetection.model.Branch
+
 import java.io.File
 import java.net.URLEncoder
 import java.nio.file.Files
-import com.kenshoo.play.metrics.Metrics
-
 import javax.inject.Inject
-import org.apache.commons.io.FileUtils
-import org.zeroturnaround.zip.ZipUtil
-import play.api.Logger
-import scalaj.http._
-import uk.gov.hmrc.leakdetection.model.Branch
+import scala.concurrent.{ExecutionContext, Future}
 
-class ArtifactService @Inject()(metrics: Metrics) {
+class ArtifactService @Inject()(ws: WSClient, metrics: Metrics)(implicit  ec: ExecutionContext, mat: Materializer) {
 
   import ArtifactService._
 
@@ -36,76 +38,44 @@ class ArtifactService @Inject()(metrics: Metrics) {
 
   private lazy val registry = metrics.defaultRegistry
 
-  def getZipAndExplode(
-    githubPersonalAccessToken: String,
-    archiveUrl: String,
-    branch: Branch
-  ): Either[BranchNotFound, ExplodedZip] = {
-    logger.info("starting zip process....")
-    val savedZipFilePath = Files.createTempDirectory("unzipped_").toString
-    val downloadResult   = getZip(githubPersonalAccessToken, archiveUrl, branch, savedZipFilePath)
-    downloadResult.map(_ =>
-      explodeZip(savedZipFilePath)
-    )
-  }
-
   def getZip(
-    githubPersonalAccessToken: String,
-    archiveUrl: String,
-    branch: Branch,
-    savedZipFilePath: String
-  ): Either[BranchNotFound, DownloadedZip] = {
-    val githubZipUri = getArtifactUrl(archiveUrl, branch)
-    logger.info(s"Getting code archive from: $githubZipUri")
-    downloadFile(githubPersonalAccessToken, githubZipUri, savedZipFilePath, branch)
-  }
-
-  def explodeZip(savedZipFilePath: String): ExplodedZip = {
-    val explodedZipFile = new File(savedZipFilePath)
-    ZipUtil.explode(explodedZipFile)
-    logger.info(s"Zip file exploded successfully")
-    ExplodedZip(explodedZipFile)
-  }
-
-  def downloadFile(
     githubAccessToken: String,
-    url: String,
-    filename: String,
+    archiveUrl: String,
     branch: Branch
-  ): Either[BranchNotFound, DownloadedZip] = {
-    val resp =
-      Http(url)
-        .header("Authorization", s"token $githubAccessToken")
-        .option(HttpOptions.followRedirects(true))
-        .asBytes
-    if (resp.code == 404) {
-      Left(BranchNotFound(branch))
-    } else if (resp.isError) {
-      registry.counter(s"github.open.zip.failure").inc()
-      val errorMessage = s"Error downloading the zip file from $url:\n${new String(resp.body)}"
-      logger.error(errorMessage)
-      throw new RuntimeException(errorMessage)
-    } else {
-      registry.counter(s"github.open.zip.success").inc()
-      logger.info(s"Response code: ${resp.code}")
-      logger.debug(s"Got ${resp.body.length} bytes from $url... saving it to $filename")
-      val file = new File(filename)
-      FileUtils.deleteQuietly(file)
-      FileUtils.writeByteArrayToFile(file, resp.body)
-      logger.info(s"Saved file: $filename")
-      Right(DownloadedZip(file))
+  ): Future[Either[BranchNotFound, File]] = {
+    logger.info("starting zip process....")
+    val zipUrl = getArtifactUrl(archiveUrl, branch)
+    logger.info(s"Getting code archive from: $zipUrl")
+    ws.url(zipUrl)
+      .addHttpHeaders("Authorization" -> s"token $githubAccessToken")
+      .withFollowRedirects(true)
+      .withMethod("GET")
+      .stream() flatMap {
+      response => response.status match {
+        case 200 =>
+          registry.counter(s"github.open.zip.success").inc()
+          val savedZipFilePath = Files.createTempFile("unzipped_", "")
+          logger.debug(s"Got ${response.body.length} bytes from $zipUrl... saving it to ${savedZipFilePath.toString}")
+          response.bodyAsSource.runWith(FileIO.toPath(savedZipFilePath)) map { _ =>
+            logger.info(s"Saved file: ${savedZipFilePath.toString}")
+            ZipUtil.explode(savedZipFilePath.toFile)
+            Right(savedZipFilePath.toFile)
+          }
+        case 404 =>
+          Future.successful(Left(BranchNotFound(branch)))
+        case status =>
+          registry.counter(s"github.open.zip.failure").inc()
+          throw new RuntimeException(s"Error downloading the zip file from $zipUrl received status $status:\n${new String(response.body)}")
+      }
     }
-  }
-
-  def getArtifactUrl(archiveUrl: String, branch: Branch): String = {
-    val urlEncodedBranchName = URLEncoder.encode(branch.asString, "UTF-8")
-    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/refs/heads/$urlEncodedBranchName")
   }
 }
 
 object ArtifactService {
   final case class BranchNotFound(branchName: Branch)
 
-  final case class DownloadedZip(file: File)
-  final case class ExplodedZip(dir: File)
+  def getArtifactUrl(archiveUrl: String, branch: Branch): String = {
+    val urlEncodedBranchName = URLEncoder.encode(branch.asString, "UTF-8")
+    archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/refs/heads/$urlEncodedBranchName")
+  }
 }
