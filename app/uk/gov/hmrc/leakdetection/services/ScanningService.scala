@@ -16,20 +16,19 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import java.io.File
-import javax.inject.{Inject, Singleton}
 import org.apache.commons.io.FileUtils
 import play.api.Logger
-
-import scala.concurrent.{ExecutionContext, Future}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.{Branch, DeleteBranchEvent, PayloadDetails, Report, Repository}
+import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
-import uk.gov.hmrc.leakdetection.services.ArtifactService.{BranchNotFound, ExplodedZip}
+import uk.gov.hmrc.leakdetection.services.ArtifactService.BranchNotFound
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
 
+import java.io.File
+import javax.inject.{Inject, Singleton}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 @Singleton
@@ -59,7 +58,7 @@ class ScanningService @Inject()(
     authorName: String,
     archiveUrl: String)(implicit hc: HeaderCarrier): Future[Report] =
     try {
-      artifactService.getZipAndExplode(cfg.githubSecrets.personalAccessToken, archiveUrl, branch) flatMap {
+      artifactService.getZip(cfg.githubSecrets.personalAccessToken, archiveUrl, branch) flatMap {
         case Left(BranchNotFound(_)) =>
           reportsService
             .clearReportsAfterBranchDeleted(
@@ -71,7 +70,7 @@ class ScanningService @Inject()(
                 repositoryUrl  = repositoryUrl)
             )
             .map(_.reportSolvingProblems)
-        case Right(ExplodedZip(dir)) =>
+        case Right(dir) =>
           val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
           val processingResult =
             for {
