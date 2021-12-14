@@ -71,11 +71,13 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
         val source = Source.fromFile(file)
         val contentResults: Seq[Result] = try {
           source.getLines
-            .foldLeft(1 -> Seq.empty[Result]) {
-              case ((lineNumber, acc), line) =>
-                lineNumber + 1 -> (acc ++ applicableFileContentScanners.flatMap {
-                  _.scanLine(line, lineNumber).map(mr => Result(filePath, mr))
-                })
+            .foldLeft(1, Seq.empty[Result], false) {
+              case ((lineNumber, acc, isInLine), line) =>
+                (lineNumber + 1, acc ++ applicableFileContentScanners.flatMap {
+                  _.scanLine(line, lineNumber)
+                    .filterNot(_ => isInLine)
+                    .map(mr => Result(filePath, mr))
+                }, line.contains("LDS Ignore"))
             }
             ._2
 

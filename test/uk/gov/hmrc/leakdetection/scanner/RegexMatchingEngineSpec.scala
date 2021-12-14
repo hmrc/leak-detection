@@ -232,6 +232,24 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       results should have size 0
 
     }
+
+    "should filter out in-line exception rules" in {
+      val wd = tmp.dir()
+      write(wd / 'zip_file_name_xyz / 'dir / "file",
+        "first match on: secret\n" +
+          "//LDS Ignore\n" +
+          "ignore match on: secret\n" +
+          "second match on: secret\n" +
+          "#LDS Ignore with good reason\n" +
+          "ignore another match on: secret\n")
+
+      val rules = List(Rule("rule", Rule.Scope.FILE_CONTENT, "secret", "leaked secret"))
+
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
+
+      results should have size 2
+      results.map(r => r.scanResults.lineNumber) shouldBe Seq(1,4)
+    }
   }
 
 }
