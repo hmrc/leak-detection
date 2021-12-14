@@ -233,6 +233,76 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
 
     }
 
+    "should filter out based on regex if supplied" in {
+      val repositoryYamlContent =
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: 'rule-1'
+          |    filePath: /dir/file1
+          |    text: false-positive
+          |  - ruleId: 'rule-2'
+          |    filePath: /dir/file1
+          |    text: some-other-rule-false-positive
+          |  - ruleId: 'rule-1'
+          |    filePath: /dir/file2
+          |    text: some-other-false-positive
+        """.stripMargin
+
+      val wd = tmp.dir()
+      write(wd / 'zip_file_name_xyz / 'dir / "file1", "no match to be found on: secret=false-positive\nmatch should be found on secret=real-secret\nrule 2 match should still be found on: key=false-positive")
+      write(wd / 'zip_file_name_xyz / 'dir / "file2", "match should be found on: secret=false-positive in this file")
+      write(wd / 'zip_file_name_xyz / "repository.yaml", repositoryYamlContent)
+
+      val rules = List(
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
+        Rule("rule-2", Rule.Scope.FILE_CONTENT, "key=", "leaked secret found for rule 2")
+      )
+
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
+
+      results should have size 3
+
+      results should contain(
+        Result(
+          filePath = "/dir/file1",
+          scanResults = MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
+            lineText    = "match should be found on secret=real-secret",
+            lineNumber  = 2,
+            ruleId      = "rule-1",
+            description = "leaked secret found for rule 1",
+            matches     = List(Match(start = 25, end = 32))
+          )
+        )
+      )
+      results should contain(
+        Result(
+          filePath = "/dir/file1",
+          scanResults = MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
+            lineText    = "rule 2 match should still be found on: key=false-positive",
+            lineNumber  = 3,
+            ruleId      = "rule-2",
+            description = "leaked secret found for rule 2",
+            matches     = List(Match(start = 39, end = 43))
+          )
+        )
+      )
+      results should contain(
+        Result(
+          filePath = "/dir/file2",
+          scanResults = MatchedResult(
+            scope       = Rule.Scope.FILE_CONTENT,
+            lineText    = "match should be found on: secret=false-positive in this file",
+            lineNumber  = 1,
+            ruleId      = "rule-1",
+            description = "leaked secret found for rule 1",
+            matches     = List(Match(start = 26, end = 33))
+          )
+        )
+      )
+    }
+
     "should filter out in-line exception rules" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir / "file",

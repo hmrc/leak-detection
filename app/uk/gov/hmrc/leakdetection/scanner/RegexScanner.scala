@@ -19,13 +19,16 @@ package uk.gov.hmrc.leakdetection.scanner
 import uk.gov.hmrc.leakdetection.config.Rule
 import MatchedResult.ensureLengthIsBelowLimit
 
-case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
+case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[String] = Seq()) {
 
   private val compiledRegex = rule.regex.r
 
   private object Extractor {
     def unapply(arg: String): Option[(String, List[Match])] =
-      compiledRegex.findAllMatchIn(arg).toList match {
+      compiledRegex.findAllMatchIn(arg)
+        .toList
+        .filterNot(_ => lineExemptions.exists(exemption => arg.contains(exemption)))
+      match {
         case Nil     => None
         case matches => Some((arg, matches.map(Match.create)))
       }

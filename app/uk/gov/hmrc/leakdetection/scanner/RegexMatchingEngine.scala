@@ -62,10 +62,20 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
             scanner.rule.ignoredFiles.exists(pattern => filePath.matches(pattern)) ||
             serviceDefinedExemptions
               .find(_.ruleId == scanner.rule.id)
-              .fold(false)(exemption => exemption.filePaths.contains(filePath))
+              .fold(false)(exemption => exemption.filePaths.contains(filePath) && exemption.text == None)
           }
 
-        val applicableFileContentScanners = applicableScanners(fileContentScanners)
+        def scannersWithExemptions(scanners: Seq[RegexScanner]) =
+          scanners.map (scanner =>
+            scanner.copy(lineExemptions = serviceDefinedExemptions
+              .filter(_.ruleId == scanner.rule.id)
+              .filter(_.filePaths.contains(filePath))
+              .filter(_.text.isDefined)
+              .map(_.text.get)
+            )
+          )
+
+        val applicableFileContentScanners = scannersWithExemptions(applicableScanners(fileContentScanners))
         val applicableFileNameScanners    = applicableScanners(fileNameScanners)
 
         val source = Source.fromFile(file)
