@@ -86,7 +86,8 @@ object AllRules {
 
 final case class RuleExemption(
   ruleId: String,
-  filePaths: Seq[String]
+  filePaths: Seq[String],
+  regex: Option[String] = None
 )
 
 object RuleExemption {
