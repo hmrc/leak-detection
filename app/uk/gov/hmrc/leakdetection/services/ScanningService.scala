@@ -120,7 +120,8 @@ class ScanningService @Inject()(
     githubService.getDefaultBranchName(repository) flatMap { defaultBranch =>
     if (branch == defaultBranch) {
       val exemptions = RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
-      if(exemptions.exists(e => !e.text.isDefined)) {
+
+      if(exemptions.exists(!_.text.isDefined)) {
           alertingService.alertAboutExemptionWarnings(repository, defaultBranch, author)
       }
     }

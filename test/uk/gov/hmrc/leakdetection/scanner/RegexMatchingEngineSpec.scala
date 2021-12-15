@@ -233,7 +233,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
 
     }
 
-    "should filter out based on regex if supplied" in {
+    "should filter out based on text if supplied" in {
       val repositoryYamlContent =
         """
           |leakDetectionExemptions:

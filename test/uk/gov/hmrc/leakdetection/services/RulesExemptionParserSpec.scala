@@ -88,7 +88,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
 
     }
 
-    "Support rule exemption with regex" in new Setup {
+    "Support rule exemption with text" in new Setup {
 
       val configContent =
         """
@@ -96,7 +96,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
           |  - ruleId: '1'
           |    filePaths:
           |      - foo.scala
-          |    regex: 'false-positive'
+          |    text: 'false-positive'
         """.stripMargin
 
       createFileForTest(configContent)

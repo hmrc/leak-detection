@@ -70,8 +70,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
             scanner.copy(lineExemptions = serviceDefinedExemptions
               .filter(_.ruleId == scanner.rule.id)
               .filter(_.filePaths.contains(filePath))
-              .filter(_.text.isDefined)
-              .map(_.text.get)
+              .flatMap(_.text)
             )
           )
 

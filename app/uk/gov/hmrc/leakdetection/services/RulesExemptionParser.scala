@@ -67,8 +67,8 @@ object RulesExemptionParser {
           val text = entry.asScala.get("text")
 
           (ruleIdO, fileNames, fileNameO, text) match {
-            case (Some(ruleId), _, Some(fileName), regex) => Some(RuleExemption(ruleId, fileNames :+ fileName, regex))
-            case (Some(ruleId), _, None, regex)           => Some(RuleExemption(ruleId, fileNames, regex))
+            case (Some(ruleId), _, Some(fileName), text) => Some(RuleExemption(ruleId, fileNames :+ fileName, text))
+            case (Some(ruleId), _, None, text)           => Some(RuleExemption(ruleId, fileNames, text))
             case (None, _, _, _)                          => None
           }
         }
