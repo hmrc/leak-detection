@@ -87,7 +87,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
                   _.scanLine(line, lineNumber)
                     .filterNot(_ => isInLine)
                     .map(mr => Result(filePath, mr))
-                }, line.contains("LDS Ignore"))
+                }, line.contains("LDS ignore"))
             }
             ._2
 

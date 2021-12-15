@@ -303,14 +303,14 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       )
     }
 
-    "should filter out in-line exception rules" in {
+    "should filter out in-line exceptions" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir / "file",
         "first match on: secret\n" +
-          "//LDS Ignore\n" +
+          "//LDS ignore\n" +
           "ignore match on: secret\n" +
           "second match on: secret\n" +
-          "#LDS Ignore with good reason\n" +
+          "# hey, LDS ignore this with good reason\n" +
           "ignore another match on: secret\n")
 
       val rules = List(Rule("rule", Rule.Scope.FILE_CONTENT, "secret", "leaked secret"))
