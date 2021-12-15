@@ -222,6 +222,49 @@ class ScanningServiceSpec
       verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
     }
 
+    "send a exemption warnings alert if there are file level exemptions within repository.yaml" in new TestSetup {
+      writeRepositoryYaml {
+        s"""
+           |leakDetectionExemptions:
+           |  - ruleId: 'rule-2'
+           |    filePath: 'file'
+        """.stripMargin
+      }
+
+      performScan()
+
+      verify(alertingService).alertAboutExemptionWarnings(repository = Repository("repoName"), Branch("main"), author = "me")(hc)
+    }
+
+    "do not alert on exemption warnings if all exemptions are line level exemptions" in new TestSetup {
+      writeRepositoryYaml {
+        s"""
+           |leakDetectionExemptions:
+           |  - ruleId: 'rule-2'
+           |    filePath: 'file'
+           |    text: 'false-positive'
+        """.stripMargin
+      }
+
+      performScan()
+
+      verify(alertingService, times(0)).alertAboutExemptionWarnings(Repository(any), Branch(any), any)(any)
+    }
+
+    "do not alert on exemption warnings if not on default branch" in new TestSetup {
+      override val branch = "not-main"
+      when(
+        artifactService.getZip(
+          eqTo(githubSecrets.personalAccessToken),
+          eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+          Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
+
+
+      performScan()
+
+      verify(alertingService, times(0)).alertAboutExemptionWarnings(Repository(any), Branch(any), any)(any)
+    }
+
   }
 
   "The service" should {

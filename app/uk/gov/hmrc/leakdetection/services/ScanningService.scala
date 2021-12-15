@@ -19,6 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
@@ -79,6 +80,7 @@ class ScanningService @Inject()(
               _ <- reportsService.saveReport(report)
               _ <- alertingService.alert(report)
               _ <- alertAboutRepoVisibility(repository = repository, branch = branch, authorName, dir, isPrivate)
+              _ <- alertAboutExemptionWarnings(repository, branch, authorName, dir)
             } yield {
               report
             }
@@ -109,6 +111,21 @@ class ScanningService @Inject()(
         Future.unit
       }
     }
+
+  private def alertAboutExemptionWarnings(
+                                    repository: Repository,
+                                    branch: Branch,
+                                    author: String,
+                                    dir: File)(implicit hc: HeaderCarrier): Future[Unit] =
+    githubService.getDefaultBranchName(repository) flatMap { defaultBranch =>
+    if (branch == defaultBranch) {
+      val exemptions = RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
+      if(exemptions.exists(e => !e.text.isDefined)) {
+          alertingService.alertAboutExemptionWarnings(repository, defaultBranch, author)
+      }
+    }
+    Future.unit
+  }
 
   def queueRequest(p: PayloadDetails): Future[Boolean] =
     githubRequestsQueueRepository.pushNew(p).map(_ => true)
