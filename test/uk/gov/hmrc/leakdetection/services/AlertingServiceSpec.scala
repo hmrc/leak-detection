@@ -226,6 +226,38 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       verifyZeroInteractions(slackConnector)
     }
 
+    "send an alert about exemption warnings" in new Fixtures {
+      override val configuration =
+        defaultConfiguration ++ Configuration("alerts.slack.enabledForExemptionWarnings" -> true)
+
+      service.alertAboutExemptionWarnings(repository = Repository("repo"), Branch("main"), "author").futureValue
+
+      val messageDetails = MessageDetails(
+        text        = "Exemption Warnings",
+        username    = "leak-detection",
+        iconEmoji   = ":closed_lock_with_key:",
+        attachments = Seq()
+      )
+
+      val expectedMessageToTeamChannel = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.TeamsOfGithubUser("author"),
+        messageDetails = messageDetails
+      )
+
+      val expectedMessageToAlertChannel = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+        messageDetails = messageDetails
+      )
+
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
+    }
+
+    "do not send exemption warnings alert if not enabled" in new Fixtures {
+      service.alertAboutExemptionWarnings(Repository("repo"), Branch("main"), "author").futureValue
+
+      verifyZeroInteractions(slackConnector)
+    }
   }
 
   trait Fixtures {
@@ -238,26 +270,28 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
 
     val defaultConfiguration = Configuration(
-      "alerts.slack.leakDetectionUri"          -> "https://somewhere",
-      "alerts.slack.enabled"                   -> true,
-      "alerts.slack.defaultAlertChannel"       -> "#the-channel",
-      "alerts.slack.adminChannel"              -> "#the-admin-channel",
-      "alerts.slack.messageText"               -> "Do not panic, but there is a leak!",
-      "alerts.slack.username"                  -> "leak-detection",
-      "alerts.slack.iconEmoji"                 -> ":closed_lock_with_key:",
-      "alerts.slack.sendToTeamChannels"        -> true,
-      "alerts.slack.sendToAlertChannel"        -> true,
-      "alerts.slack.repoVisibilityMessageText" -> "Repo visiblity problem detected",
-      "alerts.slack.enabledForRepoVisibility"  -> false,
-      "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
-      "githubSecrets.webhookSecretKey"         -> "PLACEHOLDER",
-      "github.url"                             -> "url",
-      "github.apiUrl"                          -> "url",
-      "allRules.privateRules"                  -> List(),
-      "allRules.publicRules"                   -> List(),
-      "leakResolutionUrl"                      -> "PLACEHOLDER",
-      "maxLineLength"                          -> 2147483647,
-      "clearingCollectionEnabled"              -> false
+      "alerts.slack.leakDetectionUri"             -> "https://somewhere",
+      "alerts.slack.enabled"                      -> true,
+      "alerts.slack.defaultAlertChannel"          -> "#the-channel",
+      "alerts.slack.adminChannel"                 -> "#the-admin-channel",
+      "alerts.slack.messageText"                  -> "Do not panic, but there is a leak!",
+      "alerts.slack.username"                     -> "leak-detection",
+      "alerts.slack.iconEmoji"                    -> ":closed_lock_with_key:",
+      "alerts.slack.sendToTeamChannels"           -> true,
+      "alerts.slack.sendToAlertChannel"           -> true,
+      "alerts.slack.repoVisibilityMessageText"    -> "Repo visiblity problem detected",
+      "alerts.slack.enabledForRepoVisibility"     -> false,
+      "alerts.slack.exemptionWarningText"         -> "Exemption Warnings",
+      "alerts.slack.enabledForExemptionWarnings"  -> false,
+      "githubSecrets.personalAccessToken"         -> "PLACEHOLDER",
+      "githubSecrets.webhookSecretKey"            -> "PLACEHOLDER",
+      "github.url"                                -> "url",
+      "github.apiUrl"                             -> "url",
+      "allRules.privateRules"                     -> List(),
+      "allRules.publicRules"                      -> List(),
+      "leakResolutionUrl"                         -> "PLACEHOLDER",
+      "maxLineLength"                             -> 2147483647,
+      "clearingCollectionEnabled"                 -> false
     )
 
     val configuration = defaultConfiguration
