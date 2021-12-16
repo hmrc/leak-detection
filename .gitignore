@@ -37,3 +37,4 @@ nohup*
 .vscode/
 project/metals.sbt
 .bsp/
+.pre-commit-config.yaml

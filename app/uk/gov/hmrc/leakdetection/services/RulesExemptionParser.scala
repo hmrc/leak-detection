@@ -64,11 +64,12 @@ object RulesExemptionParser {
               .getOrElse("filePaths", new java.util.ArrayList())
               .asInstanceOf[java.util.ArrayList[String]]
               .asScala
+          val text = entry.asScala.get("text")
 
-          (ruleIdO, fileNames, fileNameO) match {
-            case (Some(ruleId), _, Some(fileName)) => Some(RuleExemption(ruleId, fileNames :+ fileName))
-            case (Some(ruleId), _, None)           => Some(RuleExemption(ruleId, fileNames))
-            case (None, _, _)                      => None
+          (ruleIdO, fileNames, fileNameO, text) match {
+            case (Some(ruleId), _, Some(fileName), text) => Some(RuleExemption(ruleId, fileNames :+ fileName, text))
+            case (Some(ruleId), _, None, text)           => Some(RuleExemption(ruleId, fileNames, text))
+            case (None, _, _, _)                          => None
           }
         }
       }

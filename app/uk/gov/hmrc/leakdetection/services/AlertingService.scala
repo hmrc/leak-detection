@@ -65,6 +65,24 @@ class AlertingService @Inject()(configuration: Configuration,
       }
     }
 
+  def alertAboutExemptionWarnings(repository: Repository, branch: Branch, author: String)(implicit hc: HeaderCarrier): Future[Unit] = {
+    if (!enabledForExemptionWarnings) return Future.successful(())
+
+    val messageDetails =
+      MessageDetails(
+        text = exemptionWarningText.replace("{repo}", repository.asString),
+        username = username,
+        iconEmoji = iconEmoji,
+        attachments = Seq()
+      )
+
+    val commitInfo = CommitInfo(author, branch, repository)
+
+    Future
+      .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
+      .map(_ => ())
+  }
+
   def alert(report: Report)(implicit hc: HeaderCarrier): Future[Unit] =
     if (!enabled || report.inspectionResults.isEmpty) {
       Future.successful(())
@@ -207,5 +225,7 @@ final case class SlackConfig(
   messageText: String,
   leakDetectionUri: String,
   repoVisibilityMessageText: String,
-  enabledForRepoVisibility: Boolean
+  enabledForRepoVisibility: Boolean,
+  exemptionWarningText: String,
+  enabledForExemptionWarnings: Boolean
 )

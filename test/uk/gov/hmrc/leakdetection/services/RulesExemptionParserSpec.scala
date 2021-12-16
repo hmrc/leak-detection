@@ -88,6 +88,26 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
 
     }
 
+    "Support rule exemption with text" in new Setup {
+
+      val configContent =
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: '1'
+          |    filePaths:
+          |      - foo.scala
+          |    text: 'false-positive'
+        """.stripMargin
+
+      createFileForTest(configContent)
+      val expectedRules = List(RuleExemption("1", Seq("foo.scala"), Some("false-positive")))
+
+      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+
+      parsedRules shouldBe expectedRules
+
+    }
+
     "Ignore leakDetectionExemptions with bad syntax" in new Setup {
 
       val configContent =
