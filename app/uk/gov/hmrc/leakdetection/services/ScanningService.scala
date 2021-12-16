@@ -121,7 +121,7 @@ class ScanningService @Inject()(
     if (branch == defaultBranch) {
       val exemptions = RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
 
-      if(exemptions.exists(!_.text.isDefined)) {
+      if(exemptions.exists(_.text.isEmpty)) {
           alertingService.alertAboutExemptionWarnings(repository, defaultBranch, author)
       }
     }
