@@ -10,6 +10,18 @@
     color: gray;
 }
 
+.high {
+    color: red;
+}
+
+.medium {
+    color: orange;
+}
+
+.low {
+    color: green;
+}
+
 body {
     font-family: "nta", Arial, sans-serif;
 }
