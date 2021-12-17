@@ -26,6 +26,7 @@ final case class MatchedResult(
   ruleId: String,
   description: String,
   matches: List[Match],
+  priority: String,
   isTruncated: Boolean = false
 )
 

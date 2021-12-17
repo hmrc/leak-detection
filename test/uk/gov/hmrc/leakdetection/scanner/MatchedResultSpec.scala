@@ -109,7 +109,8 @@ class MatchedResultSpec extends AnyWordSpec with Matchers with ScalaCheckPropert
         lineNumber  = 1,
         ruleId      = "ruleId",
         description = "description",
-        matches     = matches)
+        matches     = matches,
+        priority    = "low")
 
   def genMatch(lineText: String): Gen[Match] =
     (for {

@@ -44,7 +44,8 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
             lineNumber  = 1,
             ruleId      = rule.id,
             description = rule.description,
-            matches     = matches
+            matches     = matches,
+            priority    = rule.priority
           )
         )
       case _ => None
@@ -61,7 +62,8 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
               lineNumber  = lineNumber,
               ruleId      = rule.id,
               description = rule.description,
-              matches     = matches
+              matches     = matches,
+              priority    = rule.priority
             ),
             lineLengthLimit
           )
