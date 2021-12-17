@@ -57,7 +57,8 @@ final case class Rule(
   regex: String,
   description: String,
   ignoredFiles: List[String]      = Nil,
-  ignoredExtensions: List[String] = Nil
+  ignoredExtensions: List[String] = Nil,
+  priority: String = "low"
 )
 
 object Rule {
@@ -65,6 +66,11 @@ object Rule {
   object Scope {
     val FILE_CONTENT = "fileContent"
     val FILE_NAME    = "fileName"
+  }
+  object Priority {
+    val LOW = "low"
+    val MEDIUM = "medium"
+    val HIGH = "high"
   }
 }
 
