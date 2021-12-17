@@ -65,6 +65,7 @@ class HighlightProblemsSpec extends AnyWordSpec with Matchers {
       description = null,
       lineText    = lineText,
       matches     = matches.toList,
+      priority    = Some("low"),
       isTruncated = Some(false))
 
 }

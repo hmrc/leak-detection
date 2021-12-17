@@ -57,6 +57,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13)),
+            priority    = Some("high"),
             isTruncated = Some(false)
           )),
         None
@@ -108,6 +109,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13)),
+            priority    = Some("high"),
             isTruncated = Some(false)
           )),
         None

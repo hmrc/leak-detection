@@ -76,6 +76,7 @@ class ScanningServiceSpec
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13)),
+            priority    = Some("high"),
             isTruncated = Some(false)
           ),
           ReportLine(
@@ -87,6 +88,7 @@ class ScanningServiceSpec
             description = "checks-in private key!",
             lineText    = s"${file2.getName}",
             matches     = List(Match(startIndex, startIndex + 6)),
+            priority    = Some("low"),
             isTruncated = Some(false)
           )
         )
@@ -177,6 +179,7 @@ class ScanningServiceSpec
             description = "checks-in private key!",
             lineText    = s"${file2.getName}",
             matches     = List(Match(startIndex, startIndex + 6)),
+            priority    = Some("low"),
             isTruncated = Some(false)
           )
         )
@@ -368,7 +371,8 @@ class ScanningServiceSpec
           id          = "rule-1",
           scope       = "fileContent",
           regex       = "null",
-          description = "uses nulls!"
+          description = "uses nulls!",
+          priority    = "high"
         )
 
       val usesNullExempted =
