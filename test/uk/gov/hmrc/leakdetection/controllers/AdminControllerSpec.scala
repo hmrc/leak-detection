@@ -98,7 +98,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatcher
                   description = "a description",
                   lineText    = "the line",
                   matches     = List(Match(0, 1)),
-                  priority    = Some("high"),
+                  priority    = Some(Rule.Priority.High),
                   isTruncated = Some(false)
                 )
               ),

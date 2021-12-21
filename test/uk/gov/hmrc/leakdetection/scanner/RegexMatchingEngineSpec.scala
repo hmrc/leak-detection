@@ -33,7 +33,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD", "no match\nto be found in this file\n")
 
       val rules = List(
-        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1", priority = "high"),
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1", priority = Rule.Priority.High),
         Rule("rule-2", Rule.Scope.FILE_CONTENT, "secretB", "descr 2"),
         Rule("rule-3", Rule.Scope.FILE_CONTENT, "secretC", "descr 3"),
         Rule("rule-4", Rule.Scope.FILE_NAME, "fileC", "file with secrets")
@@ -55,7 +55,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-1",
             description = "descr 1",
             matches     = List(Match(start = 13, end = 20)),
-            priority    = "high"
+            priority    = Rule.Priority.High
           )
         )
       )
@@ -69,7 +69,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-1",
             description = "descr 1",
             matches     = List(Match(start = 13, end = 20)),
-            priority    = "high"
+            priority    = Rule.Priority.High
           )
         )
       )
@@ -84,7 +84,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-2",
             description = "descr 2",
             matches     = List(Match(start = 13, end = 20)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -98,7 +98,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-2",
             description = "descr 2",
             matches     = List(Match(start = 13, end = 20)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -113,7 +113,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-3",
             description = "descr 3",
             matches     = List(Match(start = 13, end = 20)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -127,7 +127,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-3",
             description = "descr 3",
             matches     = List(Match(start = 13, end = 20)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -141,7 +141,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-4",
             description = "file with secrets",
             matches     = List(Match(start = 0, end = 5)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -175,7 +175,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-2",
             description = "descr 2",
             matches     = List(Match(start = 13, end = 20)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -189,7 +189,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-2",
             description = "descr 2",
             matches     = List(Match(start = 13, end = 20)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -204,7 +204,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-3",
             description = "file with some secrets",
             matches     = List(Match(start = 0, end = 5)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -282,7 +282,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-1",
             description = "leaked secret found for rule 1",
             matches     = List(Match(start = 25, end = 32)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -296,7 +296,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-2",
             description = "leaked secret found for rule 2",
             matches     = List(Match(start = 39, end = 43)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )
@@ -310,7 +310,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             ruleId      = "rule-1",
             description = "leaked secret found for rule 1",
             matches     = List(Match(start = 26, end = 33)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       )

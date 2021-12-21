@@ -38,7 +38,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
             ruleId      = ruleId,
             description = descr,
             matches     = List(Match(start = 5, end = 12)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           )
         )
       }
@@ -80,7 +80,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
             ruleId      = ruleId,
             description = descr,
             matches     = List(Match(start = 0, end = 7)),
-            priority    = "low"
+            priority    = Rule.Priority.Low
           ))
     }
     "nothing if no match was found" in {

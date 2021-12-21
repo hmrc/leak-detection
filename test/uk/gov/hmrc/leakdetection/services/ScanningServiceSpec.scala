@@ -76,7 +76,7 @@ class ScanningServiceSpec
             description = "uses nulls!",
             lineText    = " var x = null",
             matches     = List(Match(9, 13)),
-            priority    = Some("high"),
+            priority    = Some(Rule.Priority.High),
             isTruncated = Some(false)
           ),
           ReportLine(
@@ -88,7 +88,7 @@ class ScanningServiceSpec
             description = "checks-in private key!",
             lineText    = s"${file2.getName}",
             matches     = List(Match(startIndex, startIndex + 6)),
-            priority    = Some("low"),
+            priority    = Some(Rule.Priority.Low),
             isTruncated = Some(false)
           )
         )
@@ -179,7 +179,7 @@ class ScanningServiceSpec
             description = "checks-in private key!",
             lineText    = s"${file2.getName}",
             matches     = List(Match(startIndex, startIndex + 6)),
-            priority    = Some("low"),
+            priority    = Some(Rule.Priority.Low),
             isTruncated = Some(false)
           )
         )
@@ -372,7 +372,7 @@ class ScanningServiceSpec
           scope       = "fileContent",
           regex       = "null",
           description = "uses nulls!",
-          priority    = "high"
+          priority    = Rule.Priority.High
         )
 
       val usesNullExempted =

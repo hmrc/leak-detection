@@ -75,7 +75,7 @@ object ModelFactory {
       ruleId      = aString("ruleId"),
       description = aString("description"),
       matches     = List(Match(10, 14)),
-      priority    = "low"
+      priority    = Rule.Priority.Low
     )
 
   def aResult = Result(

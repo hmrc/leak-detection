@@ -58,7 +58,7 @@ final case class Rule(
   description: String,
   ignoredFiles: List[String]      = Nil,
   ignoredExtensions: List[String] = Nil,
-  priority: String = "low"
+  priority: String = Rule.Priority.Low
 )
 
 object Rule {
@@ -68,9 +68,9 @@ object Rule {
     val FILE_NAME    = "fileName"
   }
   object Priority {
-    val LOW = "low"
-    val MEDIUM = "medium"
-    val HIGH = "high"
+    val Low = "low"
+    val Medium = "medium"
+    val High = "high"
   }
 }
 

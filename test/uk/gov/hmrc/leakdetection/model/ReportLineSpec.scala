@@ -48,7 +48,7 @@ class ReportLineSpec extends AnyFreeSpec with Matchers with OptionValues {
                 ruleId      = ruleId,
                 description = descr,
                 matches     = List(Match(start = 6, end = 12)),
-                priority    = "low"
+                priority    = Rule.Priority.Low
               )
             )
           )
@@ -81,7 +81,7 @@ class ReportLineSpec extends AnyFreeSpec with Matchers with OptionValues {
                 ruleId      = ruleId,
                 description = descr,
                 matches     = List(Match(start = 6, end = 12)),
-                priority    = "low"
+                priority    = Rule.Priority.Low
               )
             )
           )
@@ -115,7 +115,7 @@ class ReportLineSpec extends AnyFreeSpec with Matchers with OptionValues {
                 description = "descr",
                 ruleId      = "ruleId",
                 matches     = List(Match(1, 2)),
-                priority    = "low"
+                priority    = Rule.Priority.Low
               )
             ))
         )
