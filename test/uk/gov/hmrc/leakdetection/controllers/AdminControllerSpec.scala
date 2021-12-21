@@ -54,12 +54,13 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatcher
               eqTo("https://github.com/hmrc/repoName"),
               eqTo("n/a"),
               eqTo("n/a"),
-              eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+              eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+              eqTo(false)
             )(any))
             .thenReturn(
               Future.successful(Report(id, "repoName", "someUrl", "n/a", "main", now, "n/a", Seq.empty, None)))
 
-          val result       = controller.validate(Repository("repoName"), Branch.main, isPrivate)(FakeRequest())
+          val result       = controller.validate(Repository("repoName"), Branch.main, isPrivate, None)(FakeRequest())
           val json: String = contentAsString(result)
 
           json shouldBe s"""{"_id":"$id","repoName":"repoName","repoUrl":"someUrl","commitId":"n/a","branch":"main","timestamp":"1970-01-01T00:00:00.000Z","author":"n/a","inspectionResults":[]}"""
@@ -78,7 +79,8 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatcher
               eqTo("https://github.com/hmrc/repoName"),
               eqTo("n/a"),
               eqTo("n/a"),
-              eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}")
+              eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
+              eqTo(false)
             )(any))
             .thenReturn(Future.successful(Report(
               id,
@@ -104,7 +106,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatcher
               None
             )))
 
-          val result        = controller.validate(Repository("repoName"), Branch.main, isPrivate)(FakeRequest())
+          val result        = controller.validate(Repository("repoName"), Branch.main, isPrivate, None)(FakeRequest())
           val json: JsValue = contentAsJson(result)
 
           (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","ruleId":"rule id","description":"a description","lineText":"the line","matches":[{"start":0,"end":1}],"isTruncated":false}]"""

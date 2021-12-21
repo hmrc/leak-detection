@@ -14,8 +14,8 @@ GET        /assets/*file                                controllers.Assets.at(pa
 # Admin endpoints
 
 GET        /admin/rules                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.rules
-GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = true)
-GET        /admin/validate/public/:repository/:branch   @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = false)
+GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = true, dryRun: Option[Boolean])
+GET        /admin/validate/public/:repository/:branch   @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = false, dryRun: Option[Boolean])
 
 GET        /admin/github-rate-limits                    @uk.gov.hmrc.leakdetection.controllers.AdminController.checkGithubRateLimits
 
