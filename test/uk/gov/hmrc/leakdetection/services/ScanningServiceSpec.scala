@@ -194,7 +194,7 @@ class ScanningServiceSpec
     "send an alert if there were problems with repository.yaml" in new TestSetup {
       when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(true)
 
-      performScan()
+      generateReport
 
       verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
     }
@@ -202,7 +202,7 @@ class ScanningServiceSpec
     "not send alerts if repoVisibility correctly defined in repository.yaml" in new TestSetup {
       when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(false)
 
-      performScan()
+      generateReport
 
       verify(alertingService).alertAboutRepoVisibility(repository = Repository("repoName"), author = "me")(hc)
     }
@@ -217,7 +217,7 @@ class ScanningServiceSpec
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
           Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
 
-      performScan()
+      generateReport
 
       verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
     }
@@ -231,12 +231,12 @@ class ScanningServiceSpec
         """.stripMargin
       }
 
-      performScan()
+      generateReport
 
       verify(alertingService).alertAboutExemptionWarnings(repository = Repository("repoName"), Branch("main"), author = "me")(hc)
     }
 
-    "do not alert on exemption warnings if all exemptions are line level exemptions" in new TestSetup {
+    "not alert on exemption warnings if all exemptions are line level exemptions" in new TestSetup {
       writeRepositoryYaml {
         s"""
            |leakDetectionExemptions:
@@ -246,12 +246,12 @@ class ScanningServiceSpec
         """.stripMargin
       }
 
-      performScan()
+      generateReport
 
       verify(alertingService, times(0)).alertAboutExemptionWarnings(Repository(any), Branch(any), any)(any)
     }
 
-    "do not alert on exemption warnings if not on default branch" in new TestSetup {
+    "not alert on exemption warnings if not on default branch" in new TestSetup {
       override val branch = "not-main"
       when(
         artifactService.getZip(
@@ -260,11 +260,16 @@ class ScanningServiceSpec
           Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
 
 
-      performScan()
+      generateReport
 
       verify(alertingService, times(0)).alertAboutExemptionWarnings(Repository(any), Branch(any), any)(any)
     }
 
+    "not save the report or trigger any alerts if a dry run" in new TestSetup {
+      performScan(true)
+
+      verifyZeroInteractions(reportsService, alertingService, repoVisiblityChecker)
+    }
   }
 
   "The service" should {
@@ -325,11 +330,11 @@ class ScanningServiceSpec
     val id          = ReportId.random
     implicit val hc = HeaderCarrier()
 
-    def generateReport = performScan()
+    def generateReport = performScan(false)
 
     def branch = "main"
 
-    def performScan() =
+    def performScan(dryRun: Boolean) =
       scanningService
         .scanRepository(
           repository    = Repository("repoName"),
@@ -338,7 +343,8 @@ class ScanningServiceSpec
           repositoryUrl = "https://github.com/hmrc/repoName",
           commitId      = "3d9c100",
           authorName    = "me",
-          archiveUrl    = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"
+          archiveUrl    = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}",
+          dryRun        = dryRun
         )
         .futureValue
 
