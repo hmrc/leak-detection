@@ -57,9 +57,6 @@ class ReportsService @Inject()(
   def getReport(reportId: ReportId): Future[Option[Report]] =
     reportsRepository.findByReportId(reportId)
 
-  def clearCollection(): Future[Long] =
-    reportsRepository.removeAll()
-
   def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[ClearingReportsResult] = {
     val reportSolvingProblems = Report.create(
       repositoryName =  deleteBranchEvent.repositoryName,

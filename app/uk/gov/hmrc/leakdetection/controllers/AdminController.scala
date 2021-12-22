@@ -16,22 +16,18 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import java.io.File
-import ammonite.ops.{mkdir, tmp, write}
-
-import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json.{Format, JsValue, Json}
 import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
-import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
-import scala.concurrent.{ExecutionContext, Future}
+import javax.inject.{Inject, Singleton}
+import scala.concurrent.ExecutionContext
 
 @Singleton
 class AdminController @Inject()(
@@ -68,41 +64,6 @@ class AdminController @Inject()(
         implicit val rf = Report.apiFormat
         Ok(Json.toJson(report))
       }
-  }
-
-  def testPublicRules() = testRules(cfg.allRules.publicRules)
-
-  def testPrivateRules() = testRules(cfg.allRules.privateRules)
-
-  private def testRules(rules: List[Rule]) =
-    Action(parse.json) { implicit request =>
-      val acceptanceTestsRequest = request.body.as[AcceptanceTestsRequest]
-      logger.info(s"Checking:\n ${request.body}")
-
-      val simulatedExplodedDir = createFiles(acceptanceTestsRequest.fileName, acceptanceTestsRequest.fileContent)
-      val regexMatchingEngine  = new RegexMatchingEngine(rules, cfg.maxLineLength)
-      val results              = regexMatchingEngine.run(simulatedExplodedDir).map(_.scanResults)
-
-      Ok(Json.toJson(results))
-    }
-
-  private def createFiles(fileName: String, fileContent: String): File = {
-    val simulatedExplodedDir = tmp.dir()
-    val repoDir              = simulatedExplodedDir / "repo_dir"
-    mkdir ! repoDir
-    val filePathSegments = fileName.split("/").filterNot(_.isEmpty)
-    val actualFile = filePathSegments.foldLeft(repoDir)(_ / _)
-    write(actualFile, fileContent)
-    simulatedExplodedDir.toIO
-  }
-
-  def clearCollection() = Action.async {
-    if (configLoader.cfg.clearingCollectionEnabled)
-      reportsService.clearCollection().map( res =>
-        Ok(s"records deleted=$res")
-      )
-    else
-      Future.successful(Ok("Clearing reports is disabled."))
   }
 
   def checkGithubRateLimits = Action.async { implicit request =>
