@@ -20,6 +20,7 @@ import org.scalacheck.{Gen, Shrink}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.scanner.MatchedResult.ensureLengthIsBelowLimit
 
 class MatchedResultSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyChecks {
@@ -109,7 +110,8 @@ class MatchedResultSpec extends AnyWordSpec with Matchers with ScalaCheckPropert
         lineNumber  = 1,
         ruleId      = "ruleId",
         description = "description",
-        matches     = matches)
+        matches     = matches,
+        priority    = Rule.Priority.Low)
 
   def genMatch(lineText: String): Gen[Match] =
     (for {

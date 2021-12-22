@@ -100,6 +100,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatcher
                   description = "a description",
                   lineText    = "the line",
                   matches     = List(Match(0, 1)),
+                  priority    = Some(Rule.Priority.High),
                   isTruncated = Some(false)
                 )
               ),
@@ -109,7 +110,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatcher
           val result        = controller.validate(Repository("repoName"), Branch.main, isPrivate, None)(FakeRequest())
           val json: JsValue = contentAsJson(result)
 
-          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","ruleId":"rule id","description":"a description","lineText":"the line","matches":[{"start":0,"end":1}],"isTruncated":false}]"""
+          (json \ "inspectionResults").get.toString shouldBe s"""[{"filePath":"/some-file","scope":"${Rule.Scope.FILE_CONTENT}","lineNumber":1,"urlToSource":"some url","ruleId":"rule id","description":"a description","lineText":"the line","matches":[{"start":0,"end":1}],"priority":"high","isTruncated":false}]"""
         }
     }
   }

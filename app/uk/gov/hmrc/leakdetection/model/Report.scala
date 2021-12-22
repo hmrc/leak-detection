@@ -18,7 +18,6 @@ package uk.gov.hmrc.leakdetection.model
 
 import java.util.UUID
 import java.time.Instant
-
 import play.api.mvc.PathBindable
 import uk.gov.hmrc.leakdetection.scanner.{Match, Result}
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
@@ -164,6 +163,7 @@ final case class ReportLine(
   description: String,
   lineText   : String,
   matches    : List[Match],
+  priority   : Option[String],
   isTruncated: Option[Boolean] // todo(konrad) Option due to backwards compatibility, remove after collection cleared
 )
 
@@ -179,6 +179,7 @@ object ReportLine {
       description = result.scanResults.description,
       lineText    = result.scanResults.lineText,
       matches     = result.scanResults.matches,
+      priority    = Some(result.scanResults.priority),
       isTruncated = Some(result.scanResults.isTruncated)
     )
   }

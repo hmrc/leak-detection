@@ -18,6 +18,7 @@ package uk.gov.hmrc.leakdetection.views.helpers
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.model.ReportLine
 import uk.gov.hmrc.leakdetection.scanner.Match
 
@@ -65,6 +66,7 @@ class HighlightProblemsSpec extends AnyWordSpec with Matchers {
       description = null,
       lineText    = lineText,
       matches     = matches.toList,
+      priority    = Some(Rule.Priority.Low),
       isTruncated = Some(false))
 
 }
