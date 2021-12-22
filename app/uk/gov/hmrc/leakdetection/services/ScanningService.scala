@@ -57,7 +57,9 @@ class ScanningService @Inject()(
     repositoryUrl: String,
     commitId: String,
     authorName: String,
-    archiveUrl: String)(implicit hc: HeaderCarrier): Future[Report] =
+    archiveUrl: String,
+    dryRun: Boolean)
+                    (implicit hc: HeaderCarrier): Future[Report] =
     try {
       artifactService.getZip(cfg.githubSecrets.personalAccessToken, archiveUrl, branch) flatMap {
         case Left(BranchNotFound(_)) =>
@@ -73,14 +75,17 @@ class ScanningService @Inject()(
             .map(_.reportSolvingProblems)
         case Right(dir) =>
           val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
+
+          def executeIfNotDryRun(function: => Future[Unit]): Future[Unit] = if (!dryRun) function else Future.successful(Unit)
+
           val processingResult =
             for {
               results <- Future { regexMatchingEngine.run(dir) }
               report = Report.create(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
-              _ <- reportsService.saveReport(report)
-              _ <- alertingService.alert(report)
-              _ <- alertAboutRepoVisibility(repository = repository, branch = branch, authorName, dir, isPrivate)
-              _ <- alertAboutExemptionWarnings(repository, branch, authorName, dir)
+              _ <- executeIfNotDryRun(reportsService.saveReport(report))
+              _ <- executeIfNotDryRun(alertingService.alert(report))
+              _ <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
+              _ <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir))
             } yield {
               report
             }
@@ -151,7 +156,8 @@ class ScanningService @Inject()(
       repositoryUrl = request.repositoryUrl,
       commitId      = request.commitId,
       authorName    = request.authorName,
-      archiveUrl    = request.archiveUrl
+      archiveUrl    = request.archiveUrl,
+      dryRun        = false
     ).flatMap(report => githubRequestsQueueRepository.completeAndDelete(workItem.id).map(_ => Some(report)))
       .recoverWith {
         case NonFatal(e) =>

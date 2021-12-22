@@ -52,7 +52,7 @@ class AdminController @Inject()(
     Ok(Json.toJson(cfg.allRules))
   }
 
-  def validate(repository: Repository, branch: Branch, isPrivate: Boolean) = Action.async { implicit request =>
+  def validate(repository: Repository, branch: Branch, isPrivate: Boolean, dryRun: Option[Boolean]) = Action.async { implicit request =>
     scanningService
       .scanRepository(
         repository    = repository,
@@ -61,7 +61,8 @@ class AdminController @Inject()(
         repositoryUrl = s"https://github.com/hmrc/${repository.asString}",
         commitId      = NOT_APPLICABLE,
         authorName    = NOT_APPLICABLE,
-        archiveUrl    = s"https://api.github.com/repos/hmrc/${repository.asString}/{archive_format}{/ref}"
+        archiveUrl    = s"https://api.github.com/repos/hmrc/${repository.asString}/{archive_format}{/ref}",
+        dryRun        = dryRun.getOrElse(false)
       )
       .map { report =>
         implicit val rf = Report.apiFormat
