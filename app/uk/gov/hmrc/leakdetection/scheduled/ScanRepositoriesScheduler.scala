@@ -43,7 +43,7 @@ class ScanRepositoriesScheduler @Inject()(
   private lazy val interval: FiniteDuration =
     configuration.get[FiniteDuration]("scheduling.scanner.interval")
 
-  actorSystem.scheduler.schedule(initialDelay, interval) {
+  actorSystem.scheduler.scheduleAtFixedRate(initialDelay, interval)( () => {
     logger.info("Scheduled scanning job triggered")
     execute.onComplete {
       case Success(Result(message)) =>
@@ -51,7 +51,7 @@ class ScanRepositoriesScheduler @Inject()(
       case Failure(throwable) =>
         logger.error(s"Exception running scanning job", throwable)
     }
-  }
+  })
 
   case class Result(message: String)
 }
