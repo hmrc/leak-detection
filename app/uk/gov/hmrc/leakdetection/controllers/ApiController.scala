@@ -23,7 +23,7 @@ import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext}
+import scala.concurrent.ExecutionContext
 
 @Singleton
 class ApiController @Inject()(reportsService: ReportsService, cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {

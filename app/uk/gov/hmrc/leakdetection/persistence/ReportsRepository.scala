@@ -71,7 +71,7 @@ class ReportsRepository @Inject()(
   private val hasUnresolvedErrorsSelector =
     Filters.and(
       Filters.gt("inspectionResults", BsonArray()), // also: {"inspectionResults": {"$gt": {"$size": 0}}}
-      Filters.exists("leakResolution", false)
+      Filters.exists("leakResolution", exists = false)
     )
 
   def findUnresolvedWithProblems(repository: Repository, branch: Option[Branch] = None): Future[Seq[Report]] =

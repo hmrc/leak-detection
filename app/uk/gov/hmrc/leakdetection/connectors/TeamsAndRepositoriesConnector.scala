@@ -19,7 +19,6 @@ package uk.gov.hmrc.leakdetection.connectors
 import java.time.LocalDateTime
 
 import javax.inject.{Inject, Singleton}
-import play.api.Environment
 import play.api.libs.json._
 import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, StringContextOps}
 import uk.gov.hmrc.http.HttpReads.Implicits._
@@ -41,11 +40,7 @@ object Team {
   implicit val format = Json.format[Team]
 }
 
-@Singleton class TeamsAndRepositoriesConnector @Inject()(
-  http          : HttpClient,
-  servicesConfig: ServicesConfig,
-  environment   : Environment
-)(implicit ec: ExecutionContext) {
+@Singleton class TeamsAndRepositoriesConnector @Inject()(http: HttpClient, servicesConfig: ServicesConfig)(implicit val ec: ExecutionContext) {
 
   def teamsWithRepositories(): Future[Seq[Team]] = {
     implicit val hc = HeaderCarrier()

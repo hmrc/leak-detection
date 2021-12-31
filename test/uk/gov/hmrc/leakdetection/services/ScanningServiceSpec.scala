@@ -368,9 +368,6 @@ class ScanningServiceSpec
         webhookSecretKey    = "a secret"
       )
 
-    val leakResolutionUrl =
-      LeakResolutionUrl(value = "someUrl")
-
     object rules {
       val usesNulls =
         Rule(
@@ -445,7 +442,6 @@ class ScanningServiceSpec
       Cfg(
         allRules                  = AllRules(Nil, privateRules),
         githubSecrets             = githubSecrets,
-        leakResolutionUrl         = leakResolutionUrl,
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
         github = Github("", "")

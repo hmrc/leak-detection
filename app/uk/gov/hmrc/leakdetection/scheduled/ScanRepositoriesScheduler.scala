@@ -23,7 +23,7 @@ import play.api.{Configuration, Logger}
 import uk.gov.hmrc.leakdetection.services.ScanningService
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.{FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
 class ScanRepositoriesScheduler @Inject()(

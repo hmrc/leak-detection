@@ -38,7 +38,7 @@ object MongoPayloadDetailsFormats {
     ~ (__ \ "commitId"      ).format[String]
     ~ (__ \ "archiveUrl"    ).format[String]
     ~ (__ \ "deleted"       ).format[Boolean]
-    )(PayloadDetails.apply _, unlift(PayloadDetails.unapply _))
+    )(PayloadDetails.apply, unlift(PayloadDetails.unapply))
 }
 
 @Singleton
@@ -63,7 +63,7 @@ class GithubRequestsQueueRepository @Inject()(
 
   def pullOutstanding: Future[Option[WorkItem[PayloadDetails]]] =
     super.pullOutstanding(
-      failedBefore    = now.minusMillis(retryIntervalMillis.toInt),
-      availableBefore = now
+      failedBefore    = now().minusMillis(retryIntervalMillis.toInt),
+      availableBefore = now()
     )
 }

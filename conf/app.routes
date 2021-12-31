@@ -3,9 +3,9 @@
 # API
 GET        /api/repository                            @uk.gov.hmrc.leakdetection.controllers.ApiController.repositories
 GET        /api/repository/:repository/latest         @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportsForEachBranch(repository: Repository)
+# todo: this was a json endpoint in the report controller, understand usage and refactor if possible
+GET        /api/reports/repositories/:repository      @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportForDefaultBranch(repository: Repository)
 GET        /api/report/:id                            @uk.gov.hmrc.leakdetection.controllers.ApiController.report(id: ReportId)
-# legacy route, todo: understand usage and refactor if possible
-GET        /api/reports/repositories/:repository    @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportForDefaultBranch(repository: Repository)
 
 # Webhooks
 POST       /validate                                    @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook
