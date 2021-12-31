@@ -1,23 +1,18 @@
 # microservice specific routes
 
+# API
+GET        /api/repository                            @uk.gov.hmrc.leakdetection.controllers.ApiController.repositories
+GET        /api/repository/:repository/latest         @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportsForEachBranch(repository: Repository)
+# todo: this was a json endpoint in the report controller, understand usage and refactor if possible
+GET        /api/reports/repositories/:repository      @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportForDefaultBranch(repository: Repository)
+GET        /api/report/:id                            @uk.gov.hmrc.leakdetection.controllers.ApiController.report(id: ReportId)
+
+# Webhooks
 POST       /validate                                    @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook
 
-GET        /reports                                     @uk.gov.hmrc.leakdetection.controllers.ReportsController.redirectToRepositories
-GET        /reports/repositories                        @uk.gov.hmrc.leakdetection.controllers.ReportsController.repositories
-GET        /reports/repositories/:repository            @uk.gov.hmrc.leakdetection.controllers.ReportsController.reportsForRepository(repository: Repository)
-GET        /api/reports/repositories/:repository        @uk.gov.hmrc.leakdetection.controllers.ReportsController.reportForRepositoryDefaultBranch(repository: Repository)
-GET        /reports/:id                                 @uk.gov.hmrc.leakdetection.controllers.ReportsController.showReport(id: ReportId)
-
-GET        /assets/*file                                controllers.Assets.at(path="/public", file)
-
-
 # Admin endpoints
-
 GET        /admin/rules                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.rules
 GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = true, dryRun: Option[Boolean])
 GET        /admin/validate/public/:repository/:branch   @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = false, dryRun: Option[Boolean])
-
 GET        /admin/github-rate-limits                    @uk.gov.hmrc.leakdetection.controllers.AdminController.checkGithubRateLimits
-
 GET        /admin/stats                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.stats
-

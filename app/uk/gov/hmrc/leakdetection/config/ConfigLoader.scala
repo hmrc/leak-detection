@@ -41,7 +41,6 @@ final case class Cfg(
   allRules: AllRules,
   githubSecrets: GithubSecrets,
   github: Github,
-  leakResolutionUrl: LeakResolutionUrl,
   maxLineLength: Int,
   clearingCollectionEnabled: Boolean
 )
@@ -83,8 +82,6 @@ final case class GithubSecrets(
   personalAccessToken: String,
   webhookSecretKey: String
 )
-
-final case class LeakResolutionUrl(value: String) extends AnyVal
 
 object AllRules {
   implicit val format = Json.format[AllRules]

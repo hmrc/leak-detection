@@ -20,7 +20,7 @@ import play.api.libs.json.{Reads, __}
 
 import scala.language.implicitConversions
 
-case class Branch(val asString: String) extends AnyVal {}
+case class Branch(asString: String) extends AnyVal {}
 
 object Branch {
   val main: Branch = Branch("main")
