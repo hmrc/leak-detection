@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
@@ -85,7 +85,7 @@ class ScanningService @Inject()(
               _ <- executeIfNotDryRun(reportsService.saveReport(report))
               _ <- executeIfNotDryRun(alertingService.alert(report))
               _ <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
-              _ <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir))
+              _ <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir, isPrivate))
             } yield {
               report
             }
@@ -121,12 +121,19 @@ class ScanningService @Inject()(
                                     repository: Repository,
                                     branch: Branch,
                                     author: String,
-                                    dir: File)(implicit hc: HeaderCarrier): Future[Unit] =
+                                    dir: File,
+                                    isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
     githubService.getDefaultBranchName(repository) flatMap { defaultBranch =>
     if (branch == defaultBranch) {
+      val ruleSet = if (isPrivate) cfg.allRules.privateRules else cfg.allRules.publicRules
+
       val exemptions = RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
 
-      if(exemptions.exists(_.text.isEmpty)) {
+      def isFileContentRule(ruleId: String): Boolean = ruleSet.filter(_.scope == Rule.Scope.FILE_CONTENT).exists(_.id == ruleId)
+
+      if(exemptions
+        .filter(e => isFileContentRule(e.ruleId))
+        .exists(_.text.isEmpty)) {
           alertingService.alertAboutExemptionWarnings(repository, defaultBranch, author)
       }
     }
