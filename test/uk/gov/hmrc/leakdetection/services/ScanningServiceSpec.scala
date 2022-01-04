@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,30 +16,29 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import java.io.{File, PrintWriter}
-import java.nio.file.Files
-import java.time.{Duration, Instant}
 import ammonite.ops.Path
-import cats.data.EitherT
 import com.typesafe.config.ConfigFactory
 import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
+import org.mongodb.scala.bson.BsonDocument
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
 import play.api.mvc.Results
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, ReportId, ReportLine, Repository}
-import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
+import uk.gov.hmrc.leakdetection.config._
+import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus
 
+import java.io.{File, PrintWriter}
+import java.nio.file.Files
+import java.time.{Duration, Instant}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import org.mongodb.scala.bson.BsonDocument
 
 class ScanningServiceSpec
     extends AnyWordSpec
@@ -225,7 +224,25 @@ class ScanningServiceSpec
       verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
     }
 
-    "send a exemption warnings alert if there are file level exemptions within repository.yaml" in new TestSetup {
+    "send exemption warnings alert if there are file level exemptions for rules with scope FileContent" in new TestSetup {
+      override val privateRules = List(rules.usesUnencryptedKey, rules.checksInPrivateKeys)
+
+      writeRepositoryYaml {
+        s"""
+           |leakDetectionExemptions:
+           |  - ruleId: 'rule-4'
+           |    filePath: 'file'
+        """.stripMargin
+      }
+
+      generateReport
+
+      verify(alertingService).alertAboutExemptionWarnings(repository = Repository("repoName"), Branch("main"), author = "me")(hc)
+    }
+
+    "not alert on exemption warnings if file level exemptions exist for rules with scope FileName" in new TestSetup {
+      override val privateRules = List(rules.usesUnencryptedKey, rules.checksInPrivateKeys)
+
       writeRepositoryYaml {
         s"""
            |leakDetectionExemptions:
@@ -236,14 +253,14 @@ class ScanningServiceSpec
 
       generateReport
 
-      verify(alertingService).alertAboutExemptionWarnings(repository = Repository("repoName"), Branch("main"), author = "me")(hc)
+      verify(alertingService, times(0)).alertAboutExemptionWarnings(Repository(any), Branch(any), any)(any)
     }
 
     "not alert on exemption warnings if all exemptions are line level exemptions" in new TestSetup {
       writeRepositoryYaml {
         s"""
            |leakDetectionExemptions:
-           |  - ruleId: 'rule-2'
+           |  - ruleId: 'rule-1'
            |    filePath: 'file'
            |    text: 'false-positive'
         """.stripMargin
