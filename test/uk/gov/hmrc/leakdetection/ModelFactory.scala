@@ -16,12 +16,12 @@
 
 package uk.gov.hmrc.leakdetection
 
-import java.time.Instant
-
 import play.api.libs.json.{Json, Writes}
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, LeakResolution, PayloadDetails, Report}
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
+
+import java.time.Instant
 import scala.util.Random
 
 object ModelFactory {
@@ -36,6 +36,9 @@ object ModelFactory {
 
   def maybe[T](t: T): Option[T] =
     if (aBoolean) Some(t) else None
+
+  def oneOf[T](s: List[T]) =
+    s(Random.nextInt(s.length))
 
   def aBoolean: Boolean = Random.nextBoolean()
 
@@ -72,7 +75,7 @@ object ModelFactory {
       scope       = aScope,
       lineText    = aString("lineText"),
       lineNumber  = aPositiveInt,
-      ruleId      = aString("ruleId"),
+      ruleId      = oneOf(List("rule1", "rule2", "rule3")),
       description = aString("description"),
       matches     = List(Match(10, 14)),
       priority    = Rule.Priority.Low

@@ -17,22 +17,17 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import com.google.inject.Inject
-
-import javax.inject.Singleton
-import play.api.libs.json.Reads._
+import com.mongodb.{ReadConcern, ReadPreference}
+import org.bson.conversions.Bson
+import org.mongodb.scala.bson.{BsonArray, BsonDocument}
+import org.mongodb.scala.model._
 import play.api.libs.json._
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
 import uk.gov.hmrc.mongo.MongoComponent
-import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
-import org.mongodb.scala.bson.BsonArray
-import com.mongodb.{ReadConcern, ReadPreference}
-import org.bson.conversions.Bson
-import org.mongodb.scala.bson.BsonDocument
-import uk.gov.hmrc.mongo.play.json.Codecs
-import org.mongodb.scala.model.{Aggregates, Filters, IndexModel, IndexOptions, Indexes}
+import uk.gov.hmrc.mongo.play.json.{Codecs, PlayMongoRepository}
 
+import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
-import org.mongodb.scala.model.BsonField
 
 @Singleton
 class ReportsRepository @Inject()(

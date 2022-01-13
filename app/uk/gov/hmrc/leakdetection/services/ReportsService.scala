@@ -20,6 +20,7 @@ import com.google.inject.Inject
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
@@ -32,13 +33,30 @@ class ReportsService @Inject()(
   reportsRepository: ReportsRepository,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
   configuration: Configuration,
+  configLoader: ConfigLoader,
   githubService: GithubService)(implicit ec: ExecutionContext)
     extends MetricSource {
+
+  lazy val rulesLookup: Map[String, Rule] = (configLoader.cfg.allRules.publicRules ++ configLoader.cfg.allRules.privateRules).map(r => r.id -> r).toMap
 
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
 
   def getRepositories = reportsRepository.getDistinctRepoNames
+
+  def getRuleViolationsForRepository(repository: Repository): Future[Seq[RuleViolations]] =
+    for {
+      unresolved     <- reportsRepository.findUnresolvedWithProblems(repository, None)
+      ruleAndReport   = unresolved.flatMap(report => report.inspectionResults.flatMap(ir => ir.ruleId.flatMap(ruleId => rulesLookup.get(ruleId).map(r => r -> report))))
+      groupedByRules  = ruleAndReport
+                          .groupBy(_._1)
+                          .mapValues(v => v.map(_._2))
+                          .map {
+                            case (ruleId, reports) => RuleViolations(ruleId, reports)
+                          }
+                          .toSeq
+    } yield groupedByRules
+
 
   def getLatestReportsForEachBranch(repository: Repository): Future[List[Report]] =
     reportsRepository

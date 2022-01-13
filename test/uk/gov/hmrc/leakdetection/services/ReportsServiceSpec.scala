@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 
-import java.time.LocalDateTime
+import com.typesafe.config.ConfigFactory
 import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -33,6 +33,7 @@ import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository, ResolvedLeak
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
+import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -241,13 +242,35 @@ class ReportsServiceSpec
       when(teamsAndRepositoriesConnector.teamsWithRepositories())
         .thenReturn(Future.successful(teams))
 
+      val configLoader = mock[ConfigLoader]
+
       val reportsService =
-        new ReportsService(repository, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"), githubService)
+        new ReportsService(repository, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"), configLoader, githubService)
 
       reportsService.metrics.futureValue should contain allOf (
         "reports.teams.t1.unresolved"    -> 0,
         "reports.teams.t2.unresolved"    -> 1
       )
+    }
+
+    "group leaks by rule" in {
+      val repoName = "repo"
+      val branch1  = "main"
+
+      def genReport(branchName: String) =
+        aReport(repoName).copy(branch = branchName, timestamp = increasingTimestamp())
+
+      val reportsWithLeaksBranch1 =
+        List(
+          genReport(branch1).copy(leakResolution = None),
+          genReport(branch1).copy(leakResolution = None)
+        )
+
+      repository.collection.insertMany(reportsWithLeaksBranch1).toFuture.futureValue
+
+      val rules = reportsWithLeaksBranch1.flatMap(_.inspectionResults.map(_.ruleId.get)).toSet
+      val result = reportsService.getRuleViolationsForRepository(Repository(repoName)).futureValue
+      result.size shouldBe rules.size
     }
 
   }
@@ -261,16 +284,8 @@ class ReportsServiceSpec
   private val githubService = mock[GithubService]
   when(githubService.getDefaultBranchName(Repository(any))(any, any)).thenReturn(Future.successful(Branch.main))
 
-  private val configuration: Configuration = Configuration(
-    "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
-    "githubSecrets.webhookSecretKey"         -> "PLACEHOLDER",
-    "github.url"                             -> "url",
-    "github.apiUrl"                          -> "url",
-    "allRules.privateRules"                  -> List(),
-    "allRules.publicRules"                   -> List(),
-    "leakResolutionUrl"                      -> "PLACEHOLDER",
-    "maxLineLength"                          -> 2147483647,
-    "clearingCollectionEnabled"              -> false)
+  private val configuration: Configuration = Configuration.apply(underlying = ConfigFactory.load("test.conf"))
+
   val configLoader: ConfigLoader = new PlayConfigLoader(configuration)
-  val reportsService = new ReportsService(repository, teamsAndRepositoriesConnector, configuration, githubService)
+  val reportsService = new ReportsService(repository, teamsAndRepositoriesConnector, configuration, configLoader, githubService)
 }

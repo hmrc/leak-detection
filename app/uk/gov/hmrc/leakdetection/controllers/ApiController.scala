@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId, Repository}
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId, Repository, RuleViolations}
 import uk.gov.hmrc.leakdetection.services.ReportsService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -29,10 +29,17 @@ import scala.concurrent.ExecutionContext
 class ApiController @Inject()(reportsService: ReportsService, cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
 
   private implicit val rptf = Report.apiFormat
+  private implicit val rvf  = RuleViolations.apiFormat
 
   def repositories(): Action[AnyContent] = Action.async { implicit request =>
     reportsService
       .getRepositories
+      .map(r => Ok(Json.toJson(r)))
+  }
+
+  def violationsForEachBranch(repository: Repository) = Action.async { implicit request =>
+    reportsService
+      .getRuleViolationsForRepository(repository)
       .map(r => Ok(Json.toJson(r)))
   }
 
