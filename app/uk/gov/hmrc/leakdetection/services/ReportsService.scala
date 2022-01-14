@@ -42,20 +42,15 @@ class ReportsService @Inject()(
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
 
+  val missingRule = Rule("Rule Not Found", "file", "$^", "Rule does not exist, or has been remove")
+
   def getRepositories = reportsRepository.getDistinctRepoNames
 
   def getRuleViolationsForRepository(repository: Repository): Future[Seq[RuleViolations]] =
     for {
-      unresolved     <- reportsRepository.findUnresolvedWithProblems(repository, None)
-      ruleAndReport   = unresolved.flatMap(report => report.inspectionResults.flatMap(ir => ir.ruleId.flatMap(ruleId => rulesLookup.get(ruleId).map(r => r -> report))))
-      groupedByRules  = ruleAndReport
-                          .groupBy(_._1)
-                          .mapValues(v => v.map(_._2))
-                          .map {
-                            case (ruleId, reports) => RuleViolations(ruleId, reports)
-                          }
-                          .toSeq
-    } yield groupedByRules
+      unresolved <- reportsRepository.findUnresolvedGroupedByRule(repository.asString)
+      withRule    = unresolved.map(r => RuleViolations(rulesLookup.getOrElse(r.ruleId, missingRule), r.violations))
+    } yield withRule
 
 
   def getLatestReportsForEachBranch(repository: Repository): Future[List[Report]] =

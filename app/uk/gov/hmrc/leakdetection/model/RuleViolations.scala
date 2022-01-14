@@ -24,7 +24,7 @@ import uk.gov.hmrc.leakdetection.config.Rule
 case class RuleViolations(rule: Rule, violations: Seq[Report])
 
 object RuleViolations {
-  val apiFormat = {
+  val apiFormat: OFormat[RuleViolations] = {
     implicit val rptf = Report.apiFormat
     implicit val rf = Rule.format
     (
@@ -32,5 +32,16 @@ object RuleViolations {
     ~ (__ \ "violations").format[Seq[Report]]
     )(RuleViolations.apply, unlift(RuleViolations.unapply))
   }
+}
 
+case class RuleIdViolations(ruleId: String, violations: Seq[Report])
+
+object RuleIdViolations {
+  val mongoFormat: OFormat[RuleIdViolations] = {
+    implicit val rptf = Report.mongoFormat
+    (
+      (__ \ "ruleId").format[String]
+    ~ (__ \ "violations").format[Seq[Report]]
+    )(RuleIdViolations.apply, unlift(RuleIdViolations.unapply))
+  }
 }

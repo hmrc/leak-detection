@@ -19,12 +19,12 @@ package uk.gov.hmrc.leakdetection.persistence
 import com.google.inject.Inject
 import com.mongodb.{ReadConcern, ReadPreference}
 import org.bson.conversions.Bson
-import org.mongodb.scala.bson.{BsonArray, BsonDocument}
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonNull}
 import org.mongodb.scala.model._
 import play.api.libs.json._
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository, RuleIdViolations}
 import uk.gov.hmrc.mongo.MongoComponent
-import uk.gov.hmrc.mongo.play.json.{Codecs, PlayMongoRepository}
+import uk.gov.hmrc.mongo.play.json.{Codecs, CollectionFactory, PlayMongoRepository}
 
 import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
@@ -133,6 +133,18 @@ class ReportsRepository @Inject()(
        }.toMap
      )
   }
+
+  def findUnresolvedGroupedByRule(repo: String): Future[Seq[RuleIdViolations]] =
+    CollectionFactory.collection(mongoComponent.database, collectionName, RuleIdViolations.mongoFormat)
+      .aggregate(
+        pipeline = Seq[Bson](
+          Aggregates.`match`(Filters.and(Filters.eq("repoName", repo), hasUnresolvedErrorsSelector)),
+          Aggregates.unwind("$inspectionResults"),
+          Aggregates.`match`(Filters.exists("inspectionResults.ruleId")), // a number of records from 2018 dont have ruleIds
+          Aggregates.addFields(Field("ruleId", "$inspectionResults.ruleId"), Field("inspectionResults", BsonArray("$inspectionResults"))),
+          Aggregates.group("$ruleId", Accumulators.push("violations", "$$ROOT"), Accumulators.max("ruleId", "$ruleId"))
+        )
+      ).toFuture()
 
   def countAll(): Future[Int] =
     collection.countDocuments().toFuture.map(_.toInt)
