@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.persistence
 import org.mongodb.scala.model.Filters.and
 import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import play.api.Logging
-import uk.gov.hmrc.leakdetection.model.{Leak, LeakUpdateResult, ReportId}
+import uk.gov.hmrc.leakdetection.model.{Leak, LeakUpdateResult}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
@@ -47,23 +47,13 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
       _         = logger.info(s"removed ${deleted} leaks, added ${inserted} leaks for $repo/$branch")
     } yield LeakUpdateResult(inserted, deleted)
 
-
   def removeBranch(repo: String, branch:String): Future[Long]
   = collection.deleteMany(filter =  and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
-
 
   def findLeaksForRule(ruleId: String): Future[Seq[Leak]] =
     collection.find(Filters.eq("ruleId", ruleId)).toFuture()
 
-
   def findLeaksForRepository(repo: String): Future[Seq[Leak]] =
     collection.find(Filters.eq("repoName", repo)).toFuture()
-
-
-  def findLeaksForRepositoryBranch(repo: String, branch:String): Future[Seq[Leak]] =
-    collection.find(and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture()
-
-  def findLeaksForReport(reportId: ReportId): Future[Seq[Leak]] =
-    collection.find(Filters.eq("reportId", reportId.value)).toFuture()
 
 }

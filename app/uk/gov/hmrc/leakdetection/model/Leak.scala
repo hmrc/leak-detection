@@ -24,22 +24,19 @@ import play.api.libs.json.Reads._
 import play.api.libs.json._
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
-case class Leak(
-                     repoName   : String,
-                     branch     : String,
-                     timestamp  : Instant,
-                     reportId   : ReportId,
-                     ruleId     : String,
-                     description: String,
-                     filePath   : String,
-                     scope      : String,
-                     lineNumber : Int,
-                     urlToSource: String,
-                     lineText   : String,
-                     matches    : List[Match],
-                     priority   : Option[String],
-                     isTruncated: Boolean = false
-                   )
+case class Leak( repoName   : String,
+                 branch     : String,
+                 timestamp  : Instant,
+                 reportId   : ReportId,
+                 ruleId     : String,
+                 description: String,
+                 filePath   : String,
+                 scope      : String,
+                 lineNumber : Int,
+                 urlToSource: String,
+                 lineText   : String,
+                 matches    : List[Match],
+                 priority   : String)
 
 object Leak {
 
@@ -58,9 +55,8 @@ object Leak {
     ~ (__ \ "urlToSource").format[String]
     ~ (__ \ "lineText").format[String]
     ~ (__ \ "matches").format[List[Match]]
-    ~ (__ \ "priority").formatNullable[String]
-    ~ (__ \ "isTruncated").formatWithDefault(false)
-      )(Leak.apply, unlift(Leak.unapply))
+    ~ (__ \ "priority").format[String]
+    )(Leak.apply, unlift(Leak.unapply))
   }
 
   def mongoFormat: OFormat[Leak] = {
@@ -78,8 +74,7 @@ object Leak {
     ~ (__ \ "urlToSource").format[String]
     ~ (__ \ "lineText").format[String]
     ~ (__ \ "matches").format[List[Match]]
-    ~ (__ \ "priority").formatNullable[String]
-    ~ (__ \ "isTruncated").formatWithDefault(false)
+    ~ (__ \ "priority").format[String]
     )(Leak.apply, unlift(Leak.unapply))
   }
 

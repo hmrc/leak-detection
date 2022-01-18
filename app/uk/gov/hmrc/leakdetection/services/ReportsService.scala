@@ -20,9 +20,10 @@ import com.google.inject.Inject
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
+import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.persistence.{ReportsRepository, LeakRepository}
+import uk.gov.hmrc.leakdetection.persistence.{LeakRepository, ReportsRepository}
 import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult
 import uk.gov.hmrc.mongo.metrix.MetricSource
 
@@ -39,7 +40,7 @@ class ReportsService @Inject()(
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
 
-  def getRepositories = reportsRepository.getDistinctRepoNames
+  def getRepositories: Future[Seq[String]] = reportsRepository.getDistinctRepoNames
 
   def getLatestReportsForEachBranch(repository: Repository): Future[List[Report]] =
     reportsRepository
@@ -100,10 +101,9 @@ class ReportsService @Inject()(
       urlToSource = r.urlToSource,
       lineText    = r.lineText,
       matches     = r.matches,
-      priority    = r.priority,
-      isTruncated = r.isTruncated.getOrElse(false))
+      priority    = r.priority.getOrElse(Rule.Priority.Low))
     )
-    // todo: make use to the stats returned by the update, maybe send to timeline when its done?
+
     leakRepository.update(report.repoName, report.branch, leaks).map(_ => ())
   }
 
