@@ -22,17 +22,18 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.Utils.traverseFuturesSequentially
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
+import uk.gov.hmrc.leakdetection.persistence.{ReportsRepository, LeakRepository}
 import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult
 import uk.gov.hmrc.mongo.metrix.MetricSource
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class ReportsService @Inject()(
-  reportsRepository: ReportsRepository,
-  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
-  configuration: Configuration,
-  githubService: GithubService)(implicit ec: ExecutionContext)
+                                reportsRepository: ReportsRepository,
+                                leakRepository: LeakRepository,
+                                teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
+                                configuration: Configuration,
+                                githubService: GithubService)(implicit ec: ExecutionContext)
     extends MetricSource {
 
   lazy val repositoriesToIgnore: Seq[String] =
@@ -67,9 +68,12 @@ class ReportsService @Inject()(
       results        = Nil,
       leakResolution = None
     )
-    markPreviousReportsAsResolved(reportSolvingProblems).map { reports =>
-      ClearingReportsResult(reportSolvingProblems, reports)
-    }
+    for {
+      _      <- leakRepository.removeBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+      result <- markPreviousReportsAsResolved(reportSolvingProblems).map {
+                  reports => ClearingReportsResult (reportSolvingProblems, reports)
+                }
+    } yield  result
   }
 
   def saveReport(report: Report): Future[Unit] = {
@@ -80,6 +84,27 @@ class ReportsService @Inject()(
       _ <- reportsRepository.saveReport(report)
       _ <- ifReportSolvesProblems(markPreviousReportsAsResolved(report).map(_ => ()))
     } yield ()
+  }
+
+  def saveLeaks(report: Report):Future[Unit] = {
+    val leaks = report.inspectionResults.map(r => Leak(
+      repoName    = report.repoName,
+      branch      = report.branch,
+      timestamp   = report.timestamp,
+      reportId    = report.id,
+      ruleId      = r.ruleId.getOrElse("Unknown"),
+      description = r.description,
+      filePath    = r.filePath,
+      scope       = r.scope,
+      lineNumber  = r.lineNumber,
+      urlToSource = r.urlToSource,
+      lineText    = r.lineText,
+      matches     = r.matches,
+      priority    = r.priority,
+      isTruncated = r.isTruncated.getOrElse(false))
+    )
+    // todo: make use to the stats returned by the update, maybe send to timeline when its done?
+    leakRepository.update(report.repoName, report.branch, leaks).map(_ => ())
   }
 
   private def markPreviousReportsAsResolved(report: Report): Future[List[Report]] =
