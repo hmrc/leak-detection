@@ -1,6 +1,7 @@
 # microservice specific routes
 
 # API
+GET        /api/rules                                 @uk.gov.hmrc.leakdetection.controllers.ApiController.rules
 GET        /api/repository                            @uk.gov.hmrc.leakdetection.controllers.ApiController.repositories
 GET        /api/repository/:repository/latest         @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportsForEachBranch(repository: Repository)
 # todo: this was a json endpoint in the report controller, understand usage and refactor if possible
