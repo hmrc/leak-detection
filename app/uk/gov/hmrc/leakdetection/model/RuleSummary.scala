@@ -22,7 +22,7 @@ import uk.gov.hmrc.leakdetection.config.Rule
 
 import java.time.Instant
 
-case class RuleSummary(rule: Rule, violationsSummary: Seq[RepositorySummary])
+case class RuleSummary(rule: Rule, repositorySummary: Seq[RepositorySummary])
 
 object RuleSummary {
   val apiFormat = {
