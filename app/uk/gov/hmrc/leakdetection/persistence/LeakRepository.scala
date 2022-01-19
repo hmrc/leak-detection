@@ -50,6 +50,9 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
   def removeBranch(repo: String, branch:String): Future[Long]
   = collection.deleteMany(filter =  and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
 
+  def findAllLeaks(): Future[Seq[Leak]] =
+    collection.find().toFuture()
+
   def findLeaksForRule(ruleId: String): Future[Seq[Leak]] =
     collection.find(Filters.eq("ruleId", ruleId)).toFuture()
 
