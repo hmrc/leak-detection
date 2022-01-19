@@ -30,7 +30,7 @@ object RuleSummary {
     implicit val vsf = RepositorySummary.format
     (
       (__ \ "rule").format[Rule]
-        ~ (__ \ "violations").format[Seq[RepositorySummary]]
+        ~ (__ \ "leaks").format[Seq[RepositorySummary]]
       ) (RuleSummary.apply, unlift(RuleSummary.unapply))
   }
 }
@@ -38,6 +38,7 @@ object RuleSummary {
 case class RepositorySummary(
                               repository: String,
                               firstScannedAt: Instant,
+                              lastScannedAt: Instant,
                               unresolvedCount: Int
                             )
 

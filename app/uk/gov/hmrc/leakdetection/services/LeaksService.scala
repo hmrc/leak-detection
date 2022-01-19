@@ -35,6 +35,7 @@ class LeaksService @Inject()(configLoader: ConfigLoader,
             .map { case (repoName, ruleLeaksByRepo) => RepositorySummary(
               repoName,
               ruleLeaksByRepo.reduce(Ordering.by((_: Leak).timestamp).min).timestamp,
+              ruleLeaksByRepo.reduce(Ordering.by((_: Leak).timestamp).max).timestamp,
               ruleLeaksByRepo.length)
             }.toSeq)
         }

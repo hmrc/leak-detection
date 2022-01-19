@@ -30,10 +30,10 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
 
       results shouldBe Seq(
         RuleSummary(aRule.copy(id = "rule-1"), Seq(
-          RepositorySummary("repo1", timestamp, 1),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), 2))
+          RepositorySummary("repo1", timestamp, timestamp, 1),
+          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 2))
         ),
-        RuleSummary(aRule.copy(id = "rule-2"), Seq(RepositorySummary("repo1", timestamp, 1))),
+        RuleSummary(aRule.copy(id = "rule-2"), Seq(RepositorySummary("repo1", timestamp, timestamp, 1))),
         RuleSummary(aRule.copy(id = "rule-3"), Seq())
       )
     }
