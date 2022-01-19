@@ -83,12 +83,12 @@ class ScanningService @Inject()(
               results <- Future { regexMatchingEngine.run(dir) }
               report = Report.create(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
               _ <- executeIfNotDryRun(reportsService.saveReport(report))
+              _ <- executeIfNotDryRun(reportsService.saveLeaks(report))
               _ <- executeIfNotDryRun(alertingService.alert(report))
               _ <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
               _ <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir, isPrivate))
-            } yield {
-              report
-            }
+            } yield report
+
           processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
           processingResult
       }

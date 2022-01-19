@@ -30,7 +30,7 @@ import uk.gov.hmrc.leakdetection.ModelFactory.{aReport, aReportWithResolvedLeaks
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository, ResolvedLeak}
-import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
+import uk.gov.hmrc.leakdetection.persistence.{ReportsRepository, LeakRepository}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -242,7 +242,7 @@ class ReportsServiceSpec
         .thenReturn(Future.successful(teams))
 
       val reportsService =
-        new ReportsService(repository, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"), githubService)
+        new ReportsService(repository, leakRepository, teamsAndRepositoriesConnector, Configuration("shared.repositories.0" -> "r1"), githubService)
 
       reportsService.metrics.futureValue should contain allOf (
         "reports.teams.t1.unresolved"    -> 0,
@@ -253,6 +253,7 @@ class ReportsServiceSpec
   }
 
   override val repository = new ReportsRepository(mongoComponent)
+  val leakRepository = new LeakRepository(mongoComponent)
 
   private val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
   when(teamsAndRepositoriesConnector.teamsWithRepositories())
@@ -272,5 +273,5 @@ class ReportsServiceSpec
     "maxLineLength"                          -> 2147483647,
     "clearingCollectionEnabled"              -> false)
   val configLoader: ConfigLoader = new PlayConfigLoader(configuration)
-  val reportsService = new ReportsService(repository, teamsAndRepositoriesConnector, configuration, githubService)
+  val reportsService = new ReportsService(repository, leakRepository, teamsAndRepositoriesConnector, configuration, githubService)
 }

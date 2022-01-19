@@ -497,6 +497,7 @@ class ScanningServiceSpec
     }
 
     when(reportsService.saveReport(any)).thenReturn(Future.successful(()))
+    when(reportsService.saveLeaks(any)).thenReturn(Future.successful(()))
 
     when(
       artifactService.getZip(
