@@ -31,7 +31,7 @@ class ApiController @Inject()(reportsService: ReportsService, leaksService: Leak
   private implicit val rptf = Report.apiFormat
   private implicit val rsf = RuleSummary.apiFormat
 
-  def rules(): Action[AnyContent] = Action.async { implicit request =>
+  def ruleSummaries(): Action[AnyContent] = Action.async { implicit request =>
     leaksService
       .getRuleSummaries
       .map(r => Ok(Json.toJson(r)))
