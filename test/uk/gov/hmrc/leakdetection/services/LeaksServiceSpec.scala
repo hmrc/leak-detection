@@ -1,5 +1,6 @@
 package uk.gov.hmrc.leakdetection.services
 
+import org.mockito.MockitoSugar
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.Rule.Scope
@@ -13,7 +14,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit.HOURS
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRepositorySupport[Leak] {
+class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRepositorySupport[Leak] with MockitoSugar {
 
   "Leaks service" should {
     "generate rule summaries as groups of leaks by repository then by rule" in {
@@ -39,8 +40,6 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     }
   }
 
-  override val repository = new LeakRepository(mongoComponent)
-
   def aLeak = Leak("repoName", "", Instant.now(), ReportId("reportId"), "ruleId", "description", "/file/path", Scope.FILE_CONTENT, 1, "url", "abc = 123", List(Match(3, 7)), "high")
 
   def aRule = Rule(
@@ -50,23 +49,15 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     description = "description"
   )
 
-  lazy val config =
-    Cfg(
-      allRules = AllRules(List(
-        aRule.copy(id = "rule-1"),
-        aRule.copy(id = "rule-2"),
-        aRule.copy(id = "rule-3")
-      ), List()),
-      githubSecrets = GithubSecrets("accessToken", "secretKey"),
-      maxLineLength = Int.MaxValue,
-      clearingCollectionEnabled = false,
-      github = Github("", "")
-    )
+  override val repository = new LeakRepository(mongoComponent)
+  lazy val ruleService = mock[RuleService]
 
-  lazy val configLoader = new ConfigLoader {
-    val cfg = config
-  }
+  when(ruleService.getAllRules()).thenReturn(List(
+    aRule.copy(id = "rule-1"),
+    aRule.copy(id = "rule-2"),
+    aRule.copy(id = "rule-3")
+  ))
 
-  val leaksService = new LeaksService(configLoader, repository)
+  val leaksService = new LeaksService(ruleService, repository)
 
 }

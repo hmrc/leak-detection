@@ -23,7 +23,7 @@ import uk.gov.hmrc.leakdetection.persistence.LeakRepository
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class LeaksService @Inject()(configLoader: ConfigLoader,
+class LeaksService @Inject()(ruleService: RuleService,
                              leakRepository: LeakRepository)
                             (implicit ec: ExecutionContext) {
 
@@ -40,6 +40,6 @@ class LeaksService @Inject()(configLoader: ConfigLoader,
             }.toSeq)
         }
 
-      configLoader.cfg.allRules.publicRules.map(rule => RuleSummary(rule, leaksByRule.getOrElse(rule.id, Seq())))
+      ruleService.getAllRules().map(rule => RuleSummary(rule, leaksByRule.getOrElse(rule.id, Seq())))
     })
 }
