@@ -30,7 +30,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
         val ruleId = "rule-1"
         val rule   = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(matches)", descr)
 
-        RegexScanner(rule, Int.MaxValue).scanLine(text1, 7) shouldBe Some(
+        RegexScanner(rule, Int.MaxValue).scanLine(text1, 7, "filepath") shouldBe Some(
           MatchedResult(
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "this matches the regex",
@@ -38,7 +38,8 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
             ruleId      = ruleId,
             description = descr,
             matches     = List(Match(start = 5, end = 12)),
-            priority    = Rule.Priority.Low
+            priority    = Rule.Priority.Low,
+            filePath    = "filepath"
           )
         )
       }
@@ -49,7 +50,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
 
         val rule = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(was)", "descr")
 
-        RegexScanner(rule, Int.MaxValue).scanLine(text, 1) shouldBe None
+        RegexScanner(rule, Int.MaxValue).scanLine(text, 1, "filepath") shouldBe None
       }
     }
     "respect max line length and truncate lineText" in {
@@ -57,7 +58,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
       val rule  = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
       val limit = 2
 
-      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1).get
+      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1,"filepath").get
 
       matchedResult.lineText shouldBe "[…] BB […]"
       matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
@@ -71,7 +72,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
       val descr    = "descr"
       val rule     = Rule(ruleId, Rule.Scope.FILE_NAME, """^.*\.key$""", descr)
 
-      RegexScanner(rule, Int.MaxValue).scanFileName(fileName) shouldBe
+      RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "filepath") shouldBe
         Some(
           MatchedResult(
             scope       = Rule.Scope.FILE_NAME,
@@ -80,14 +81,15 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
             ruleId      = ruleId,
             description = descr,
             matches     = List(Match(start = 0, end = 7)),
-            priority    = Rule.Priority.Low
+            priority    = Rule.Priority.Low,
+            filePath    = "filepath"
           ))
     }
     "nothing if no match was found" in {
       val fileName = "foo.key"
       val rule     = Rule("rule-id", Rule.Scope.FILE_NAME, "doesn't match", "descr")
 
-      RegexScanner(rule, Int.MaxValue).scanFileName(fileName) shouldBe None
+      RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "filepath") shouldBe None
     }
 
   }

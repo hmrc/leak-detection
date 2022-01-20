@@ -63,7 +63,7 @@ class ApiController @Inject()(reportsService: ReportsService, leaksService: Leak
   }
 
   def repositories(): Action[AnyContent] = Action.async { implicit request =>
-    reportsService
+    leaksService
       .getRepositories
       .map(r => Ok(Json.toJson(r)))
   }

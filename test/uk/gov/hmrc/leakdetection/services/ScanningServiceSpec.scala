@@ -64,34 +64,8 @@ class ScanningServiceSpec
       report.repoName          shouldBe "repoName"
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
-      report.inspectionResults should contain theSameElementsAs
-        Seq(
-          ReportLine(
-            filePath    = s"/${file1.getName}",
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineNumber  = 2,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/3d9c100/${file1.getName}#L2",
-            ruleId      = Some("rule-1"),
-            description = "uses nulls!",
-            lineText    = " var x = null",
-            matches     = List(Match(9, 13)),
-            priority    = Some(Rule.Priority.High),
-            isTruncated = Some(false)
-          ),
-          ReportLine(
-            filePath    = s"/${file2.getName}",
-            scope       = Rule.Scope.FILE_NAME,
-            lineNumber  = 1,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/3d9c100/${file2.getName}#L1",
-            ruleId      = Some("rule-2"),
-            description = "checks-in private key!",
-            lineText    = s"${file2.getName}",
-            matches     = List(Match(startIndex, startIndex + 6)),
-            priority    = Some(Rule.Priority.Low),
-            isTruncated = Some(false)
-          )
-        )
-
+      report.totalLeaks        shouldBe 2
+      report.rulesViolated     shouldBe Map("rule-1" -> 1, "rule-2" -> 1)
     }
 
     "scan a git repository and ignore a rule with the filename included in the ignoredFiles property" in new TestSetup {
@@ -104,7 +78,7 @@ class ScanningServiceSpec
       report.repoName          shouldBe "repoName"
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
-      report.inspectionResults shouldBe Nil
+      report.totalLeaks        shouldBe 0
     }
 
     "scan a git repository and ignore a rule in multiple files included in the ignoredFiles property" in new TestSetup {
@@ -117,7 +91,7 @@ class ScanningServiceSpec
       report.repoName          shouldBe "repoName"
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
-      report.inspectionResults shouldBe Nil
+      report.totalLeaks        shouldBe 0
     }
 
     "scan a git repository and ignore a file matching a regex included in the ignoredFiles property" in new TestSetup {
@@ -130,7 +104,7 @@ class ScanningServiceSpec
       report.repoName          shouldBe "repoName"
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
-      report.inspectionResults shouldBe Nil
+      report.totalLeaks        shouldBe 0
     }
 
     "scan a git repository and don't include project specific exempted violations" in new TestSetup {
@@ -152,7 +126,7 @@ class ScanningServiceSpec
       report.repoName          shouldBe "repoName"
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
-      report.inspectionResults shouldBe Nil
+      report.totalLeaks        shouldBe 0
     }
 
     "scan the git repository and skip files that match the ignoredExtensions" in new TestSetup {
@@ -167,29 +141,15 @@ class ScanningServiceSpec
       report.repoName          shouldBe "repoName"
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
-      report.inspectionResults should contain theSameElementsAs
-        Seq(
-          ReportLine(
-            filePath    = s"/${file2.getName}",
-            scope       = Rule.Scope.FILE_NAME,
-            lineNumber  = 1,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/3d9c100/${file2.getName}#L1",
-            ruleId      = Some("rule-2"),
-            description = "checks-in private key!",
-            lineText    = s"${file2.getName}",
-            matches     = List(Match(startIndex, startIndex + 6)),
-            priority    = Some(Rule.Priority.Low),
-            isTruncated = Some(false)
-          )
-        )
-
+      report.totalLeaks        shouldBe 1
+      report.rulesViolated     shouldBe Map("rule-2" -> 1)
     }
 
     "trigger alerts" in new TestSetup {
       override val privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)
 
       file2.getName.contains("id_rsa") shouldBe true
-      generateReport.inspectionResults.size shouldBe 2
+      generateReport.totalLeaks shouldBe 2
       verify(alertingService).alert(any[Report])(any)
     }
 
@@ -470,6 +430,8 @@ class ScanningServiceSpec
 
     val artifactService = mock[ArtifactService]
     val reportsService  = mock[ReportsService]
+    val leaksService = mock[LeaksService]
+
     val queue = new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
       override val inProgressRetryAfter: Duration = Duration.ofHours(1)
       override lazy val retryIntervalMillis: Long      = 10000L
@@ -497,7 +459,7 @@ class ScanningServiceSpec
     }
 
     when(reportsService.saveReport(any)).thenReturn(Future.successful(()))
-    when(reportsService.saveLeaks(any)).thenReturn(Future.successful(()))
+    when(leaksService.saveLeaks(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
 
     when(
       artifactService.getZip(
@@ -522,6 +484,7 @@ class ScanningServiceSpec
         artifactService,
         configLoader,
         reportsService,
+        leaksService,
         alertingService,
         queue,
         repoVisiblityChecker,

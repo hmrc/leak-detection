@@ -16,14 +16,17 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import com.mongodb.client.model.Filters
-import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.Filters.and
+import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import org.mongodb.scala.model.{IndexModel, IndexOptions, Indexes}
+import org.mongodb.scala.model.{Aggregates, BsonField, Filters, IndexModel, IndexOptions, Indexes, Projections}
+
 import play.api.Logging
-import uk.gov.hmrc.leakdetection.model.{Leak, LeakUpdateResult}
+import play.api.libs.json.{Json, Reads}
+import uk.gov.hmrc.leakdetection.model.{Branch, Leak, LeakUpdateResult, ReportId}
 import uk.gov.hmrc.mongo.MongoComponent
-import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
+import uk.gov.hmrc.mongo.play.json.{Codecs, PlayMongoRepository}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -70,4 +73,35 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
   def findLeaksForReport(reportId: String): Future[Seq[Leak]] =
     collection.find(filter = Filters.eq("reportId", reportId)).toFuture()
 
+  def findLeaksForRepository(repo: String, branch: String): Future[Seq[Leak]] =
+    collection.find(
+      Filters.and(
+        Filters.eq("repoName", repo),
+        Filters.eq("branch", branch))
+    ).toFuture()
+
+
+  def findLeaksForReport(report: ReportId): Future[Seq[Leak]] =
+    collection.find(Filters.eq("reportId", report.value)).toFuture()
+
+  def findDistinctRepoNames(): Future[Seq[String]] =
+    collection.distinct[String]("repoName").toFuture()
+
+  def countAll(): Future[Int] = collection.countDocuments().toFuture().map(_.toInt)
+
+  def countByRepo(): Future[Map[String, Int]] = collection.aggregate[BsonDocument](
+      pipeline = Seq[Bson](
+        Aggregates.group("$repoName", BsonField("count", BsonDocument("$sum" -> 1)))
+      )
+    )
+    .toFuture.map(_.map { doc =>
+        val line = Codecs.fromBson[CountByRepo](doc)(CountByRepo.reads)
+        line._id -> line.count
+    }.toMap)
+}
+
+case class CountByRepo(_id: String, count: Int)
+
+object CountByRepo {
+  val reads: Reads[CountByRepo] = Json.reads[CountByRepo]
 }

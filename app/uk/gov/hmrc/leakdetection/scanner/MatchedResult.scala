@@ -20,6 +20,7 @@ import play.api.libs.json.{Format, Json}
 import scala.util.matching.Regex
 
 final case class MatchedResult(
+  filePath: String,
   scope: String,
   lineText: String,
   lineNumber: Int,
@@ -27,7 +28,7 @@ final case class MatchedResult(
   description: String,
   matches: List[Match],
   priority: String,
-  isTruncated: Boolean = false
+
 )
 
 final case class Match(
@@ -110,8 +111,7 @@ object MatchedResult {
 
     matchedResult.copy(
       lineText    = lineTextWithElipses,
-      matches     = matchesWithReadjustedIndexes,
-      isTruncated = true
+      matches     = matchesWithReadjustedIndexes
     )
   }
 

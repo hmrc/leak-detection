@@ -40,21 +40,6 @@ class ReportsRepositorySpec
     with IncreasingTimestamps {
 
   "Reports repository" should {
-    "provide a distinct list of repository names only if there were unresolved problems" in {
-      val reportsWithUnresolvedProblems = few(() => aReportWithLeaks())
-      val reportsWithResolvedProblems   = few(() => aReportWithResolvedLeaks())
-      val reportsWithoutProblems        = few(() => aReportWithoutLeaks())
-      val withSomeDuplicates =
-        reportsWithResolvedProblems :::
-          reportsWithUnresolvedProblems :::
-          reportsWithUnresolvedProblems.map(_.copy(id = ReportId.random)) :::
-          reportsWithoutProblems
-
-      repository.collection.insertMany(withSomeDuplicates).toFuture.futureValue
-
-      val foundNames = repository.getDistinctRepoNames.futureValue
-      foundNames should contain theSameElementsAs reportsWithUnresolvedProblems.map(_.repoName)
-    }
 
     "return reports by repository in inverse chronological order" in {
       val repoName = "repo"
@@ -72,10 +57,9 @@ class ReportsRepositorySpec
     "only return reports that actually had unresolved problems in them" in {
       val repoName                      = "repo"
       val reportsWithUnresolvedProblems = few(() => aReportWithLeaks(repoName))
-      val reportsWithResolvedProblems   = few(() => aReportWithResolvedLeaks(repoName))
       val reportsWithoutProblems        = few(() => aReportWithoutLeaks(repoName))
 
-      val all = reportsWithUnresolvedProblems ::: reportsWithResolvedProblems ::: reportsWithoutProblems
+      val all = reportsWithUnresolvedProblems ::: reportsWithoutProblems
 
       repository.collection.insertMany(all).toFuture.futureValue
 
@@ -84,12 +68,6 @@ class ReportsRepositorySpec
       foundReports should contain theSameElementsAs reportsWithUnresolvedProblems
     }
 
-    "produce stats grouped by repository" in {
-      val reports = List(aReportWithResolvedLeaks("r1"), aReport("r2"), aReport("r1"), aReportWithResolvedLeaks("r3"))
-      repository.collection.insertMany(reports).toFuture.futureValue
-
-      repository.howManyUnresolvedByRepository().futureValue shouldBe Map("r1" -> 1, "r2" -> 1)
-    }
   }
 
   override val repository = new ReportsRepository(mongoComponent)

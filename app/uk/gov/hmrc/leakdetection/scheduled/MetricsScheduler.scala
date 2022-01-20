@@ -21,7 +21,7 @@ import akka.actor.ActorSystem
 import com.kenshoo.play.metrics.Metrics
 import play.api.{Configuration, Logger}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
-import uk.gov.hmrc.leakdetection.services.ReportsService
+import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService}
 import uk.gov.hmrc.mongo.lock.{LockRepository, LockService}
 import uk.gov.hmrc.mongo.metrix.{MetricOrchestrator, MetricRepository}
 
@@ -33,7 +33,7 @@ class MetricsScheduler @Inject()(
   configuration: Configuration,
   metrics: Metrics,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  reportsService: ReportsService,
+  leaksService: LeaksService,
   lockRepository: LockRepository,
   metricRepository: MetricRepository
 )(implicit ec: ExecutionContext) {
@@ -51,7 +51,7 @@ class MetricsScheduler @Inject()(
   )
 
   val metricOrchestrator = new MetricOrchestrator(
-    metricSources    = List(githubRequestsQueueRepository, reportsService),
+    metricSources    = List(githubRequestsQueueRepository, leaksService),
     lockService      = lock,
     metricRepository = metricRepository,
     metricRegistry   = metrics.defaultRegistry

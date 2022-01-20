@@ -16,12 +16,13 @@
 
 package uk.gov.hmrc.leakdetection
 
-import java.time.Instant
-
 import play.api.libs.json.{Json, Writes}
 import uk.gov.hmrc.leakdetection.config.Rule
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, LeakResolution, PayloadDetails, Report}
-import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult, Result}
+import uk.gov.hmrc.leakdetection.config.Rule.{Priority, Scope}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, Leak, PayloadDetails, Report, ReportId}
+import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
+
+import java.time.Instant
 import scala.util.Random
 
 object ModelFactory {
@@ -38,6 +39,8 @@ object ModelFactory {
     if (aBoolean) Some(t) else None
 
   def aBoolean: Boolean = Random.nextBoolean()
+
+  def anInstant: Instant = Instant.now()
 
   def aPayloadDetails =
     PayloadDetails(
@@ -75,16 +78,12 @@ object ModelFactory {
       ruleId      = aString("ruleId"),
       description = aString("description"),
       matches     = List(Match(10, 14)),
-      priority    = Rule.Priority.Low
+      priority    = Rule.Priority.Low,
+      filePath    = aString("file-path")
     )
 
-  def aResult = Result(
-    filePath    = aString("file-path"),
-    scanResults = aMatchedResult
-  )
-
   def aReport(repoName: String = aString("repositoryName")): Report = {
-    val results = few(() => aResult)
+    val results = few(() => aMatchedResult)
     Report.create(
       repositoryName = repoName,
       repositoryUrl  = aString("repo"),
@@ -95,18 +94,15 @@ object ModelFactory {
     )
   }
 
-  def aReportWithLeaks(repoName: String = aString("repositoryName")): Report =
-    aReport(repoName).copy(leakResolution = None)
+  def aLeak(repoName: String = aString("repositoryName"), branch: String = aString("branch")): Leak =
+    Leak(repoName, branch,Instant.now(), ReportId(aString("reportId")), aString("rule-"), aString(), aString(""), Scope.FILE_CONTENT, aPositiveInt, aString("/"), aString(), few(() => Match( aPositiveInt, aPositiveInt)), Priority.Low)
 
-  def aReportWithResolvedLeaks(repoName: String = aString("repositoryName")): Report = {
-    val report = aReport(repoName)
-    val cleanReport =
-      aReportWithoutLeaks(repoName).copy(timestamp = Instant.now(), commitId = aString("commitId"))
-    report.copy(leakResolution = Some(LeakResolution.create(report, cleanReport)), inspectionResults = Nil)
-  }
+
+  def aReportWithLeaks(repoName: String = aString("repositoryName")): Report =
+    aReport(repoName).copy(totalLeaks = 1, rulesViolated = Map("rule1" -> 1))
 
   def aReportWithoutLeaks(repoName: String = aString("repositoryName")): Report =
-    aReport(repoName).copy(leakResolution = None, inspectionResults = Nil)
+    aReport(repoName).copy(totalLeaks = 0, rulesViolated = Map.empty)
 
   implicit val payloadDetailsWrites: Writes[PayloadDetails] =
     Writes[PayloadDetails] { payloadDetails =>

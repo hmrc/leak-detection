@@ -23,7 +23,7 @@ import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
-import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
+import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
@@ -31,11 +31,12 @@ import scala.concurrent.ExecutionContext
 
 @Singleton
 class AdminController @Inject()(
-  configLoader   : ConfigLoader,
-  scanningService: ScanningService,
-  reportsService : ReportsService,
-  httpClient     : HttpClient,
-  cc             : ControllerComponents
+   configLoader   : ConfigLoader,
+   scanningService: ScanningService,
+   reportsService : ReportsService,
+   leaksService   : LeaksService,
+   httpClient     : HttpClient,
+   cc             : ControllerComponents
 )(implicit ec: ExecutionContext
 ) extends BackendController(cc) {
 
@@ -76,7 +77,7 @@ class AdminController @Inject()(
   }
 
   def stats = Action.async {
-    reportsService.metrics.map(stats => Ok(Json.toJson(stats)))
+    leaksService.metrics.map(stats => Ok(Json.toJson(stats)))
   }
 }
 

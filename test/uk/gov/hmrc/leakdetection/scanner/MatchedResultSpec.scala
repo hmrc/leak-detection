@@ -87,24 +87,16 @@ class MatchedResultSpec extends AnyWordSpec with Matchers with ScalaCheckPropert
           truncatedOnce shouldBe truncatedAgain
       }
     }
-
-    "include a flag if text was truncated (to show info in the UI)" in {
-      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
-        case (initialResult, limit) =>
-          val res                     = ensureLengthIsBelowLimit(initialResult, limit)
-          val isExpectedToBeTruncated = initialResult.lineText.length > limit
-
-          res.isTruncated shouldBe isExpectedToBeTruncated
-      }
-    }
   }
 
   val genMatchedResult: Gen[MatchedResult] =
     for {
+      path     <- Gen.alphaStr
       lineText <- Gen.alphaStr.map(_ + "x")
       matches  <- genConsecutiveMatches(lineText)
     } yield
       MatchedResult(
+        filePath    = path,
         scope       = "scope",
         lineText    = lineText,
         lineNumber  = 1,
