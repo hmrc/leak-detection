@@ -37,18 +37,18 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
     IndexModel(Indexes.descending("reportId"), IndexOptions().name("reportId-idx").background(true)),
     IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true)))) with Logging {
 
-  // TODO: use transaction
+  // TODO: use transactions
   def update(repo: String, branch: String, violations: Seq[Leak]): Future[LeakUpdateResult] =
     for {
       // remove previous violations
       deleted  <- removeBranch(repo, branch)
       // replace with new ones
-      inserted <- collection.insertMany(violations).toFuture().map(_.getInsertedIds.size())
+      inserted <- if(violations.nonEmpty) collection.insertMany(violations).toFuture().map(_.getInsertedIds.size()) else Future(0)
       _         = logger.info(s"removed ${deleted} leaks, added ${inserted} leaks for $repo/$branch")
     } yield LeakUpdateResult(inserted, deleted)
 
-  def removeBranch(repo: String, branch:String): Future[Long]
-  = collection.deleteMany(filter =  and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
+  def removeBranch(repo: String, branch:String): Future[Long] =
+    collection.deleteMany(filter =  and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
 
   def findAllLeaks(): Future[Seq[Leak]] =
     collection.find().toFuture()
