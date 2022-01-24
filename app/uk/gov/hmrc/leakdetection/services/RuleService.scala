@@ -26,6 +26,6 @@ class RuleService @Inject()(configLoader: ConfigLoader) {
   lazy private val privateRules = configLoader.cfg.allRules.privateRules
   lazy private val publicRules = configLoader.cfg.allRules.publicRules
 
-  def getAllRules():List[Rule] = privateRules ::: publicRules distinct
+  def getAllRules():Seq[Rule] = privateRules ::: publicRules distinct
 
 }

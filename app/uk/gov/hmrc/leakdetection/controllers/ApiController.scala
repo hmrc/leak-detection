@@ -33,7 +33,7 @@ class ApiController @Inject()(reportsService: ReportsService, leaksService: Leak
 
   def ruleSummaries(): Action[AnyContent] = Action.async { implicit request =>
     leaksService
-      .getRuleSummaries
+      .getRuleSummaries(request.getQueryString("rule"), request.getQueryString("team"))
       .map(r => Ok(Json.toJson(r)))
   }
 
