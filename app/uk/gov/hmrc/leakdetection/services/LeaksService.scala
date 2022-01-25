@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
-import uk.gov.hmrc.leakdetection.model.{Leak, RepositorySummary, RuleSummary}
+import uk.gov.hmrc.leakdetection.model.{Leak, Repository, RepositorySummary, RuleSummary}
 import uk.gov.hmrc.leakdetection.persistence.LeakRepository
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -49,6 +49,10 @@ class LeaksService @Inject()(ruleService: RuleService,
       rules.map(rule => RuleSummary(rule, leaksByRule.getOrElse(rule.id, Seq()))
       )
     }
+  }
+
+  def getLeaksForRepository(repository: Repository): Future[Seq[Leak]] = {
+    leakRepository.findLeaksForRepository(repository.asString)
   }
 
   private def getLeaks(ruleId: Option[String]) = ruleId match {
