@@ -2,6 +2,7 @@
 
 # API
 GET        /api/rule-summaries                        @uk.gov.hmrc.leakdetection.controllers.ApiController.ruleSummaries
+GET        /api/leaks/:repository                     @uk.gov.hmrc.leakdetection.controllers.ApiController.repositoryLeaks(repository: Repository)
 GET        /api/repository                            @uk.gov.hmrc.leakdetection.controllers.ApiController.repositories
 GET        /api/repository/:repository/latest         @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportsForEachBranch(repository: Repository)
 # todo: this was a json endpoint in the report controller, understand usage and refactor if possible
