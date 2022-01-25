@@ -16,15 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import org.bson.conversions.Bson
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.Filters.and
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
-import org.mongodb.scala.model.{IndexModel, IndexOptions, Indexes}
-import org.mongodb.scala.model.{Aggregates, BsonField, Filters, IndexModel, IndexOptions, Indexes, Projections}
-
+import org.mongodb.scala.model._
 import play.api.Logging
 import play.api.libs.json.{Json, Reads}
-import uk.gov.hmrc.leakdetection.model.{Branch, Leak, LeakUpdateResult, ReportId}
+import uk.gov.hmrc.leakdetection.model.{Leak, LeakUpdateResult}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.{Codecs, PlayMongoRepository}
 
@@ -49,7 +47,7 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
       deleted <- removeBranch(repo, branch)
       // replace with new ones
       inserted <- if (violations.nonEmpty) collection.insertMany(violations).toFuture().map(_.getInsertedIds.size()) else Future(0)
-      _ = logger.info(s"removed ${deleted} leaks, added ${inserted} leaks for $repo/$branch")
+      _ = logger.info(s"removed $deleted leaks, added $inserted leaks for $repo/$branch")
     } yield LeakUpdateResult(inserted, deleted)
 
   def removeBranch(repo: String, branch: String): Future[Long] =
@@ -79,10 +77,6 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
         Filters.eq("repoName", repo),
         Filters.eq("branch", branch))
     ).toFuture()
-
-
-  def findLeaksForReport(report: ReportId): Future[Seq[Leak]] =
-    collection.find(Filters.eq("reportId", report.value)).toFuture()
 
   def findDistinctRepoNames(): Future[Seq[String]] =
     collection.distinct[String]("repoName").toFuture()

@@ -17,6 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
+import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
@@ -25,11 +26,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class ReportsService @Inject()(
                                 reportsRepository: ReportsRepository,
-                                leakRepository: LeakRepository,
-                                teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
                                 configuration: Configuration,
-                                githubService: GithubService)(implicit ec: ExecutionContext)
-    extends MetricSource {
+                                githubService: GithubService)(implicit ec: ExecutionContext) {
 
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
@@ -37,8 +35,6 @@ class ReportsService @Inject()(
   def getLatestReport(repository: Repository, branch: Branch): Future[Option[Report]] =
     reportsRepository
       .findLatestReport(repository, branch)
-
-  def getRepositories: Future[Seq[String]] = reportsRepository.getDistinctRepoNames
 
   def getLatestReportsForEachBranch(repository: Repository): Future[List[Report]] =
     reportsRepository

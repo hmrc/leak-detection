@@ -95,5 +95,5 @@ class ReportsServiceSpec
     "maxLineLength"                          -> 2147483647,
     "clearingCollectionEnabled"              -> false)
   val configLoader: ConfigLoader = new PlayConfigLoader(configuration)
-  val reportsService = new ReportsService(repository, githubService)
+  val reportsService = new ReportsService(repository, configuration, githubService)
 }

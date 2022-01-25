@@ -38,10 +38,11 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
 
   override val repository = new LeakRepository(mongoComponent)
 
-  lazy val teamsAndReposConnector = mock[TeamsAndRepositoriesConnector]
+  lazy val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
   lazy val ruleService = mock[RuleService]
+  lazy val ignoreListConfig = mock[IgnoreListConfig]
 
-  val leaksService = new LeaksService(ruleService, repository, teamsAndReposConnector)
+  val leaksService = new LeaksService(ruleService, repository, teamsAndRepositoriesConnector, ignoreListConfig)
 
   "Leaks service" should {
     val timestamp = Instant.now.minus(2, HOURS)
@@ -193,7 +194,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
   }
 
   "produce metrics grouped by team" in {
-    val leaks = List(aLeak("r1", "b1"),aLeak("r1", "b1"), aLeak("r2", "b1"))
+    val leaks = List(aLeakFor("r1", "b1"),aLeakFor("r1", "b1"), aLeakFor("r2", "b1"))
     repository.collection.insertMany(leaks).toFuture().futureValue
 
     val now = Some(LocalDateTime.now)
@@ -225,8 +226,8 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
 
   "ignore shared repositories" in {
 
-    val leak1 = few(() => aLeak("r1", "b1"))
-    val leak2 = few(() => aLeak("r2", "b1"))
+    val leak1 = few(() => aLeakFor("r1", "b1"))
+    val leak2 = few(() => aLeakFor("r2", "b1"))
     val leaks = leak1 ::: leak2
     repository.collection.insertMany(leaks).toFuture().futureValue
 
@@ -246,6 +247,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     )
   }
 
+  def aLeakFor(repo:String, branch:String) =  aLeak.copy(repoName = repo, branch = branch)
 
   def aLeak = Leak(
     "repoName",
@@ -269,18 +271,10 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     description = "description"
   )
 
-  override val repository = new LeakRepository(mongoComponent)
-
-  lazy val ruleService = mock[RuleService]
-  lazy val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
-  lazy val ignoreListConfig = mock[IgnoreListConfig]
-
   when(ruleService.getAllRules()).thenReturn(Seq(
     aRule.copy(id = "rule-1"),
     aRule.copy(id = "rule-2"),
     aRule.copy(id = "rule-3")
   ))
-
-  val leaksService = new LeaksService(ruleService, repository,teamsAndRepositoriesConnector, ignoreListConfig)
 
 }

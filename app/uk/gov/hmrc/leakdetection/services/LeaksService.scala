@@ -78,16 +78,8 @@ class LeaksService @Inject()(ruleService: RuleService,
     case None    => leaks
   }
 
-
-  def getLeaksForRepo(repoName: Repository): Future[Seq[Leak]] =
-    leakRepository.findLeaksForRepository(repoName.asString)
-
-  def getLeaksForBranch(repoName: Repository, branch: Branch): Future[Seq[Leak]] =
-    leakRepository.findLeaksForRepository(repoName.asString, branch.asString)
-
-  def clearLeaksAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Long] = {
+  def clearLeaksAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Long] =
     leakRepository.removeBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
-  }
 
   def saveLeaks(repo:Repository, branch:Branch, leaks: Seq[Leak]):Future[Unit] =
     leakRepository.update(repo.asString, branch.asString, leaks).map(_ => ())
