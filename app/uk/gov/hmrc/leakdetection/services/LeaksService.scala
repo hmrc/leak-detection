@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
-import uk.gov.hmrc.leakdetection.model.{Leak, Repository, RepositorySummary, RuleSummary}
+import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.LeakRepository
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -28,36 +28,35 @@ class LeaksService @Inject()(ruleService: RuleService,
                              teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector)
                             (implicit ec: ExecutionContext) {
 
-  def getRuleSummaries(ruleId: Option[String], teamName: Option[String]): Future[Seq[RuleSummary]] = {
+  def getSummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String]): Future[Seq[Summary]] = {
     for {
-      ruleLeaks <- getLeaks(ruleId)
+      leaks <- leakRepository.findLeaksBy(ruleId, repoName)
       teamRepos <- getTeamRepos(teamName)
-      leaks = filterLeaksByTeam(ruleLeaks, teamRepos)
+      filteredLeaks = filterLeaksByTeam(leaks, teamRepos)
       rules = ruleService.getAllRules()
     } yield {
-      val leaksByRule: Map[String, Seq[RepositorySummary]] = leaks.groupBy(_.ruleId)
+      val leaksByRule: Map[String, Seq[RepositorySummary]] = filteredLeaks.groupBy(_.ruleId)
         .map { case (ruleId, leaksByRule) =>
           (ruleId, leaksByRule.groupBy(_.repoName)
             .map { case (repoName, ruleLeaksByRepo) => RepositorySummary(
               repoName,
               ruleLeaksByRepo.reduce(Ordering.by((_: Leak).timestamp).min).timestamp,
               ruleLeaksByRepo.reduce(Ordering.by((_: Leak).timestamp).max).timestamp,
-              ruleLeaksByRepo.length)
+              ruleLeaksByRepo.length,
+              ruleLeaksByRepo.groupBy(_.branch)
+                .map { case (branch, leaksByBranch) => BranchSummary(
+                  branch, leaksByBranch.head.reportId, leaksByBranch.head.timestamp, leaksByBranch.length)
+                }.toSeq)
             }.toSeq)
         }
 
-      rules.map(rule => RuleSummary(rule, leaksByRule.getOrElse(rule.id, Seq()))
+      rules.map(rule => Summary(rule, leaksByRule.getOrElse(rule.id, Seq()))
       )
     }
   }
 
-  def getLeaksForRepository(repository: Repository): Future[Seq[Leak]] = {
-    leakRepository.findLeaksForRepository(repository.asString)
-  }
-
-  private def getLeaks(ruleId: Option[String]) = ruleId match {
-    case Some(r) => leakRepository.findLeaksForRule(r)
-    case _ => leakRepository.findAllLeaks()
+  def getLeaksForReport(reportId: ReportId): Future[Seq[Leak]] = {
+    leakRepository.findLeaksForReport(reportId.value)
   }
 
   private def getTeamRepos(teamName: Option[String]): Future[Option[Seq[String]]] = teamName match {

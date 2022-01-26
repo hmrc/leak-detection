@@ -16,8 +16,10 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import com.mongodb.client.model.Filters
+import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Filters.and
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
+import org.mongodb.scala.model.{IndexModel, IndexOptions, Indexes}
 import play.api.Logging
 import uk.gov.hmrc.leakdetection.model.{Leak, LeakUpdateResult}
 import uk.gov.hmrc.mongo.MongoComponent
@@ -30,8 +32,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: ExecutionContext) extends PlayMongoRepository[Leak](
   collectionName = "leaks",
   mongoComponent = mongoComponent,
-  domainFormat   = Leak.mongoFormat,
-  indexes        = Seq(
+  domainFormat = Leak.mongoFormat,
+  indexes = Seq(
     IndexModel(Indexes.descending("repoName"), IndexOptions().name("repoName-idx").background(true)),
     IndexModel(Indexes.descending("ruleId"), IndexOptions().name("ruleId-idx").background(true)),
     IndexModel(Indexes.descending("reportId"), IndexOptions().name("reportId-idx").background(true)),
@@ -41,22 +43,32 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
   def update(repo: String, branch: String, violations: Seq[Leak]): Future[LeakUpdateResult] =
     for {
       // remove previous violations
-      deleted  <- removeBranch(repo, branch)
+      deleted <- removeBranch(repo, branch)
       // replace with new ones
-      inserted <- if(violations.nonEmpty) collection.insertMany(violations).toFuture().map(_.getInsertedIds.size()) else Future(0)
-      _         = logger.info(s"removed ${deleted} leaks, added ${inserted} leaks for $repo/$branch")
+      inserted <- if (violations.nonEmpty) collection.insertMany(violations).toFuture().map(_.getInsertedIds.size()) else Future(0)
+      _ = logger.info(s"removed ${deleted} leaks, added ${inserted} leaks for $repo/$branch")
     } yield LeakUpdateResult(inserted, deleted)
 
-  def removeBranch(repo: String, branch:String): Future[Long] =
-    collection.deleteMany(filter =  and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
+  def removeBranch(repo: String, branch: String): Future[Long] =
+    collection.deleteMany(filter = and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
 
-  def findAllLeaks(): Future[Seq[Leak]] =
-    collection.find().toFuture()
+  def findLeaksBy(ruleId: Option[String], repoName: Option[String]): Future[Seq[Leak]] = {
+    val ruleFilter: Option[Bson] = ruleId.map(Filters.eq("ruleId", _))
+    val repoFilter: Option[Bson] = repoName.map(Filters.eq("repoName", _))
 
-  def findLeaksForRule(ruleId: String): Future[Seq[Leak]] =
-    collection.find(Filters.eq("ruleId", ruleId)).toFuture()
+    val filters: Option[Bson] = (ruleFilter, repoFilter) match {
+      case (Some(rule), Some(repo)) => Some(Filters.and(rule, repo))
+      case (Some(rule), None) => Some(rule)
+      case (None, Some(repo)) => Some(repo)
+      case (None, None) => None
+    }
 
-  def findLeaksForRepository(repo: String): Future[Seq[Leak]] =
-    collection.find(Filters.eq("repoName", repo)).toFuture()
+    filters.map(f => collection.find(filter = f))
+      .getOrElse(collection.find())
+      .toFuture()
+  }
+
+  def findLeaksForReport(reportId: String): Future[Seq[Leak]] =
+    collection.find(filter = Filters.eq("reportId", reportId)).toFuture()
 
 }
