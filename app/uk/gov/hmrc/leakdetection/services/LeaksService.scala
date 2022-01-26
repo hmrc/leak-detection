@@ -40,8 +40,8 @@ class LeaksService @Inject()(ruleService: RuleService,
           (ruleId, leaksByRule.groupBy(_.repoName)
             .map { case (repoName, ruleLeaksByRepo) => RepositorySummary(
               repoName,
-              ruleLeaksByRepo.reduce(Ordering.by((_: Leak).timestamp).min).timestamp,
-              ruleLeaksByRepo.reduce(Ordering.by((_: Leak).timestamp).max).timestamp,
+              ruleLeaksByRepo.minBy(_.timestamp).timestamp,
+              ruleLeaksByRepo.maxBy(_.timestamp).timestamp,
               ruleLeaksByRepo.length,
               ruleLeaksByRepo.groupBy(_.branch)
                 .map { case (branch, leaksByBranch) => BranchSummary(
