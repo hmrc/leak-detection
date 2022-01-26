@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import uk.gov.hmrc.leakdetection.model.{Leak, Report, ReportId, Repository, RuleSummary}
+import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -29,18 +29,21 @@ import scala.concurrent.ExecutionContext
 class ApiController @Inject()(reportsService: ReportsService, leaksService: LeaksService, cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
 
   private implicit val rptf = Report.apiFormat
-  private implicit val rsf = RuleSummary.apiFormat
+  private implicit val rsf = Summary.apiFormat
   private implicit val lf = Leak.apiFormat
 
-  def ruleSummaries(): Action[AnyContent] = Action.async { implicit request =>
+  def leaksSummary(): Action[AnyContent] = Action.async { implicit request =>
     leaksService
-      .getRuleSummaries(request.getQueryString("rule"), request.getQueryString("team"))
+      .getSummaries(
+        request.getQueryString("rule"),
+        request.getQueryString("repository"),
+        request.getQueryString("team"))
       .map(r => Ok(Json.toJson(r)))
   }
 
-  def repositoryLeaks(repository: Repository): Action[AnyContent] = Action.async { implicit request =>
+  def reportLeaks(reportId: ReportId): Action[AnyContent] = Action.async { implicit request =>
     leaksService
-      .getLeaksForRepository(repository)
+      .getLeaksForReport(reportId)
       .map(r => Ok(Json.toJson(r)))
   }
 
