@@ -40,6 +40,10 @@ class ReportsService @Inject()(
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
 
+  def getLatestReport(repository: Repository, branch: Branch): Future[Option[Report]] =
+    reportsRepository
+      .findLatestReport(repository, branch)
+
   def getRepositories: Future[Seq[String]] = reportsRepository.getDistinctRepoNames
 
   def getLatestReportsForEachBranch(repository: Repository): Future[List[Report]] =
