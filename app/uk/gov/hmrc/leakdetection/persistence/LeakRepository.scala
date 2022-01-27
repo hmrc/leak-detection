@@ -52,20 +52,19 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
   def removeBranch(repo: String, branch: String): Future[Long] =
     collection.deleteMany(filter = and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
 
-  def findLeaksBy(ruleId: Option[String], repoName: Option[String]): Future[Seq[Leak]] = {
-    val ruleFilter: Option[Bson] = ruleId.map(Filters.eq("ruleId", _))
-    val repoFilter: Option[Bson] = repoName.map(Filters.eq("repoName", _))
+  def findLeaksBy(ruleId:   Option[String] = None,
+                  repoName: Option[String] = None,
+                  branch:   Option[String] = None
+                 ): Future[Seq[Leak]] = {
 
-    val filters: Option[Bson] = (ruleFilter, repoFilter) match {
-      case (Some(rule), Some(repo)) => Some(Filters.and(rule, repo))
-      case (Some(rule), None) => Some(rule)
-      case (None, Some(repo)) => Some(repo)
-      case (None, None) => None
-    }
+    val ruleFilter:   Option[Bson] = ruleId.map(Filters.eq("ruleId", _))
+    val repoFilter:   Option[Bson] = repoName.map(Filters.eq("repoName", _))
+    val branchFilter: Option[Bson] = repoName.flatMap( _ => branch.map(Filters.eq("branch", _))) // only active when repoName is also set
 
-    filters.map(f => collection.find(filter = f))
-      .getOrElse(collection.find())
-      .toFuture()
+    (Seq(ruleFilter, repoFilter, branchFilter).flatten match {
+      case Nil => collection.find()
+      case f   => collection.find(Filters.and(f: _*))
+    }).toFuture()
   }
 
   def findLeaksForReport(reportId: String): Future[Seq[Leak]] =

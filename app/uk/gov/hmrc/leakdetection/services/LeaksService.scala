@@ -28,12 +28,15 @@ class LeaksService @Inject()(ruleService: RuleService,
                              teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector)
                             (implicit ec: ExecutionContext) {
 
+  def getLeaks(repoName: Option[String], branch: Option[String], ruleId: Option[String]): Future[Seq[Leak]] =
+    leakRepository.findLeaksBy(ruleId = ruleId, repoName = repoName, branch = branch)
+
   def getSummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String]): Future[Seq[Summary]] = {
     for {
-      leaks <- leakRepository.findLeaksBy(ruleId, repoName)
-      teamRepos <- getTeamRepos(teamName)
-      filteredLeaks = filterLeaksByTeam(leaks, teamRepos)
-      rules = ruleService.getAllRules()
+      leaks         <- leakRepository.findLeaksBy(ruleId = ruleId, repoName = repoName)
+      teamRepos     <- getTeamRepos(teamName)
+      filteredLeaks  = filterLeaksByTeam(leaks, teamRepos)
+      rules          = ruleService.getAllRules()
     } yield {
       val leaksByRule: Map[String, Seq[RepositorySummary]] = filteredLeaks.groupBy(_.ruleId)
         .map { case (ruleId, leaksByRule) =>
@@ -61,7 +64,7 @@ class LeaksService @Inject()(ruleService: RuleService,
 
   private def getTeamRepos(teamName: Option[String]): Future[Option[Seq[String]]] = teamName match {
     case Some(t) => teamsAndRepositoriesConnector.team(t).map(_.map(t => t.repos.map(_.values.toSeq.flatten).toSeq.flatten))
-    case None => Future.successful(None)
+    case None    => Future.successful(None)
   }
 
   private def filterLeaksByTeam(leaks: Seq[Leak], repos: Option[Seq[String]]): Seq[Leak] = repos match {

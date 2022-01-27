@@ -23,7 +23,7 @@ import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ApiController @Inject()(reportsService: ReportsService, leaksService: LeaksService, cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
@@ -32,12 +32,21 @@ class ApiController @Inject()(reportsService: ReportsService, leaksService: Leak
   private implicit val rsf = Summary.apiFormat
   private implicit val lf = Leak.apiFormat
 
+  def leaks(): Action[AnyContent] = Action.async { implicit request =>
+    leaksService
+      .getLeaks(
+        repoName = request.getQueryString("repository"),
+        branch   = request.getQueryString("branch"),
+        ruleId   = request.getQueryString("rule"))
+      .map(r => Ok(Json.toJson(r)))
+  }
+
   def leaksSummary(): Action[AnyContent] = Action.async { implicit request =>
     leaksService
       .getSummaries(
-        request.getQueryString("rule"),
-        request.getQueryString("repository"),
-        request.getQueryString("team"))
+        ruleId   = request.getQueryString("rule"),
+        repoName = request.getQueryString("repository"),
+        teamName = request.getQueryString("team"))
       .map(r => Ok(Json.toJson(r)))
   }
 
