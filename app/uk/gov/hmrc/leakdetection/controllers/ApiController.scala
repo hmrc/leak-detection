@@ -56,6 +56,12 @@ class ApiController @Inject()(reportsService: ReportsService, leaksService: Leak
       .map(r => Ok(Json.toJson(r)))
   }
 
+  def latestReport(repository: Repository, branch: Branch): Action[AnyContent] = Action.async { implicit request =>
+    reportsService
+      .getLatestReport(repository, branch)
+      .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
+  }
+
   def repositories(): Action[AnyContent] = Action.async { implicit request =>
     reportsService
       .getRepositories
