@@ -98,7 +98,7 @@ class AlertingService @Inject()(configuration: Configuration,
           text        = alertMessage,
           username    = username,
           iconEmoji   = iconEmoji,
-          attachments = Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${report.repoName}/${report.branch}/report".toString)))
+          attachments = Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${report.repoName}/${report.branch}".toString)))
 
       Future
         .traverse(prepareSlackNotifications(messageDetails, CommitInfo.fromReport(report)))(

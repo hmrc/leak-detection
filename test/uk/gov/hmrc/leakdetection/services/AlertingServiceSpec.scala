@@ -69,7 +69,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         text        = "Do not panic, but there is a leak!",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(Attachment(s"https://somewhere/leak-detection/repositories/repo-name/main/report"))
+        attachments = Seq(Attachment(s"https://somewhere/leak-detection/repositories/repo-name/main"))
       )
 
       val expectedMessageToAlertChannel = SlackNotificationRequest(
@@ -120,7 +120,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
           text        = "Do not panic, but there is a leak!",
           username    = "leak-detection",
           iconEmoji   = ":closed_lock_with_key:",
-          attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding/report"))
+          attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding"))
         )
       )
 
