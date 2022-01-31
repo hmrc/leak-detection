@@ -43,12 +43,6 @@ class ReportsService @Inject()(
         case (_, reports) => reports.maxBy(_.timestamp)
       }.toList)
 
-  def getLatestReportForDefaultBranch(repository: Repository)(implicit hc: HeaderCarrier): Future[Option[Report]] =
-    githubService.getDefaultBranchName(repository) flatMap { defaultBranchName =>
-      reportsRepository
-        .findUnresolvedWithProblems(repository, Some(defaultBranchName)).map(_.headOption)
-    }
-
   def getReport(reportId: ReportId): Future[Option[Report]] =
     reportsRepository.findByReportId(reportId)
 
