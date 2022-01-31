@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import play.api.{Configuration, Logger}
 import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
 
@@ -98,7 +98,7 @@ class AlertingService @Inject()(configuration: Configuration,
           text        = alertMessage,
           username    = username,
           iconEmoji   = iconEmoji,
-          attachments = Seq(Attachment(s"$leakDetectionUri/reports/${report.id}")))
+          attachments = Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${report.repoName}/${report.branch}/report".toString)))
 
       Future
         .traverse(prepareSlackNotifications(messageDetails, CommitInfo.fromReport(report)))(
