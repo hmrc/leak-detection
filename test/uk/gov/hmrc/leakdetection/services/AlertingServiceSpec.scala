@@ -69,7 +69,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         text        = "Do not panic, but there is a leak!",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(Attachment(s"https://somewhere/reports/${report.id}"))
+        attachments = Seq(Attachment(s"https://somewhere/leak-detection/repositories/repo-name/main"))
       )
 
       val expectedMessageToAlertChannel = SlackNotificationRequest(
@@ -84,6 +84,47 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
       verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
+    }
+
+    "correctly encode the url for the report attachment" in new Fixtures {
+
+      val report = Report(
+        id        = ReportId.random,
+        repoName  = "repo-name",
+        repoUrl   = "https://github.com/hmrc/a-repo",
+        commitId  = "123",
+        branch    = "branch/that/needs/encoding",
+        timestamp = Instant.now(),
+        author    = "me",
+        inspectionResults = Seq(
+          ReportLine(
+            filePath    = "/README.md",
+            scope       = Rule.Scope.FILE_CONTENT,
+            lineNumber  = 2,
+            urlToSource = s"https://github.com/hmrc/repoName/blame/main/README.md#L2",
+            ruleId      = Some("no nulls allowed"),
+            description = "uses nulls!",
+            lineText    = " var x = null",
+            matches     = List(Match(9, 13)),
+            priority    = Some(Rule.Priority.High),
+            isTruncated = Some(false)
+          )),
+        None
+      )
+
+      service.alert(report).futureValue
+
+      val expectedMessageToAlertChannel = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+        messageDetails = MessageDetails(
+          text        = "Do not panic, but there is a leak!",
+          username    = "leak-detection",
+          iconEmoji   = ":closed_lock_with_key:",
+          attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding"))
+        )
+      )
+
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
     }
 
     "not send leak alerts to slack if not enabled" in new Fixtures {
