@@ -77,7 +77,7 @@ class ReportsRepository @Inject()(
           Filters.equal("branch", branch.asString)
         )
       )
-      .sort(BsonDocument("timestamp" -> 1))
+      .sort(BsonDocument("timestamp" -> -1))
       .headOption()
 
   def findUnresolvedWithProblems(repository: Repository, branch: Option[Branch] = None): Future[Seq[Report]] =
