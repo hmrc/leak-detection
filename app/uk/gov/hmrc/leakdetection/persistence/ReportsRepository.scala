@@ -17,14 +17,12 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import com.google.inject.Inject
-import com.mongodb.{ReadConcern, ReadPreference}
 import org.bson.conversions.Bson
-import org.mongodb.scala.bson.{BsonArray, BsonDocument}
-import org.mongodb.scala.model._
-import play.api.libs.json._
+import org.mongodb.scala.bson.BsonDocument
+import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
 import uk.gov.hmrc.mongo.MongoComponent
-import uk.gov.hmrc.mongo.play.json.{Codecs, PlayMongoRepository}
+import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 
 import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,8 +37,8 @@ class ReportsRepository @Inject()(
   domainFormat   = Report.mongoFormat,
   indexes        = Seq(
                      IndexModel(Indexes.hashed("repoName"), IndexOptions().name("repoName-idx").background(true)),
-                     IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true))
-                   )
+                     IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true)),
+  )
 ) {
 
   def saveReport(report: Report): Future[Unit] =
@@ -62,12 +60,7 @@ class ReportsRepository @Inject()(
           throw new Exception(s"Error saving following report in db: $report")
       }
 
-  // TODO no index for inspectionResults or leakResolution (consider a derived boolean `isDefined` field rather than indexing the arrays)
-  private val hasUnresolvedErrorsSelector =
-    Filters.and(
-      Filters.gt("inspectionResults", BsonArray()), // also: {"inspectionResults": {"$gt": {"$size": 0}}}
-      Filters.exists("leakResolution", exists = false)
-    )
+  private val hasLeaks =  Filters.gt("totalLeaks",  0)
 
   def findLatestReport(repository: Repository, branch: Branch): Future[Option[Report]] =
     collection
@@ -82,71 +75,18 @@ class ReportsRepository @Inject()(
 
   def findUnresolvedWithProblems(repository: Repository, branch: Option[Branch] = None): Future[Seq[Report]] =
     collection
-      .withReadPreference(ReadPreference.primary())
       .find(
         filter = Filters.and(
-                   hasUnresolvedErrorsSelector,
-                   Filters.equal("repoName", repository.asString),
-                   branch.fold[Bson](BsonDocument())(b => Filters.equal("branch", b.asString))
-                 )
+          hasLeaks,
+          Filters.equal("repoName", repository.asString),
+          branch.fold[Bson](BsonDocument())(b => Filters.equal("branch", b.asString))
+        )
       )
       .sort(BsonDocument("timestamp" -> -1))
       .toFuture
 
   def findByReportId(reportId: ReportId): Future[Option[Report]] =
     collection.find(Filters.eq("_id", reportId.value)).headOption
-
-  def getDistinctRepoNames: Future[Seq[String]] =
-    collection
-      .withReadConcern(ReadConcern.MAJORITY)
-      .distinct[String](
-        fieldName = "repoName",
-        filter = hasUnresolvedErrorsSelector
-      )
-      .toFuture
-      .map(_.sorted)
-
-  def howManyUnresolved(): Future[Int] =
-    collection
-      .withReadConcern(ReadConcern.MAJORITY)
-      .countDocuments(
-        filter = Filters.gt("inspectionResults", BsonArray()),
-      )
-      .toFuture
-      .map(_.intValue)
-
-  def howManyResolved(): Future[Int] =
-    collection
-      .withReadConcern(ReadConcern.MAJORITY)
-      .countDocuments(
-        filter = Filters.exists("leakResolution"),
-      )
-      .toFuture
-      .map(_.intValue())
-
-  case class CountByRepo(_id: String, count: Int)
-
-  def howManyUnresolvedByRepository(): Future[Map[String, Int]] = {
-    implicit val cr: Reads[CountByRepo] = Json.reads[CountByRepo]
-
-    collection
-      .aggregate[BsonDocument](
-        pipeline = Seq[Bson](
-                     Aggregates.`match`(Filters.gt("inspectionResults", BsonArray())),
-                     Aggregates.group("$repoName", BsonField("count", BsonDocument("$sum" -> 1)))
-                   )
-      )
-      .toFuture
-     .map(
-       _.map { doc =>
-        val line = Codecs.fromBson[CountByRepo](doc)
-        line._id -> line.count
-       }.toMap
-     )
-  }
-
-  def countAll(): Future[Int] =
-    collection.countDocuments().toFuture.map(_.toInt)
 
   def removeAll(): Future[Long] =
     collection

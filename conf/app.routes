@@ -3,8 +3,6 @@
 # API
 GET        /api/repository                            @uk.gov.hmrc.leakdetection.controllers.ApiController.repositories
 GET        /api/repository/:repository/latest         @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportsForEachBranch(repository: Repository)
-# todo: this was a json endpoint in the report controller, understand usage and refactor if possible
-GET        /api/reports/repositories/:repository      @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportForDefaultBranch(repository: Repository)
 
 GET        /api/report/:id                            @uk.gov.hmrc.leakdetection.controllers.ApiController.report(id: ReportId)
 GET        /api/report/:id/leaks                      @uk.gov.hmrc.leakdetection.controllers.ApiController.reportLeaks(id: ReportId)

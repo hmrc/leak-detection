@@ -23,7 +23,7 @@ import play.api.mvc.{BodyParser, ControllerComponents}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
 import uk.gov.hmrc.leakdetection.services.ReportsService.ClearingReportsResult
-import uk.gov.hmrc.leakdetection.services.{ReportsService, ScanningService}
+import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -33,6 +33,7 @@ class WebhookController @Inject()(
   configLoader: ConfigLoader,
   scanningService: ScanningService,
   reportsService: ReportsService,
+  leakService: LeaksService,
   webhookRequestValidator: WebhookRequestValidator,
   cc: ControllerComponents)(implicit ec: ExecutionContext)
     extends BackendController(cc) {
@@ -54,12 +55,10 @@ class WebhookController @Inject()(
           }
 
         case deleteBranchEvent: DeleteBranchEvent =>
-          reportsService
-            .clearReportsAfterBranchDeleted(deleteBranchEvent)
-            .map {
-              case ClearingReportsResult(_, reports) =>
-                Ok(toJson(WebhookResponse(s"${reports.size} report(s) successfully cleared")))
-            }
+          for {
+            _ <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
+            _ <- leakService.clearLeaksAfterBranchDeleted(deleteBranchEvent)
+          } yield Ok (toJson (WebhookResponse ("report(s) successfully cleared")))
 
         case ZenMessage(_) =>
           Future.successful(

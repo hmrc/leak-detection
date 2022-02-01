@@ -17,16 +17,22 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
-import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, IgnoreListConfig}
+
+import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.LeakRepository
+import uk.gov.hmrc.mongo.metrix.MetricSource
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class LeaksService @Inject()(ruleService: RuleService,
                              leakRepository: LeakRepository,
-                             teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector)
-                            (implicit ec: ExecutionContext) {
+                             teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
+                             ignoreListConfig: IgnoreListConfig)
+                            (implicit ec: ExecutionContext) extends MetricSource {
+
+  def getRepositories: Future[Seq[String]] = leakRepository.findDistinctRepoNames()
 
   def getLeaks(repoName: Option[String], branch: Option[String], ruleId: Option[String]): Future[Seq[Leak]] =
     leakRepository.findLeaksBy(ruleId = ruleId, repoName = repoName, branch = branch)
@@ -63,13 +69,42 @@ class LeaksService @Inject()(ruleService: RuleService,
   }
 
   private def getTeamRepos(teamName: Option[String]): Future[Option[Seq[String]]] = teamName match {
-    case Some(t) => teamsAndRepositoriesConnector.team(t).map(_.map(t => t.repos.map(_.values.toSeq.flatten).toSeq.flatten))
+    case Some(t) => teamsAndRepositoriesConnector.team(t).map(_.map(_.repos.map(_.values.toSeq.flatten).toSeq.flatten))
     case None    => Future.successful(None)
   }
 
   private def filterLeaksByTeam(leaks: Seq[Leak], repos: Option[Seq[String]]): Seq[Leak] = repos match {
     case Some(r) => leaks.filter(l => r.contains(l.repoName))
-    case None => leaks
+    case None    => leaks
   }
 
+  def clearLeaksAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Long] =
+    leakRepository.removeBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+
+  def saveLeaks(repo:Repository, branch:Branch, leaks: Seq[Leak]):Future[Unit] =
+    leakRepository.update(repo.asString, branch.asString, leaks).map(_ => ())
+
+  override def metrics(implicit ec: ExecutionContext): Future[Map[String, Int]] =
+    for {
+      total      <- leakRepository.countAll()
+      unresolved <- leakRepository.countAll()
+      byRepo     <- leakRepository.countByRepo()
+      teams      <- teamsAndRepositoriesConnector.teamsWithRepositories()
+    } yield {
+
+      def ownedRepos(team: Team): Seq[String] =
+        team.repos.fold(Seq.empty[String])(_.values.toSeq.flatten)
+          .filterNot(ignoreListConfig.repositoriesToIgnore.contains)
+
+      val byTeamStats = teams
+        .map(t => s"reports.teams.${t.normalisedName}.unresolved" -> ownedRepos(t).map(r => byRepo.getOrElse(r, 0)).sum)
+        .toMap
+
+      val globalStats = Map(
+        "reports.total" -> total,
+        "reports.unresolved" -> unresolved
+      )
+
+      globalStats ++ byTeamStats
+    }
 }

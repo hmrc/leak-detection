@@ -46,9 +46,8 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       results should have size 7
 
       results should contain(
-        Result(
-          filePath = "/dir1/fileA",
-          scanResults = MatchedResult(
+        MatchedResult(
+            filePath    = "/dir1/fileA",
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "matching on: secretA",
             lineNumber  = 1,
@@ -56,13 +55,11 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             description = "descr 1",
             matches     = List(Match(start = 13, end = 20)),
             priority    = Rule.Priority.High
-          )
         )
       )
       results should contain(
-        Result(
-          filePath = "/dir1/fileA",
-          scanResults = MatchedResult(
+        MatchedResult(
+            filePath    = "/dir1/fileA",
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "matching on: secretA again",
             lineNumber  = 2,
@@ -71,13 +68,11 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             matches     = List(Match(start = 13, end = 20)),
             priority    = Rule.Priority.High
           )
-        )
       )
 
       results should contain(
-        Result(
-          filePath = "/dir2/fileB",
-          scanResults = MatchedResult(
+          MatchedResult(
+            filePath    = "/dir2/fileB",
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "matching on: secretB",
             lineNumber  = 2,
@@ -86,41 +81,35 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             matches     = List(Match(start = 13, end = 20)),
             priority    = Rule.Priority.Low
           )
-        )
       )
       results should contain(
-        Result(
-          filePath = "/dir2/fileB",
-          scanResults = MatchedResult(
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineText    = "matching on: secretB again",
-            lineNumber  = 3,
-            ruleId      = "rule-2",
-            description = "descr 2",
-            matches     = List(Match(start = 13, end = 20)),
-            priority    = Rule.Priority.Low
-          )
+        MatchedResult(
+          filePath    = "/dir2/fileB",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "matching on: secretB again",
+          lineNumber  = 3,
+          ruleId      = "rule-2",
+          description = "descr 2",
+          matches     = List(Match(start = 13, end = 20)),
+          priority    = Rule.Priority.Low
         )
       )
 
       results should contain(
-        Result(
-          filePath = "/dir2/dir3/fileC",
-          scanResults = MatchedResult(
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineText    = "matching on: secretC",
-            lineNumber  = 1,
-            ruleId      = "rule-3",
-            description = "descr 3",
-            matches     = List(Match(start = 13, end = 20)),
-            priority    = Rule.Priority.Low
-          )
+        MatchedResult(
+          filePath    = "/dir2/dir3/fileC",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "matching on: secretC",
+          lineNumber  = 1,
+          ruleId      = "rule-3",
+          description = "descr 3",
+          matches     = List(Match(start = 13, end = 20)),
+          priority    = Rule.Priority.Low
         )
       )
       results should contain(
-        Result(
-          filePath = "/dir2/dir3/fileC",
-          scanResults = MatchedResult(
+        MatchedResult(
+            filePath    = "/dir2/dir3/fileC",
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "matching on: secretC again",
             lineNumber  = 2,
@@ -129,20 +118,17 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             matches     = List(Match(start = 13, end = 20)),
             priority    = Rule.Priority.Low
           )
-        )
       )
       results should contain(
-        Result(
-          filePath = "/dir2/dir3/fileC",
-          scanResults = MatchedResult(
-            scope       = Rule.Scope.FILE_NAME,
-            lineText    = "fileC",
-            lineNumber  = 1,
-            ruleId      = "rule-4",
-            description = "file with secrets",
-            matches     = List(Match(start = 0, end = 5)),
-            priority    = Rule.Priority.Low
-          )
+        MatchedResult(
+          filePath    = "/dir2/dir3/fileC",
+          scope       = Rule.Scope.FILE_NAME,
+          lineText    = "fileC",
+          lineNumber  = 1,
+          ruleId      = "rule-4",
+          description = "file with secrets",
+          matches     = List(Match(start = 0, end = 5)),
+          priority    = Rule.Priority.Low
         )
       )
     }
@@ -166,9 +152,8 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       results should have size 3
 
       results should contain(
-        Result(
-          filePath = "/dir2/fileB",
-          scanResults = MatchedResult(
+        MatchedResult(
+            filePath = "/dir2/fileB",
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "matching on: secretB",
             lineNumber  = 2,
@@ -177,12 +162,10 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             matches     = List(Match(start = 13, end = 20)),
             priority    = Rule.Priority.Low
           )
-        )
       )
       results should contain(
-        Result(
-          filePath = "/dir2/fileB",
-          scanResults = MatchedResult(
+        MatchedResult(
+            filePath    = "/dir2/fileB",
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "matching on: secretB again",
             lineNumber  = 3,
@@ -191,13 +174,11 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             matches     = List(Match(start = 13, end = 20)),
             priority    = Rule.Priority.Low
           )
-        )
       )
 
       results should contain(
-        Result(
-          filePath = "/dir1/fileA",
-          scanResults = MatchedResult(
+        MatchedResult(
+            filePath    = "/dir1/fileA",
             scope       = Rule.Scope.FILE_NAME,
             lineText    = "fileA",
             lineNumber  = 1,
@@ -206,7 +187,6 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             matches     = List(Match(start = 0, end = 5)),
             priority    = Rule.Priority.Low
           )
-        )
       )
     }
 
@@ -273,9 +253,8 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       results should have size 3
 
       results should contain(
-        Result(
-          filePath = "/dir/file1",
-          scanResults = MatchedResult(
+          MatchedResult(
+            filePath    = "/dir/file1",
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "match should be found on secret=real-secret",
             lineNumber  = 2,
@@ -284,34 +263,29 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
             matches     = List(Match(start = 25, end = 32)),
             priority    = Rule.Priority.Low
           )
+      )
+      results should contain(
+        MatchedResult(
+          filePath    = "/dir/file1",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "rule 2 match should still be found on: key=false-positive",
+          lineNumber  = 3,
+          ruleId      = "rule-2",
+          description = "leaked secret found for rule 2",
+          matches     = List(Match(start = 39, end = 43)),
+          priority    = Rule.Priority.Low
         )
       )
       results should contain(
-        Result(
-          filePath = "/dir/file1",
-          scanResults = MatchedResult(
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineText    = "rule 2 match should still be found on: key=false-positive",
-            lineNumber  = 3,
-            ruleId      = "rule-2",
-            description = "leaked secret found for rule 2",
-            matches     = List(Match(start = 39, end = 43)),
-            priority    = Rule.Priority.Low
-          )
-        )
-      )
-      results should contain(
-        Result(
-          filePath = "/dir/file2",
-          scanResults = MatchedResult(
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineText    = "match should be found on: secret=false-positive in this file",
-            lineNumber  = 1,
-            ruleId      = "rule-1",
-            description = "leaked secret found for rule 1",
-            matches     = List(Match(start = 26, end = 33)),
-            priority    = Rule.Priority.Low
-          )
+        MatchedResult(
+          filePath    = "/dir/file2",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "match should be found on: secret=false-positive in this file",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 26, end = 33)),
+          priority    = Rule.Priority.Low
         )
       )
     }
@@ -331,7 +305,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
       results should have size 2
-      results.map(r => r.scanResults.lineNumber) shouldBe Seq(1,4)
+      results.map(r => r.lineNumber) shouldBe Seq(1,4)
     }
   }
 

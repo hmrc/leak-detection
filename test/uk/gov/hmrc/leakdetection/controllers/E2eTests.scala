@@ -17,12 +17,11 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import java.time.{Duration => JDuration}
-
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
 import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model.Filters
+import org.mongodb.scala.model.{Filters, Sorts}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.featurespec.AnyFeatureSpec
 import org.scalatest.matchers.should.Matchers
@@ -143,7 +142,7 @@ class E2eTests
 
       And("response should inform which problem where cleared as a result of deleting a branch")
       val response = Json.parse(Helpers.contentAsString(res)).as[WebhookResponse]
-      response.details shouldBe "1 report(s) successfully cleared"
+      response.details shouldBe "report(s) successfully cleared"
     }
 
     Scenario("Processing a branch that no longer exists") {
@@ -179,8 +178,8 @@ class E2eTests
       And("Eventually previous reports with problems will be cleared")
       eventually {
         val report = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue.head
-        report.inspectionResults shouldBe 'empty
-        report.leakResolution    shouldBe 'defined
+        report.totalLeaks shouldBe 0
+        report.rulesViolated shouldBe Map.empty
       }
     }
   }
@@ -231,7 +230,7 @@ class E2eTests
                    Filters.equal("repoName", repositoryName),
                    Filters.equal("branch", branchName)
                  )
-      ).toFuture
+      ).sort(Sorts.descending("timestamp")).toFuture
 
   def prepopulateReportWithProblems(repoName: String, branchName: String): Future[Unit] =
     reportsRepo

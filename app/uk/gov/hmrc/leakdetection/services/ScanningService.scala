@@ -28,6 +28,7 @@ import uk.gov.hmrc.leakdetection.services.ArtifactService.BranchNotFound
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
 
 import java.io.File
+import java.time.Instant
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -37,6 +38,7 @@ class ScanningService @Inject()(
   artifactService: ArtifactService,
   configLoader: ConfigLoader,
   reportsService: ReportsService,
+  leaksService: LeaksService,
   alertingService: AlertingService,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
   repoVisibilityChecker: RepoVisiblityChecker,
@@ -61,29 +63,28 @@ class ScanningService @Inject()(
     dryRun: Boolean)
                     (implicit hc: HeaderCarrier): Future[Report] =
     try {
-      artifactService.getZip(cfg.githubSecrets.personalAccessToken, archiveUrl, branch) flatMap {
+      artifactService.getZip(cfg.githubSecrets.personalAccessToken, archiveUrl, branch).flatMap {
         case Left(BranchNotFound(_)) =>
-          reportsService
-            .clearReportsAfterBranchDeleted(
-              DeleteBranchEvent(
-                repositoryName = repository.asString,
-                authorName     = authorName,
-                branchRef      = branch.asString,
-                deleted        = true,
-                repositoryUrl  = repositoryUrl)
-            )
-            .map(_.reportSolvingProblems)
+          val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, deleted = true, repositoryUrl = repositoryUrl)
+          for {
+            _      <- leaksService.clearLeaksAfterBranchDeleted(deleteBranchEvent)
+            report <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
+          } yield report
+
         case Right(dir) =>
           val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
-
           def executeIfNotDryRun(function: => Future[Unit]): Future[Unit] = if (!dryRun) function else Future.successful(Unit)
 
           val processingResult =
             for {
               results <- Future { regexMatchingEngine.run(dir) }
+              now = Instant.now
               report = Report.create(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
+              // TODO: move this somewhere else
+              leaks  = results.map(r => Leak(repository.asString, branch.asString, now, reportId = report.id, ruleId = r.ruleId, description = r.description, filePath = r.filePath, scope = r.scope, lineNumber = r.lineNumber,
+                urlToSource = s"$repositoryUrl/blame/$commitId${r.filePath}#L${r.lineNumber}", lineText = r.lineText, matches = r.matches, priority = r.priority))
               _ <- executeIfNotDryRun(reportsService.saveReport(report))
-              _ <- executeIfNotDryRun(reportsService.saveLeaks(report))
+              _ <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
               _ <- executeIfNotDryRun(alertingService.alert(report))
               _ <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
               _ <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir, isPrivate))

@@ -16,24 +16,24 @@
 
 package uk.gov.hmrc.leakdetection.scheduled
 
-import javax.inject.Inject
 import akka.actor.ActorSystem
 import com.kenshoo.play.metrics.Metrics
 import play.api.{Configuration, Logger}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
-import uk.gov.hmrc.leakdetection.services.ReportsService
+import uk.gov.hmrc.leakdetection.services.LeaksService
 import uk.gov.hmrc.mongo.lock.{LockRepository, LockService}
 import uk.gov.hmrc.mongo.metrix.{MetricOrchestrator, MetricRepository}
 
-import scala.concurrent.duration._
+import javax.inject.Inject
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 class MetricsScheduler @Inject()(
   actorSystem: ActorSystem,
   configuration: Configuration,
   metrics: Metrics,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  reportsService: ReportsService,
+  leaksService: LeaksService,
   lockRepository: LockRepository,
   metricRepository: MetricRepository
 )(implicit ec: ExecutionContext) {
@@ -51,7 +51,7 @@ class MetricsScheduler @Inject()(
   )
 
   val metricOrchestrator = new MetricOrchestrator(
-    metricSources    = List(githubRequestsQueueRepository, reportsService),
+    metricSources    = List(githubRequestsQueueRepository, leaksService),
     lockService      = lock,
     metricRepository = metricRepository,
     metricRegistry   = metrics.defaultRegistry

@@ -34,11 +34,12 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
       }
   }
 
-  def scanFileName(text: String): Option[MatchedResult] =
+  def scanFileName(text: String, filePath: String): Option[MatchedResult] =
     text match {
       case Extractor(_, matches) =>
         Some(
           MatchedResult(
+            filePath    = filePath,
             scope       = Rule.Scope.FILE_NAME,
             lineText    = text,
             lineNumber  = 1,
@@ -51,12 +52,13 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
       case _ => None
     }
 
-  def scanLine(line: String, lineNumber: Int): Option[MatchedResult] =
+  def scanLine(line: String, lineNumber: Int, filePath: String): Option[MatchedResult] =
     line match {
       case Extractor(lineText, matches) =>
         Some(
           ensureLengthIsBelowLimit(
             MatchedResult(
+              filePath    = filePath,
               scope       = Rule.Scope.FILE_CONTENT,
               lineText    = lineText,
               lineNumber  = lineNumber,

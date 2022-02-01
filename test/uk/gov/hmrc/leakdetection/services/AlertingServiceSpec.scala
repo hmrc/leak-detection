@@ -26,8 +26,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, ReportLine, Repository}
-import uk.gov.hmrc.leakdetection.scanner.Match
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
+import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,6 +39,19 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
   "The alerting service" should {
     "send alerts to both alert channel and team channel if leaks are in the report" in new Fixtures {
 
+      val results = Seq(
+        MatchedResult(
+          filePath    = "/README.md",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineNumber  = 2,
+          ruleId      = "no nulls allowed",
+          description = "uses nulls!",
+          lineText    = " var x = null",
+          matches     = List(Match(9, 13)),
+          priority    = Rule.Priority.High
+        )
+      )
+
       val report = Report(
         id        = ReportId.random,
         repoName  = "repo-name",
@@ -47,20 +60,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         branch    = "main",
         timestamp = Instant.now(),
         author    = "me",
-        inspectionResults = Seq(
-          ReportLine(
-            filePath    = "/README.md",
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineNumber  = 2,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/main/README.md#L2",
-            ruleId      = Some("no nulls allowed"),
-            description = "uses nulls!",
-            lineText    = " var x = null",
-            matches     = List(Match(9, 13)),
-            priority    = Some(Rule.Priority.High),
-            isTruncated = Some(false)
-          )),
-        None
+        totalLeaks = 1,
+        rulesViolated = Map("no nulls allowed" -> 1)
       )
 
       service.alert(report).futureValue
@@ -129,8 +130,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
     "not send leak alerts to slack if not enabled" in new Fixtures {
 
-      override val configuration =
-        defaultConfiguration ++ Configuration("alerts.slack.enabled" -> false)
+      override val configuration =  Configuration("alerts.slack.enabled" -> false).withFallback(defaultConfiguration)
 
       val report = Report(
         id        = ReportId.random,
@@ -140,20 +140,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         branch    = "main",
         timestamp = Instant.now(),
         author    = "me",
-        inspectionResults = Seq(
-          ReportLine(
-            filePath    = "/README.md",
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineNumber  = 2,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/main/README.md#L2",
-            ruleId      = Some("no nulls allowed"),
-            description = "uses nulls!",
-            lineText    = " var x = null",
-            matches     = List(Match(9, 13)),
-            priority    = Some(Rule.Priority.High),
-            isTruncated = Some(false)
-          )),
-        None
+        totalLeaks = 1,
+        rulesViolated = Map("no nulls allowed" -> 1)
       )
 
       service.alert(report).futureValue
@@ -164,15 +152,15 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     "not send alerts to slack if there is no leaks" in new Fixtures {
 
       val report = Report(
-        id                = ReportId.random,
-        repoName          = "a-repo",
-        repoUrl           = "https://github.com/hmrc/a-repo",
-        commitId          = "123",
-        branch            = "main",
-        timestamp         = Instant.now(),
-        author            = "me",
-        inspectionResults = Nil,
-        None
+        id            = ReportId.random,
+        repoName      = "a-repo",
+        repoUrl       = "https://github.com/hmrc/a-repo",
+        commitId      = "123",
+        branch        = "main",
+        timestamp     = Instant.now(),
+        author        = "me",
+        totalLeaks    = 0,
+        rulesViolated = Map.empty
       )
 
       service.alert(report).futureValue
@@ -237,7 +225,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
     "send an alert if repoVisibility is not correctly set in repository.yaml" in new Fixtures {
       override val configuration =
-        defaultConfiguration ++ Configuration("alerts.slack.enabledForRepoVisibility" -> true)
+        Configuration("alerts.slack.enabledForRepoVisibility" -> true).withFallback(defaultConfiguration)
 
       val author = "me"
       service.alertAboutRepoVisibility(repository = Repository("a-repo"), author = author).futureValue
@@ -271,7 +259,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
     "send an alert about exemption warnings" in new Fixtures {
       override val configuration =
-        defaultConfiguration ++ Configuration("alerts.slack.enabledForExemptionWarnings" -> true)
+        Configuration("alerts.slack.enabledForExemptionWarnings" -> true).withFallback(defaultConfiguration)
 
       service.alertAboutExemptionWarnings(repository = Repository("repo"), Branch("main"), "author").futureValue
 

@@ -17,8 +17,10 @@
 package uk.gov.hmrc.leakdetection.services
 
 import org.mockito.MockitoSugar
+import org.mockito.ArgumentMatchers.{anyString, eq => mockEq}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.config.Rule.Scope
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
@@ -27,7 +29,7 @@ import uk.gov.hmrc.leakdetection.persistence.LeakRepository
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
-import java.time.Instant
+import java.time.{Instant, LocalDateTime}
 import java.time.temporal.ChronoUnit.HOURS
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -36,10 +38,11 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
 
   override val repository = new LeakRepository(mongoComponent)
 
-  lazy val teamsAndReposConnector = mock[TeamsAndRepositoriesConnector]
+  lazy val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
   lazy val ruleService = mock[RuleService]
+  lazy val ignoreListConfig = mock[IgnoreListConfig]
 
-  val leaksService = new LeaksService(ruleService, repository, teamsAndReposConnector)
+  val leaksService = new LeaksService(ruleService, repository, teamsAndRepositoriesConnector, ignoreListConfig)
 
   "Leaks service" should {
     val timestamp = Instant.now.minus(2, HOURS)
@@ -137,8 +140,10 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
             aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch2", timestamp = timestamp.minus(1, HOURS)))
         ).toFuture.futureValue
 
-        when(teamsAndReposConnector.team("team1"))
-          .thenReturn(Future.successful(Some(Team("team1", None, None, None, Some(Map("Service" -> Seq("repo1")))))))
+        when(teamsAndRepositoriesConnector.team(mockEq("team1")))
+          .thenReturn(Future.successful(Option(Team("team1", None, None, None, Some(Map("Service" -> Seq("repo1")))))))
+
+      when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
         val results = leaksService.getSummaries(None, None, Some("team1")).futureValue
 
@@ -174,6 +179,76 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     }
   }
 
+
+  "produce a metric of the total active leaks" in {
+
+    val leaks = few(() => aLeak)
+    when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
+    when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(Seq.empty))
+    repository.collection.insertMany(leaks).toFuture().futureValue
+
+    leaksService.metrics.futureValue should contain allOf (
+      "reports.total"      -> leaks.length,
+      "reports.unresolved" -> leaks.length
+    )
+  }
+
+  "produce metrics grouped by team" in {
+    val leaks = List(aLeakFor("r1", "b1"),aLeakFor("r1", "b1"), aLeakFor("r2", "b1"))
+    repository.collection.insertMany(leaks).toFuture().futureValue
+
+    val now = Some(LocalDateTime.now)
+    val teams: Seq[Team] = Seq(
+      Team("t1", now, now, now, Some(Map("services" -> Seq("r1")))),
+      Team("t2", now, now, now, Some(Map("services" -> Seq("r2")))))
+    when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
+    when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
+
+    leaksService.metrics.futureValue should contain allOf (
+      "reports.teams.t1.unresolved" -> 2,
+      "reports.teams.t2.unresolved" -> 1
+    )
+  }
+
+  "normalise team names" in {
+    when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
+    val now = Some(LocalDateTime.now)
+    val teams: Seq[Team] = Seq(
+      Team("T1", now, now, now, Some(Map("services"             -> Seq("r1")))),
+      Team("T2 with spaces", now, now, now, Some(Map("services" -> Seq("r2")))))
+    when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
+
+    leaksService.metrics.futureValue.keys should contain allOf (
+      "reports.teams.t1.unresolved",
+      "reports.teams.t2_with_spaces.unresolved"
+    )
+  }
+
+  "ignore shared repositories" in {
+
+    val leak1 = few(() => aLeakFor("r1", "b1"))
+    val leak2 = few(() => aLeakFor("r2", "b1"))
+    val leaks = leak1 ::: leak2
+    repository.collection.insertMany(leaks).toFuture().futureValue
+
+
+    val now = Some(LocalDateTime.now)
+    val teams: Seq[Team] = Seq(
+      Team("T1", now, now, now, Some(Map("services" -> Seq("r1")))),
+      Team("T2", now, now, now, Some(Map("services" -> Seq("r2")))))
+    when(teamsAndRepositoriesConnector.teamsWithRepositories())
+      .thenReturn(Future.successful(teams))
+
+    when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq("r1"))
+
+    leaksService.metrics.futureValue should contain allOf (
+      "reports.teams.t1.unresolved"    -> 0,
+      "reports.teams.t2.unresolved"    -> leak2.length
+    )
+  }
+
+  def aLeakFor(repo:String, branch:String) =  aLeak.copy(repoName = repo, branch = branch)
+
   def aLeak = Leak(
     "repoName",
     "branch",
@@ -195,4 +270,11 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     regex = "regex",
     description = "description"
   )
+
+  when(ruleService.getAllRules()).thenReturn(Seq(
+    aRule.copy(id = "rule-1"),
+    aRule.copy(id = "rule-2"),
+    aRule.copy(id = "rule-3")
+  ))
+
 }

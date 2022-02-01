@@ -42,7 +42,8 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
   codec.onMalformedInput(CodingErrorAction.IGNORE)
   codec.onUnmappableCharacter(CodingErrorAction.IGNORE)
 
-  def run(explodedZipDir: File): List[Result] = {
+
+  def run(explodedZipDir: File): List[MatchedResult] = {
 
     val serviceDefinedExemptions =
       RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(explodedZipDir))
@@ -78,18 +79,17 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
         val applicableFileNameScanners    = applicableScanners(fileNameScanners)
 
         val source = Source.fromFile(file)
-        val contentResults: Seq[Result] = try {
+
+        val contentResults: Seq[MatchedResult] = try {
           source.getLines
-            .foldLeft(1, Seq.empty[Result], false) {
+            .foldLeft(1, Seq.empty[MatchedResult], false) {
               case ((lineNumber, acc, isInLine), line) =>
                 (lineNumber + 1, acc ++ applicableFileContentScanners.flatMap {
-                  _.scanLine(line, lineNumber)
+                  _.scanLine(line, lineNumber, filePath)
                     .filterNot(_ => isInLine)
-                    .map(mr => Result(filePath, mr))
                 }, line.contains("LDS ignore"))
             }
             ._2
-
         } catch {
           case ex: Throwable =>
             logger.error(s"error reading $file", ex)
@@ -98,9 +98,8 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
           source.close()
         }
 
-
-        val fileNameResult: Seq[Result] = applicableFileNameScanners.flatMap {
-          _.scanFileName(file.getName).map(mr => Result(filePath, mr))
+        val fileNameResult: Seq[MatchedResult] = applicableFileNameScanners.flatMap {
+          _.scanFileName(file.getName, filePath)
         }
 
         contentResults ++ fileNameResult
