@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.persistence
 import com.google.inject.Inject
 import org.bson.conversions.Bson
 import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
+import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, Sorts}
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
@@ -82,7 +82,7 @@ class ReportsRepository @Inject()(
           branch.fold[Bson](BsonDocument())(b => Filters.equal("branch", b.asString))
         )
       )
-      .sort(BsonDocument("timestamp" -> -1))
+      .sort(Sorts.descending("timestamp"))
       .toFuture
 
   def findByReportId(reportId: ReportId): Future[Option[Report]] =

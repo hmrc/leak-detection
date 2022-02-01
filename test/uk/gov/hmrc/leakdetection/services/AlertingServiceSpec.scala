@@ -90,27 +90,15 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     "correctly encode the url for the report attachment" in new Fixtures {
 
       val report = Report(
-        id        = ReportId.random,
-        repoName  = "repo-name",
-        repoUrl   = "https://github.com/hmrc/a-repo",
-        commitId  = "123",
-        branch    = "branch/that/needs/encoding",
-        timestamp = Instant.now(),
-        author    = "me",
-        inspectionResults = Seq(
-          ReportLine(
-            filePath    = "/README.md",
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineNumber  = 2,
-            urlToSource = s"https://github.com/hmrc/repoName/blame/main/README.md#L2",
-            ruleId      = Some("no nulls allowed"),
-            description = "uses nulls!",
-            lineText    = " var x = null",
-            matches     = List(Match(9, 13)),
-            priority    = Some(Rule.Priority.High),
-            isTruncated = Some(false)
-          )),
-        None
+        id            = ReportId.random,
+        repoName      = "repo-name",
+        repoUrl       = "https://github.com/hmrc/a-repo",
+        commitId      = "123",
+        branch        = "branch/that/needs/encoding",
+        timestamp     = Instant.now(),
+        author        = "me",
+        totalLeaks    = 1,
+        rulesViolated = Map("no nulls allowed" -> 1)
       )
 
       service.alert(report).futureValue
