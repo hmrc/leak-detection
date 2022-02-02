@@ -67,7 +67,7 @@ final case class Report(
 
 object Report {
 
-  def create(
+  def createFromMatchedResults(
               repositoryName: String,
               repositoryUrl : String,
               commitId      : String,

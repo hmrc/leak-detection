@@ -16,12 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.model
 
-import uk.gov.hmrc.leakdetection.scanner.Match
+import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
 
 import java.time.Instant
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
+import uk.gov.hmrc.http.StringContextOps
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
 case class Leak( repoName   : String,
@@ -78,4 +79,20 @@ object Leak {
     )(Leak.apply, unlift(Leak.unapply))
   }
 
+  def createFromMatchedResults(report: Report, results: List[MatchedResult]): List[Leak] =
+    results.map(result => Leak(
+        repoName    = report.repoName,
+        branch      = report.branch,
+        timestamp   = report.timestamp,
+        reportId    = report.id,
+        ruleId      = result.ruleId,
+        description = result.description,
+        filePath    = result.filePath,
+        scope       = result.scope,
+        lineNumber  = result.lineNumber,
+        urlToSource = url"${report.repoUrl}/blame/${report.commitId}${result.filePath}#L${result.lineNumber}".toString,
+        lineText    = result.lineText,
+        matches     = result.matches,
+        priority    = result.priority
+      ))
 }

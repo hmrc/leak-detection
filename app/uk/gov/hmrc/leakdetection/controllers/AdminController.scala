@@ -31,14 +31,12 @@ import scala.concurrent.ExecutionContext
 
 @Singleton
 class AdminController @Inject()(
-   configLoader   : ConfigLoader,
-   scanningService: ScanningService,
-   reportsService : ReportsService,
-   leaksService   : LeaksService,
-   httpClient     : HttpClient,
-   cc             : ControllerComponents
-)(implicit ec: ExecutionContext
-) extends BackendController(cc) {
+                                 configLoader:    ConfigLoader,
+                                 scanningService: ScanningService,
+                                 leaksService:    LeaksService,
+                                 httpClient:      HttpClient,
+                                 cc:              ControllerComponents
+                               )(implicit ec: ExecutionContext) extends BackendController(cc) {
 
   val logger = Logger(this.getClass.getName)
 

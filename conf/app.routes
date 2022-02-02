@@ -2,7 +2,6 @@
 
 # API
 GET        /api/repository                            @uk.gov.hmrc.leakdetection.controllers.ApiController.repositories
-GET        /api/repository/:repository/latest         @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReportsForEachBranch(repository: Repository)
 
 GET        /api/report/:id                            @uk.gov.hmrc.leakdetection.controllers.ApiController.report(id: ReportId)
 GET        /api/report/:id/leaks                      @uk.gov.hmrc.leakdetection.controllers.ApiController.reportLeaks(id: ReportId)

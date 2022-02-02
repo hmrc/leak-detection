@@ -64,7 +64,7 @@ res = bulk.execute();
 print(res)
 
 // Cleanup
-db.getCollection('reports').update({}, {$unset: {inspectionResults:1, leakResolution:1}}, {mulit:true})
+db.getCollection('reports').update({}, {$unset: {inspectionResults:1, leakResolution:1}}, {multi:true})
 ```
 Destructive update, adds leak counts to the report record and removes the nested arrays of violations (these are now in the leaks collection).
 Done as a js script rather than an aggregation due to the complexity of the conversions.

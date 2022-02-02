@@ -84,7 +84,7 @@ object ModelFactory {
 
   def aReport(repoName: String = aString("repositoryName")): Report = {
     val results = few(() => aMatchedResult)
-    Report.create(
+    Report.createFromMatchedResults(
       repositoryName = repoName,
       repositoryUrl  = aString("repo"),
       commitId       = aString("commitId"),
