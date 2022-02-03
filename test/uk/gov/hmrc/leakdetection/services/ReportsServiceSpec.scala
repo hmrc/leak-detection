@@ -28,7 +28,7 @@ import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory.{aLeak, aMatchedResult, aReport, aReportWithoutLeaks, few}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
+import uk.gov.hmrc.leakdetection.model.{Branch, DeleteBranchEvent, Report, ReportId, Repository}
 import uk.gov.hmrc.leakdetection.persistence.{LeakRepository, ReportsRepository}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
@@ -50,39 +50,9 @@ class ReportsServiceSpec
     with GivenWhenThen
     with IncreasingTimestamps {
 
-  "Reports service" should {
-
-    "provide a list of reports for a repo showing only the latest one per branch" in {
-      val repoName = "repo"
-      val branch1  = "main"
-
-      def genReport(branchName: String) =
-        aReport(repoName).copy(branch = branchName, timestamp = increasingTimestamp())
-
-      val reportsWithLeaksBranch1 =
-        List(
-          genReport(branch1),
-          genReport(branch1)
-        )
-
-
-      repository.collection.insertMany(reportsWithLeaksBranch1).toFuture.futureValue
-
-      val expectedResult = reportsWithLeaksBranch1.last :: Nil
-      reportsService.getLatestReportsForEachBranch(Repository(repoName)).futureValue should contain theSameElementsAs expectedResult
-    }
-
-
-  }
-
   override val repository = new ReportsRepository(mongoComponent)
 
-  private val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
-  when(teamsAndRepositoriesConnector.teamsWithRepositories())
-    .thenReturn(Future.successful(Seq.empty))
   implicit val hc = new HeaderCarrier()
-  private val githubService = mock[GithubService]
-  when(githubService.getDefaultBranchName(Repository(any))(any, any)).thenReturn(Future.successful(Branch.main))
 
   private val configuration: Configuration = Configuration(
     "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
@@ -95,5 +65,27 @@ class ReportsServiceSpec
     "maxLineLength"                          -> 2147483647,
     "clearingCollectionEnabled"              -> false)
   val configLoader: ConfigLoader = new PlayConfigLoader(configuration)
-  val reportsService = new ReportsService(repository, configuration, githubService)
+  val reportsService = new ReportsService(repository, configuration)
+
+
+  "Reports service" should {
+
+    "insert a report with no leaks when a branch is deleted" in {
+
+      val branchDeleteEvent = DeleteBranchEvent("repo", "test.user", "branch1", true, "http://repo.url/repo/branch1")
+
+      val expectedResult = reportsService.clearReportsAfterBranchDeleted(branchDeleteEvent).futureValue
+
+      expectedResult.repoName      shouldBe branchDeleteEvent.repositoryName
+      expectedResult.branch        shouldBe branchDeleteEvent.branchRef
+      expectedResult.repoUrl       shouldBe branchDeleteEvent.repositoryUrl
+      expectedResult.totalLeaks    shouldBe 0
+      expectedResult.commitId      shouldBe "n/a (branch was deleted)"
+      expectedResult.author        shouldBe branchDeleteEvent.authorName
+      expectedResult.rulesViolated shouldBe Map.empty
+
+      repository.findByReportId(expectedResult.id).futureValue should not be None
+    }
+  }
+
 }

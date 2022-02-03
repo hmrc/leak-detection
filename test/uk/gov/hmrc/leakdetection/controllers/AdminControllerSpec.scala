@@ -110,7 +110,7 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     val httpClient      = mock[HttpClient]
 
     val controller =
-      new AdminController(configLoader, scanningService, reportsService, leaksService, httpClient, stubControllerComponents())(ExecutionContext.global)
+      new AdminController(configLoader, scanningService, leaksService, httpClient, stubControllerComponents())(ExecutionContext.global)
   }
 
 }

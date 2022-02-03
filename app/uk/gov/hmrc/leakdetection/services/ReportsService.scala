@@ -18,7 +18,6 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import play.api.Configuration
-import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 
@@ -26,8 +25,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class ReportsService @Inject()(
                                 reportsRepository: ReportsRepository,
-                                configuration: Configuration,
-                                githubService: GithubService)(implicit ec: ExecutionContext) {
+                                configuration: Configuration
+                              )(implicit ec: ExecutionContext) {
 
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
@@ -36,23 +35,16 @@ class ReportsService @Inject()(
     reportsRepository
       .findLatestReport(repository, branch)
 
-  def getLatestReportsForEachBranch(repository: Repository): Future[List[Report]] =
-    reportsRepository
-      .findUnresolvedWithProblems(repository)
-      .map(_.groupBy(_.branch).map {
-        case (_, reports) => reports.maxBy(_.timestamp)
-      }.toList)
-
   def getReport(reportId: ReportId): Future[Option[Report]] =
     reportsRepository.findByReportId(reportId)
 
   def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Report] = {
-    val reportSolvingProblems = Report.create(
-      repositoryName =  deleteBranchEvent.repositoryName,
-      repositoryUrl  =  deleteBranchEvent.repositoryUrl,
+    val reportSolvingProblems = Report.createFromMatchedResults(
+      repositoryName = deleteBranchEvent.repositoryName,
+      repositoryUrl  = deleteBranchEvent.repositoryUrl,
       commitId       = "n/a (branch was deleted)",
-      authorName     =  deleteBranchEvent.authorName,
-      branch         =  deleteBranchEvent.branchRef,
+      authorName     = deleteBranchEvent.authorName,
+      branch         = deleteBranchEvent.branchRef,
       results        = Nil,
     )
     for {
@@ -63,11 +55,4 @@ class ReportsService @Inject()(
   def saveReport(report: Report): Future[Unit] =
     reportsRepository.saveReport(report)
 
-}
-
-object ReportsService {
-  final case class ClearingReportsResult(
-    reportSolvingProblems: Report,
-    previousProblems: List[Report]
-  )
 }

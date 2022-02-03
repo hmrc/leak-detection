@@ -78,16 +78,13 @@ class ScanningService @Inject()(
           val processingResult =
             for {
               results <- Future { regexMatchingEngine.run(dir) }
-              now = Instant.now
-              report = Report.create(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
-              // TODO: move this somewhere else
-              leaks  = results.map(r => Leak(repository.asString, branch.asString, now, reportId = report.id, ruleId = r.ruleId, description = r.description, filePath = r.filePath, scope = r.scope, lineNumber = r.lineNumber,
-                urlToSource = s"$repositoryUrl/blame/$commitId${r.filePath}#L${r.lineNumber}", lineText = r.lineText, matches = r.matches, priority = r.priority))
-              _ <- executeIfNotDryRun(reportsService.saveReport(report))
-              _ <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
-              _ <- executeIfNotDryRun(alertingService.alert(report))
-              _ <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
-              _ <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir, isPrivate))
+              report   = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
+              leaks    = Leak.createFromMatchedResults(report, results)
+              _       <- executeIfNotDryRun(reportsService.saveReport(report))
+              _       <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
+              _       <- executeIfNotDryRun(alertingService.alert(report))
+              _       <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
+              _       <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir, isPrivate))
             } yield report
 
           processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
