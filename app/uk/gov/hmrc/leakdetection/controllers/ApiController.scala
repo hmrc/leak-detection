@@ -19,14 +19,17 @@ package uk.gov.hmrc.leakdetection.controllers
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService}
+import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, SummaryService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 @Singleton
-class ApiController @Inject()(reportsService: ReportsService, leaksService: LeaksService, cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
+class ApiController @Inject()(reportsService: ReportsService,
+                              leaksService: LeaksService,
+                              summaryService: SummaryService,
+                              cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
 
   private implicit val rptf = Report.apiFormat
   private implicit val rsf = Summary.apiFormat
@@ -36,15 +39,15 @@ class ApiController @Inject()(reportsService: ReportsService, leaksService: Leak
     leaksService
       .getLeaks(
         repoName = request.getQueryString("repository"),
-        branch   = request.getQueryString("branch"),
-        ruleId   = request.getQueryString("rule"))
+        branch = request.getQueryString("branch"),
+        ruleId = request.getQueryString("rule"))
       .map(r => Ok(Json.toJson(r)))
   }
 
-  def leaksSummary(): Action[AnyContent] = Action.async { implicit request =>
-    leaksService
+  def summary(): Action[AnyContent] = Action.async { implicit request =>
+    summaryService
       .getSummaries(
-        ruleId   = request.getQueryString("rule"),
+        ruleId = request.getQueryString("rule"),
         repoName = request.getQueryString("repository"),
         teamName = request.getQueryString("team"))
       .map(r => Ok(Json.toJson(r)))
