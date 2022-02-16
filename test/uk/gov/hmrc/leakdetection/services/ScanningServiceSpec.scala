@@ -19,6 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
 import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
+import org.mockito.captor.ArgCaptor
 import org.mongodb.scala.bson.BsonDocument
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -250,6 +251,23 @@ class ScanningServiceSpec
 
       verifyZeroInteractions(reportsService, alertingService, repoVisiblityChecker)
     }
+
+    "write draft rules to the draft service, not trigger any alerts" in new TestSetup {
+      override val privateRules = List(rules.draftRule)
+      val argCap = ArgCaptor[Report]
+
+      when(draftService.saveReport(any)).thenReturn(Future.unit)
+
+      val report = generateReport
+
+      report.totalLeaks shouldBe 0
+
+      verify(draftService, times(1)).saveReport(argCap.capture)
+      val draftReport = argCap.value
+      draftReport.totalLeaks shouldBe 1
+      draftReport.rulesViolated.get(rules.draftRule.id) should contain (1)
+    }
+
   }
 
   "The service" should {
@@ -408,6 +426,14 @@ class ScanningServiceSpec
           ignoredFiles = List("/application.conf", "/test-application.conf")
         )
 
+      val draftRule =
+        Rule(
+          id           = "draft-rule",
+          scope        = "fileContent",
+          regex        = """((foo).*)""",
+          description  = "detects the word foo in any file",
+          draft        = true
+        )
     }
 
     def relativePath(file: File) =
@@ -479,11 +505,14 @@ class ScanningServiceSpec
     private val githubService = mock[GithubService]
     when(githubService.getDefaultBranchName(Repository(any))(any, any)).thenReturn(Future.successful(Branch.main))
 
+    val draftService = mock[DraftReportsService]
+
     lazy val scanningService =
       new ScanningService(
         artifactService,
         configLoader,
         reportsService,
+        draftService,
         leaksService,
         alertingService,
         queue,
