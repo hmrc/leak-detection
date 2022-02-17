@@ -22,15 +22,15 @@ import uk.gov.hmrc.leakdetection.config.Rule
 
 import java.time.Instant
 
-case class Summary(rules: Seq[Rule], repositorySummary: Seq[RepositorySummary])
+case class Summary(rule: Rule, repositorySummary: Seq[RepositorySummary])
 
 object Summary {
   val apiFormat = {
     implicit val rf = Rule.format
-    implicit val vsf = RepositorySummary.format
+    implicit val rsf = RepositorySummary.format
     (
-      (__ \ "rules").format[Seq[Rule]]
-        ~ (__ \ "repositories").format[Seq[RepositorySummary]]
+      (__ \ "rule").format[Rule]
+        ~ (__ \ "leaks").format[Seq[RepositorySummary]]
       ) (Summary.apply, unlift(Summary.unapply))
   }
 }
@@ -55,7 +55,7 @@ case class BranchSummary(
                           scannedAt: Instant,
                           warningCount: Int,
                           unresolvedCount: Int,
-                          rulesViolated: Map[String, Int]
+                          rulesViolated: Option[Map[String, Int]] = None
                         )
 
 object BranchSummary {

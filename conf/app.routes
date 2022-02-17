@@ -6,9 +6,9 @@ GET        /api/repository                            @uk.gov.hmrc.leakdetection
 GET        /api/report/:id                            @uk.gov.hmrc.leakdetection.controllers.ApiController.report(id: ReportId)
 GET        /api/report/:id/leaks                      @uk.gov.hmrc.leakdetection.controllers.ApiController.reportLeaks(id: ReportId)
 GET        /api/leaks                                 @uk.gov.hmrc.leakdetection.controllers.ApiController.leaks
-GET        /api/summary                               @uk.gov.hmrc.leakdetection.controllers.ApiController.summary
 GET        /api/:repository/:branch/report            @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReport(repository: Repository, branch: Branch)
-
+GET        /api/rules/summary                         @uk.gov.hmrc.leakdetection.controllers.ApiController.ruleSummary
+GET        /api/repositories/summary                  @uk.gov.hmrc.leakdetection.controllers.ApiController.repositorySummary
 
 # Webhooks
 POST       /validate                                    @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook

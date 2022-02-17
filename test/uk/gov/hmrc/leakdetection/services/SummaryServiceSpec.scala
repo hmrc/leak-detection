@@ -61,82 +61,121 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
   "summary service" should {
     val timestamp = Instant.now.minus(2, HOURS)
-    "generate summaries by repository, branch and rule" should {
+
+    "generate rule summaries by rule, repository and branch" should {
       when(ruleService.getAllRules()).thenReturn(Seq(
         aRule.copy(id = "rule-1"),
         aRule.copy(id = "rule-2"),
         aRule.copy(id = "rule-3")
       ))
+      "include all leaks when no filters applied" in {
+        givenSomeLeaks(timestamp)
+        givenSomeWarnings(timestamp)
 
+        val results = service.getRuleSummaries(None, None, None).futureValue
+
+        results shouldBe Seq(
+          Summary(aRule.copy(id = "rule-1"), Seq(
+            RepositorySummary("repo1", timestamp, timestamp, 2, 1, Seq(
+              BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1)
+            )),
+            RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, Seq(
+              BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 1),
+              BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1)
+            ))
+          )),
+          Summary(aRule.copy(id = "rule-2"), Seq(
+            RepositorySummary("repo1", timestamp, timestamp, 2, 1, Seq(
+              BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1)
+            ))
+          )),
+          Summary(aRule.copy(id = "rule-3"), Seq())
+        )
+      }
+
+      "only include leaks associated the team if teamName is provided" in {
+        givenSomeLeaks(timestamp)
+        givenSomeWarnings(timestamp)
+
+        when(teamsAndRepositoriesConnector.team(mockEq("team1")))
+          .thenReturn(Future.successful(Option(Team("team1", None, None, None, Some(Map("Service" -> Seq("repo1")))))))
+
+        when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
+
+        val results = service.getRuleSummaries(None, None, Some("team1")).futureValue
+
+        results shouldBe Seq(
+          Summary(aRule.copy(id = "rule-1"), Seq(
+            RepositorySummary("repo1", timestamp, timestamp, 2, 1, Seq(BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1))))
+          ),
+          Summary(aRule.copy(id = "rule-2"), Seq(
+            RepositorySummary("repo1", timestamp, timestamp, 2, 1, Seq(
+              BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1)
+            ))
+          )),
+          Summary(aRule.copy(id = "rule-3"), Seq())
+        )
+      }
+    }
+
+    "generate repository summaries by repository, branch and rule" should {
       "include details when just leaks exist" in {
         when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
         givenSomeLeaks(timestamp)
 
-        val results = service.getSummaries(None, None, None).futureValue
+        val results = service.getRepositorySummaries(None, None, None).futureValue
 
-        results shouldBe Summary(Seq(
-          aRule.copy(id = "rule-1"),
-          aRule.copy(id = "rule-2"),
-          aRule.copy(id = "rule-3")
-        ), Seq(
+        results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 0, 2, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, Map("rule-1" -> 1, "rule-2" -> 1))
+            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, Some(Map("rule-1" -> 1, "rule-2" -> 1)))
           )),
           RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 0, 2, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 0, 1, Map("rule-1" -> 1)),
-            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, Map("rule-1" -> 1))
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 0, 1, Some(Map("rule-1" -> 1))),
+            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, Some(Map("rule-1" -> 1)))
           ))
-        ))
+        )
       }
 
       "include details when just warnings exist" in {
         when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
         givenSomeWarnings(timestamp)
 
-        val results = service.getSummaries(None, None, None).futureValue
+        val results = service.getRepositorySummaries(None, None, None).futureValue
 
-        results shouldBe Summary(Seq(
-          aRule.copy(id = "rule-1"),
-          aRule.copy(id = "rule-2"),
-          aRule.copy(id = "rule-3")
-        ), Seq(
+        results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 0, Seq(
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, Map.empty)
+            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, Some(Map.empty))
           )),
           RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(3, HOURS), 1, 0, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 0, Map.empty)
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 0, Some(Map.empty))
           )),
           RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, Map.empty),
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, Map.empty)
+            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, Some(Map.empty)),
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, Some(Map.empty))
           ))
-        ))
+        )
       }
 
       "include all details when both leaks and warnings exist" in {
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
 
-        val results = service.getSummaries(None, None, None).futureValue
+        val results = service.getRepositorySummaries(None, None, None).futureValue
 
-        results shouldBe Summary(Seq(
-          aRule.copy(id = "rule-1"),
-          aRule.copy(id = "rule-2"),
-          aRule.copy(id = "rule-3")
-        ), Seq(
+        results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 2, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, Map("rule-1" -> 1, "rule-2" -> 1)),
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, Map.empty))
+            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, Some(Map("rule-1" -> 1, "rule-2" -> 1))),
+            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, Some(Map.empty)))
           ),
           RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 1, Map("rule-1" -> 1)),
-            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, Map("rule-1" -> 1))
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 1, Some(Map("rule-1" -> 1))),
+            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, Some(Map("rule-1" -> 1)))
           )),
           RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, Map.empty),
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, Map.empty)
+            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, Some(Map.empty)),
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, Some(Map.empty))
           ))
-        ))
+        )
       }
 
       "only include details associated to the team if teamName is provided" in {
@@ -148,18 +187,14 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
-        val results = service.getSummaries(None, None, Some("team1")).futureValue
+        val results = service.getRepositorySummaries(None, None, Some("team1")).futureValue
 
-        results shouldBe Summary(Seq(
-          aRule.copy(id = "rule-1"),
-          aRule.copy(id = "rule-2"),
-          aRule.copy(id = "rule-3")
-        ), Seq(
+        results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 2, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, Map("rule-1" -> 1, "rule-2" -> 1)),
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, Map.empty)
+            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, Some(Map("rule-1" -> 1, "rule-2" -> 1))),
+            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, Some(Map.empty))
           ))
-        ))
+        )
       }
     }
   }

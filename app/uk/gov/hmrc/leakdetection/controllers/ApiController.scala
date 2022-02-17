@@ -31,9 +31,10 @@ class ApiController @Inject()(reportsService: ReportsService,
                               summaryService: SummaryService,
                               cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
 
-  private implicit val rptf = Report.apiFormat
-  private implicit val rsf = Summary.apiFormat
+  private implicit val rf = Report.apiFormat
+  private implicit val sf = Summary.apiFormat
   private implicit val lf = Leak.apiFormat
+  private implicit val rsf = RepositorySummary.format
 
   def leaks(): Action[AnyContent] = Action.async { implicit request =>
     leaksService
@@ -44,9 +45,18 @@ class ApiController @Inject()(reportsService: ReportsService,
       .map(r => Ok(Json.toJson(r)))
   }
 
-  def summary(): Action[AnyContent] = Action.async { implicit request =>
+  def ruleSummary(): Action[AnyContent] = Action.async { implicit request =>
     summaryService
-      .getSummaries(
+      .getRuleSummaries(
+        ruleId = request.getQueryString("rule"),
+        repoName = request.getQueryString("repository"),
+        teamName = request.getQueryString("team"))
+      .map(r => Ok(Json.toJson(r)))
+  }
+
+  def repositorySummary(): Action[AnyContent] = Action.async { implicit request =>
+    summaryService
+      .getRepositorySummaries(
         ruleId = request.getQueryString("rule"),
         repoName = request.getQueryString("repository"),
         teamName = request.getQueryString("team"))
