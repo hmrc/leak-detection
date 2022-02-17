@@ -16,13 +16,12 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import java.io.File
-
 import ammonite.ops.{Path, tmp, write}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.RuleExemption
 
+import java.io.File
 import scala.util.Random
 
 class RulesExemptionParserSpec extends AnyWordSpec with Matchers {

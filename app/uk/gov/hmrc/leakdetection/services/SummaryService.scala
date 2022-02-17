@@ -46,7 +46,7 @@ class SummaryService @Inject()(ruleService: RuleService,
 
   def getSummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String]): Future[Summary] = {
     for {
-      leaks <- leaksService.getLeaks(ruleId, repoName, None)
+      leaks <- leaksService.getLeaks(repoName, None, ruleId)
       warnings <- warningsService.getWarnings(repoName, None)
       teamRepos <- getTeamRepos(teamName)
       filteredLeaks = filterLeaksByTeam(leaks, teamRepos)

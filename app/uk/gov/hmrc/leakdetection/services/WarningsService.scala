@@ -38,7 +38,6 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
   def getWarnings(repoName: Option[String], branch: Option[String]): Future[Seq[Warning]] =
     warningRepository.findBy(repoName, branch)
 
-
   def checkForWarnings(report: Report, dir: File, isPrivate: Boolean): Seq[Warning] = {
     Seq(
       repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, isPrivate),
@@ -48,7 +47,7 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
       .map(w => Warning(report.repoName, report.branch, report.timestamp, report.id, w.toString))
   }
 
-  def checkFileLevelExemptions(dir: File, isPrivate: Boolean): Option[WarningMessageType] = {
+  private def checkFileLevelExemptions(dir: File, isPrivate: Boolean): Option[WarningMessageType] = {
     val ruleSet = if (isPrivate) cfg.allRules.privateRules else cfg.allRules.publicRules
     val exemptions = RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
 

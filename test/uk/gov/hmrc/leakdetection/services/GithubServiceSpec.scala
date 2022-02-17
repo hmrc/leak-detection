@@ -20,8 +20,8 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import play.api.Configuration
-import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse, Upstream5xxResponse}
 import uk.gov.hmrc.http.test.{ExternalWireMockSupport, HttpClientSupport}
+import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse, Upstream5xxResponse}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.model.{Branch, Repository}
 

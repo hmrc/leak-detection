@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import java.time.Instant
 import org.mockito.{ArgumentCaptor, ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
@@ -24,11 +23,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
-import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
 
+import java.time.Instant
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -38,19 +37,6 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
   "The alerting service" should {
     "send alerts to both alert channel and team channel if leaks are in the report" in new Fixtures {
-
-      val results = Seq(
-        MatchedResult(
-          filePath    = "/README.md",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineNumber  = 2,
-          ruleId      = "no nulls allowed",
-          description = "uses nulls!",
-          lineText    = " var x = null",
-          matches     = List(Match(9, 13)),
-          priority    = Rule.Priority.High
-        )
-      )
 
       val report = Report(
         id        = ReportId.random,

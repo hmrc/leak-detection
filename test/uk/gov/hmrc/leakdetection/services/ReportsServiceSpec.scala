@@ -25,16 +25,12 @@ import org.scalatest.{BeforeAndAfterEach, GivenWhenThen}
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
-import uk.gov.hmrc.leakdetection.ModelFactory.{aLeak, aMatchedResult, aReport, aReportWithoutLeaks, few}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
-import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
-import uk.gov.hmrc.leakdetection.model.{Branch, DeleteBranchEvent, Report, ReportId, Repository}
-import uk.gov.hmrc.leakdetection.persistence.{LeakRepository, ReportsRepository}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, Report}
+import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
-import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 class ReportsServiceSpec
     extends AnyWordSpec
