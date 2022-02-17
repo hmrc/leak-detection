@@ -22,21 +22,32 @@ import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
 import java.time.Instant
 
+sealed trait WarningMessageType
+
+case object MissingRepositoryYamlFile extends WarningMessageType
+
+case object InvalidEntry extends WarningMessageType
+
+case object MissingEntry extends WarningMessageType
+
+case object ParseFailure extends WarningMessageType
+
+case object FileLevelExemptions extends WarningMessageType
+
 case class Warning(repoName: String,
                    branch: String,
                    timestamp: Instant,
                    reportId: ReportId,
-                   message: String)
+                   warningMessageType: String)
 
 object Warning {
-
   val apiFormat: OFormat[Warning] = {
     (
       (__ \ "repoName").format[String]
         ~ (__ \ "branch").format[String]
         ~ (__ \ "timestamp").format[Instant]
         ~ (__ \ "reportId").format[ReportId](ReportId.format)
-        ~ (__ \ "message").format[String]
+        ~ (__ \ "warningMessageType").format[String]
       ) (Warning.apply, unlift(Warning.unapply))
   }
 
@@ -46,7 +57,7 @@ object Warning {
         ~ (__ \ "branch").format[String]
         ~ (__ \ "timestamp").format[Instant](MongoJavatimeFormats.instantFormat)
         ~ (__ \ "reportId").format[ReportId](ReportId.format)
-        ~ (__ \ "message").format[String]
+        ~ (__ \ "warningMessageType").format[String]
       ) (Warning.apply, unlift(Warning.unapply))
   }
 }
