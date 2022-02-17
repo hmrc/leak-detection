@@ -19,15 +19,13 @@ package uk.gov.hmrc.leakdetection.services
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.BranchNotFound
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
 
-import java.io.File
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -42,7 +40,7 @@ class ScanningService @Inject()(
                                  alertingService:       AlertingService,
                                  githubRequestsQueue:   GithubRequestsQueueRepository,
                                  rescanRequestsQueue:   RescanRequestsQueueRepository,
-                                 repoVisibilityChecker: RepoVisiblityChecker,
+                                 warningsService:       WarningsService,
                                  githubService:         GithubService
 )(implicit ec: ExecutionContext) {
 
@@ -76,7 +74,6 @@ class ScanningService @Inject()(
           val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
           def executeIfNotDryRun(function: => Future[Unit]): Future[Unit] = if (!dryRun) function else Future.successful(Unit)
 
-
           val processingResult =
             for {
               matched           <- Future { regexMatchingEngine.run(dir) }
@@ -84,12 +81,13 @@ class ScanningService @Inject()(
               report             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
               draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts)
               leaks              = Leak.createFromMatchedResults(report, results)
+              warnings           = warningsService.checkForWarnings(report, dir, isPrivate)
               _                 <- if(draftReport.totalLeaks > 0) draftReportsService.saveReport(draftReport) else Future.unit
               _                 <- executeIfNotDryRun(reportsService.saveReport(report))
               _                 <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
+              _                 <- executeIfNotDryRun(warningsService.saveWarnings(repository, branch, warnings))
               _                 <- executeIfNotDryRun(alertingService.alert(report))
-              _                 <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
-              _                 <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir, isPrivate))
+              _                 <- executeIfNotDryRun(alertAboutWarnings(repository, branch, authorName, dir.getAbsolutePath, warnings))
             } yield report
 
           processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
@@ -99,49 +97,25 @@ class ScanningService @Inject()(
       case NonFatal(e) => Future.failed(e)
     }
 
-  private def alertAboutRepoVisibility(
-                                        repository: Repository,
-                                        branch:     Branch,
-                                        author:     String,
-                                        dir:        File,
-                                        isPrivate:  Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+  private def alertAboutWarnings(
+                                  repository: Repository,
+                                  branch: Branch,
+                                  author: String,
+                                  absolutePath: String,
+                                  warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] =
     githubService.getDefaultBranchName(repository) flatMap { defaultBranchName =>
       if (branch == defaultBranchName) {
-        if (!repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate)) {
-          logger.warn(
-            s"Incorrect configuration for repo ${repository.asString} on ${branch.asString} branch! File path: ${dir.getAbsolutePath}. Sending alert")
+
+        if (warnings.map(_.warningMessageType).intersect(Seq(MissingRepositoryYamlFile.toString, InvalidEntry.toString, MissingEntry.toString, ParseFailure.toString)).nonEmpty) {
+          logger.warn(s"Incorrect configuration for repo ${repository.asString} on ${branch.asString} branch! File path: $absolutePath. Sending alert")
           alertingService.alertAboutRepoVisibility(repository, author)
-        } else {
-          logger.info(s"repo: ${repository.asString}, branch: ${branch.asString}, dir: ${dir.getAbsolutePath}. No action needed")
-          Future.unit
         }
-      } else {
-        Future.unit
+        if (warnings.map(_.warningMessageType).contains(FileLevelExemptions.toString)) {
+          alertingService.alertAboutExemptionWarnings(repository, branch, author)
+        }
       }
+      Future.unit
     }
-
-  private def alertAboutExemptionWarnings(
-                                    repository: Repository,
-                                    branch:     Branch,
-                                    author:     String,
-                                    dir:        File,
-                                    isPrivate:  Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
-    githubService.getDefaultBranchName(repository) flatMap { defaultBranch =>
-    if (branch == defaultBranch) {
-      val ruleSet = if (isPrivate) cfg.allRules.privateRules else cfg.allRules.publicRules
-
-      val exemptions = RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
-
-      def isFileContentRule(ruleId: String): Boolean = ruleSet.filter(_.scope == Rule.Scope.FILE_CONTENT).exists(_.id == ruleId)
-
-      if(exemptions
-        .filter(e => isFileContentRule(e.ruleId))
-        .exists(_.text.isEmpty)) {
-          alertingService.alertAboutExemptionWarnings(repository, defaultBranch, author)
-      }
-    }
-    Future.unit
-  }
 
   def queueRequest(p: PayloadDetails): Future[Boolean] =
     githubRequestsQueue.pushNew(p).map(_ => true)

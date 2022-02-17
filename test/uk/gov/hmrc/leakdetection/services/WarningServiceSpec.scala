@@ -23,11 +23,13 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.persistence.WarningRepository
 import uk.gov.hmrc.mongo.test.MongoSupport
 
 import java.io.PrintWriter
 import java.nio.file.Files
 import java.time.Instant
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class WarningServiceSpec
   extends AnyWordSpec
@@ -42,7 +44,7 @@ class WarningServiceSpec
     "return warning if visibility check identified an issue" in new TestSetup {
       when(repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, true)).thenReturn(Some(MissingRepositoryYamlFile))
 
-      val results = warningsService.getWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), MissingRepositoryYamlFile.toString))
     }
@@ -50,7 +52,7 @@ class WarningServiceSpec
     "return no warnings if visibility checks passed" in new TestSetup {
       when(repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, true)).thenReturn(None)
 
-      val results = warningsService.getWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true)
 
       results shouldBe Seq.empty
     }
@@ -64,7 +66,7 @@ class WarningServiceSpec
         """.stripMargin
       }
 
-      val results = warningsService.getWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), FileLevelExemptions.toString))
     }
@@ -78,7 +80,7 @@ class WarningServiceSpec
         """.stripMargin
       }
 
-      val results = warningsService.getWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true)
 
       results shouldBe Seq.empty
     }
@@ -93,7 +95,7 @@ class WarningServiceSpec
         """.stripMargin
       }
 
-      val results = warningsService.getWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true)
 
       results shouldBe Seq.empty
     }
@@ -149,6 +151,8 @@ class WarningServiceSpec
     val repoVisibilityChecker = mock[RepoVisibilityChecker]
     when(repoVisibilityChecker.checkVisibilityDefinedCorrectly(any, any)).thenReturn(None)
 
-    val warningsService = new WarningsService(configLoader, repoVisibilityChecker)
+    val warningRepository = mock[WarningRepository]
+
+    val warningsService = new WarningsService(configLoader, repoVisibilityChecker, warningRepository)
   }
 }

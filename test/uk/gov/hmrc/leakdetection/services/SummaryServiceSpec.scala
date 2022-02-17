@@ -17,47 +17,47 @@
 package uk.gov.hmrc.leakdetection.services
 
 import org.mockito.ArgumentMatchers.{eq => mockEq}
+import org.mockito.ArgumentMatchersSugar.any
 import org.mockito.MockitoSugar
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.Rule.Scope
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.persistence.{LeakRepository, WarningRepository}
 import uk.gov.hmrc.leakdetection.scanner.Match
-import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit.HOURS
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar with DefaultPlayMongoRepositorySupport[Leak] {
+class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar with ScalaFutures {
 
-  val repository = new LeakRepository(mongoComponent)
-  val warningRepository = new WarningRepository(mongoComponent)
+  val leaksService = mock[LeaksService]
+  val warningsService = mock[WarningsService]
 
   lazy val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
   lazy val ruleService = mock[RuleService]
   lazy val ignoreListConfig = mock[IgnoreListConfig]
 
-  val service = new SummaryService(ruleService, repository, warningRepository, teamsAndRepositoriesConnector)
+  val service = new SummaryService(ruleService, leaksService, warningsService, teamsAndRepositoriesConnector)
 
-  def givenSomeLeaks(timestamp: Instant) = repository.collection.insertMany(
+  def givenSomeLeaks(timestamp: Instant) = when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(
     Seq(aLeak.copy(repoName = "repo1", ruleId = "rule-1", timestamp = timestamp),
       aLeak.copy(repoName = "repo1", ruleId = "rule-2", timestamp = timestamp),
       aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch1", timestamp = timestamp.minus(3, HOURS)),
       aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch2", timestamp = timestamp.minus(1, HOURS))
-    )).toFuture.futureValue
+    )))
 
-  def givenSomeWarnings(timestamp: Instant) = warningRepository.collection.insertMany(
+  def givenSomeWarnings(timestamp: Instant) = when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(
     Seq(aWarning.copy(repoName = "repo1", branch = "other", timestamp = timestamp),
       aWarning.copy(repoName = "repo1", branch = "other", timestamp = timestamp),
       aWarning.copy(repoName = "repo2", branch = "branch1", timestamp = timestamp.minus(3, HOURS)),
       aWarning.copy(repoName = "repo3", timestamp = timestamp),
       aWarning.copy(repoName = "repo3", branch = "branch1", timestamp = timestamp.minus(1, HOURS))
-    )).toFuture.futureValue
+    )))
 
   "summary service" should {
     val timestamp = Instant.now.minus(2, HOURS)
@@ -69,6 +69,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       ))
 
       "include details when just leaks exist" in {
+        when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
         givenSomeLeaks(timestamp)
 
         val results = service.getSummaries(None, None, None).futureValue
@@ -89,6 +90,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       }
 
       "include details when just warnings exist" in {
+        when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
         givenSomeWarnings(timestamp)
 
         val results = service.getSummaries(None, None, None).futureValue
@@ -111,7 +113,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         ))
       }
 
-      "include all details when both leaks and warnings exist and no filters applied" in {
+      "include all details when both leaks and warnings exist" in {
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
 
@@ -133,50 +135,6 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
           RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, Seq(
             BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, Map.empty),
             BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, Map.empty)
-          ))
-        ))
-      }
-
-      "only include leaks associated to the rule if ruleId is provided" in {
-        givenSomeLeaks(timestamp)
-        givenSomeWarnings(timestamp)
-
-        val results = service.getSummaries(Some("rule-1"), None, None).futureValue
-
-        results shouldBe Summary(Seq(
-          aRule.copy(id = "rule-1"),
-          aRule.copy(id = "rule-2"),
-          aRule.copy(id = "rule-3")
-        ), Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 1, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1, Map("rule-1" -> 1)),
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, Map.empty)
-          )),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 1, Map("rule-1" -> 1)),
-            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, Map("rule-1" -> 1))
-          )),
-          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, Map.empty),
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, Map.empty)
-          ))
-        )
-        )
-      }
-
-      "only include details associated to the repository if repoName is provided" in {
-        givenSomeLeaks(timestamp)
-        givenSomeWarnings(timestamp)
-
-        val results = service.getSummaries(None, Some("repo1"), None).futureValue
-
-        results shouldBe Summary(Seq(aRule.copy(id = "rule-1"),
-          aRule.copy(id = "rule-2"),
-          aRule.copy(id = "rule-3")
-        ), Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 1, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1, Map("rule-1" -> 1)),
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, Map.empty)
           ))
         ))
       }

@@ -19,16 +19,27 @@ package uk.gov.hmrc.leakdetection.services
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.persistence.WarningRepository
 
 import java.io.File
 import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 
 class WarningsService @Inject()(configLoader: ConfigLoader,
-                                repoVisibilityChecker: RepoVisibilityChecker) {
+                                repoVisibilityChecker: RepoVisibilityChecker,
+                                warningRepository: WarningRepository
+                               )(implicit ec: ExecutionContext) {
 
   import configLoader.cfg
 
-  def getWarnings(report: Report, dir: File, isPrivate: Boolean): Seq[Warning] = {
+  def saveWarnings(repository: Repository, branch: Branch, warnings: Seq[Warning]): Future[Unit] =
+    warningRepository.update(repository.asString, branch.asString, warnings).map(_ => ())
+
+  def getWarnings(repoName: Option[String], branch: Option[String]): Future[Seq[Warning]] =
+    warningRepository.findBy(repoName, branch)
+
+
+  def checkForWarnings(report: Report, dir: File, isPrivate: Boolean): Seq[Warning] = {
     Seq(
       repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, isPrivate),
       checkFileLevelExemptions(dir, isPrivate)

@@ -19,13 +19,12 @@ package uk.gov.hmrc.leakdetection.services
 import com.google.inject.Inject
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.persistence.{LeakRepository, WarningRepository}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class SummaryService @Inject()(ruleService: RuleService,
-                               leakRepository: LeakRepository,
-                               warningRepository: WarningRepository,
+                               leaksService: LeaksService,
+                               warningsService: WarningsService,
                                teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector)
                               (implicit ec: ExecutionContext) {
 
@@ -47,17 +46,16 @@ class SummaryService @Inject()(ruleService: RuleService,
 
   def getSummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String]): Future[Summary] = {
     for {
-      leaks <- leakRepository.findLeaksBy(ruleId = ruleId, repoName = repoName)
-      warnings <- warningRepository.findBy(repoName = repoName)
+      leaks <- leaksService.getLeaks(ruleId, repoName, None)
+      warnings <- warningsService.getWarnings(repoName, None)
       teamRepos <- getTeamRepos(teamName)
       filteredLeaks = filterLeaksByTeam(leaks, teamRepos)
       filteredWarnings = filterWarningsByTeam(warnings, teamRepos)
+      allRepositories = filteredLeaks.map(_.repoName) ++ filteredWarnings.map(_.repoName)
       rules = ruleService.getAllRules()
     } yield {
-      val allRepositories = filteredLeaks.map(_.repoName) ++ filteredWarnings.map(_.repoName)
       val repositoryDetails = allRepositories.distinct.map(r =>
         (r, filteredLeaks.filter(l => l.repoName == r), filteredWarnings.filter(w => w.repoName == r)))
-
       val repositorySummaries: Seq[RepositorySummary] = repositoryDetails.map { case (repoName, repoLeaks, repoWarnings) =>
         RepositorySummary(
           repoName,
