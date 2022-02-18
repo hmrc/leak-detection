@@ -22,3 +22,4 @@ GET        /admin/stats                                 @uk.gov.hmrc.leakdetecti
 GET        /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findAllDraftViolations()
 DELETE     /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.clearAllDrafts()
 GET        /admin/draft/:ruleId                         @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findAllDraftViolationsForRule(ruleId)
+POST       /admin/rescan                                @uk.gov.hmrc.leakdetection.controllers.AdminController.rescan

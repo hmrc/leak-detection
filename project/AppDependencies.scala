@@ -15,7 +15,7 @@ object AppDependencies {
     "org.zeroturnaround"    %  "zt-zip"                            % "1.14",
     "commons-lang"          %  "commons-lang"                      % "2.6",
     "commons-io"            %  "commons-io"                        % "2.5",
-    "org.typelevel"         %% "cats-core"                         % "0.9.0",
+    "org.typelevel"         %% "cats-core"                         % "2.6.1",
     "org.yaml"              %  "snakeyaml"                         % "1.17",
     "com.lihaoyi"           %% "pprint"                            % "0.5.3",
     "com.lihaoyi"           %% "ammonite-ops"                      % "1.0.3"

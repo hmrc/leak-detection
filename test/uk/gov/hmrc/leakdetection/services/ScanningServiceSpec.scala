@@ -30,7 +30,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
+import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus
@@ -281,6 +281,17 @@ class ScanningServiceSpec
       queue.collection.countDocuments().toFuture.futureValue shouldBe 0
     }
 
+    "process one rescan request per scanAll cycle" in new TestSetup {
+      scanningService.queueRescanRequest(request).futureValue
+      scanningService.queueRescanRequest(request.copy(repositoryName = "another-repo")).futureValue
+      queue.collection.countDocuments().toFuture.futureValue shouldBe 0
+      rescanQueue.collection.countDocuments().toFuture.futureValue shouldBe 2
+
+      scanningService.scanAll.futureValue shouldBe 1
+
+      rescanQueue.collection.countDocuments().toFuture.futureValue shouldBe 1
+    }
+
     "recover from exceptions expanding the zip and mark the item as failed" in new TestSetup {
       scanningService.queueRequest(request).futureValue
       queue.collection.countDocuments().toFuture.futureValue shouldBe 1
@@ -465,6 +476,13 @@ class ScanningServiceSpec
 
     queue.collection.deleteMany(BsonDocument()).toFuture.futureValue
 
+    val rescanQueue = new RescanRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
+      override val inProgressRetryAfter: Duration = Duration.ofHours(1)
+      override lazy val retryIntervalMillis: Long      = 10000L
+    }
+
+    rescanQueue.collection.deleteMany(BsonDocument()).toFuture.futureValue
+
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
     val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
 
@@ -516,6 +534,7 @@ class ScanningServiceSpec
         leaksService,
         alertingService,
         queue,
+        rescanQueue,
         repoVisiblityChecker,
         githubService)
   }

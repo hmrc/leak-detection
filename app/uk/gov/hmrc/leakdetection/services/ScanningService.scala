@@ -22,13 +22,12 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
+import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.BranchNotFound
-import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
+import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
 
 import java.io.File
-import java.time.Instant
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -41,7 +40,8 @@ class ScanningService @Inject()(
                                  draftReportsService:   DraftReportsService,
                                  leaksService:          LeaksService,
                                  alertingService:       AlertingService,
-                                 githubRequestsQueue: GithubRequestsQueueRepository,
+                                 githubRequestsQueue:   GithubRequestsQueueRepository,
+                                 rescanRequestsQueue:   RescanRequestsQueueRepository,
                                  repoVisibilityChecker: RepoVisiblityChecker,
                                  githubService:         GithubService
 )(implicit ec: ExecutionContext) {
@@ -146,17 +146,30 @@ class ScanningService @Inject()(
   def queueRequest(p: PayloadDetails): Future[Boolean] =
     githubRequestsQueue.pushNew(p).map(_ => true)
 
+  def queueRescanRequest(p: PayloadDetails): Future[Boolean] =
+    rescanRequestsQueue.pushNew(p).map(_ => true)
+
   def scanAll(implicit ec: ExecutionContext): Future[Int] = {
     def processNext(acc: Int): Future[Int] =
       githubRequestsQueue.pullOutstanding.flatMap {
         case None     => Future.successful(acc)
-        case Some(wi) => scanOneItemAndMarkAsComplete(wi).flatMap(res => processNext(acc + res.size))
+        case Some(wi) => scanOneItemAndMarkAsComplete(githubRequestsQueue)(wi, dryRun = false).flatMap(res => processNext(acc + res.size))
       }
 
-    processNext(0)
+    for {
+      scanned   <- processNext(0)
+      rescanned <- rescanOne // limit rescanning to a single repo per cycle
+    } yield  scanned + rescanned
   }
 
-  def scanOneItemAndMarkAsComplete(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
+  def rescanOne(implicit ec: ExecutionContext): Future[Int] = {
+    rescanRequestsQueue.pullOutstanding.flatMap {
+      case None     => Future.successful(0)
+      case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi, dryRun = true).map(_.size)
+    }
+  }
+
+  def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails], dryRun: Boolean): Future[Option[Report]] = {
     val request     = workItem.item
     implicit val hc = HeaderCarrier()
     scanRepository(
@@ -167,12 +180,13 @@ class ScanningService @Inject()(
       commitId      = request.commitId,
       authorName    = request.authorName,
       archiveUrl    = request.archiveUrl,
-      dryRun        = false
-    ).flatMap(report => githubRequestsQueue.completeAndDelete(workItem.id).map(_ => Some(report)))
+      dryRun        = dryRun
+    ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
       .recoverWith {
         case NonFatal(e) =>
           logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
-          githubRequestsQueue.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
+          repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
       }
   }
+
 }
