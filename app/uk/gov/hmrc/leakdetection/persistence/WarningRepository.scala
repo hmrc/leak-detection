@@ -55,7 +55,7 @@ class WarningRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: E
               ): Future[Seq[Warning]] = {
 
       val repoFilter: Option[Bson] = repoName.map(Filters.eq("repoName", _))
-      val branchFilter: Option[Bson] = repoName.flatMap(_ => branch.map(Filters.eq("branch", _))) // only active when repoName is also set
+      val branchFilter: Option[Bson] = repoName.flatMap(_ => branch.map(Filters.eq("branch", _)))
 
       (Seq(repoFilter, branchFilter).flatten match {
         case Nil => collection.find()

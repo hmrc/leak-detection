@@ -33,13 +33,8 @@ class ApiController @Inject()(reportsService: ReportsService,
                               ruleService: RuleService,
                               cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
 
-  private implicit val rf = Report.apiFormat
-  private implicit val sf = Summary.apiFormat
-  private implicit val lf = Leak.apiFormat
-  private implicit val wf = Warning.apiFormat
-  private implicit val rsf = RepositorySummary.format
-
   def leaks(): Action[AnyContent] = Action.async { implicit request =>
+    implicit val lf = Leak.apiFormat
     leaksService
       .getLeaks(
         repoName = request.getQueryString("repository"),
@@ -53,6 +48,7 @@ class ApiController @Inject()(reportsService: ReportsService,
   }
 
   def ruleSummary(): Action[AnyContent] = Action.async { implicit request =>
+    implicit val sf = Summary.apiFormat
     summaryService
       .getRuleSummaries(
         ruleId = request.getQueryString("rule"),
@@ -62,6 +58,7 @@ class ApiController @Inject()(reportsService: ReportsService,
   }
 
   def repositorySummary(): Action[AnyContent] = Action.async { implicit request =>
+    implicit val rsf = RepositorySummary.format
     summaryService
       .getRepositorySummaries(
         ruleId = request.getQueryString("rule"),
@@ -71,18 +68,21 @@ class ApiController @Inject()(reportsService: ReportsService,
   }
 
   def reportLeaks(reportId: ReportId): Action[AnyContent] = Action.async { implicit request =>
+    implicit val lf = Leak.apiFormat
     leaksService
       .getLeaksForReport(reportId)
       .map(l => Ok(Json.toJson(l)))
   }
 
   def reportWarnings(reportId: ReportId): Action[AnyContent] = Action.async { implicit request =>
+    implicit val wf = Warning.apiFormat
     warningsService
       .getWarningsForReport(reportId)
       .map(w => Ok(Json.toJson(w)))
   }
 
   def latestReport(repository: Repository, branch: Branch): Action[AnyContent] = Action.async { implicit request =>
+    implicit val rf = Report.apiFormat
     reportsService
       .getLatestReport(repository, branch)
       .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
@@ -95,9 +95,9 @@ class ApiController @Inject()(reportsService: ReportsService,
   }
 
   def report(reportId: ReportId): Action[AnyContent] = Action.async { implicit request =>
+    implicit val rf = Report.apiFormat
     reportsService
       .getReport(reportId)
       .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
   }
-
 }
