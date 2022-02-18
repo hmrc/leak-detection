@@ -38,6 +38,11 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
   def getWarnings(repoName: Option[String], branch: Option[String]): Future[Seq[Warning]] =
     warningRepository.findBy(repoName, branch)
 
+  def getWarningsForReport(reportId: ReportId): Future[Seq[Warning]] =
+    warningRepository.findForReport(reportId.value).map(_.map(warning =>
+warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessageType).getOrElse(warning.warningMessageType)
+    )))
+
   def checkForWarnings(report: Report, dir: File, isPrivate: Boolean): Seq[Warning] = {
     Seq(
       repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, isPrivate),

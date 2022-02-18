@@ -47,7 +47,7 @@ object Warning {
         ~ (__ \ "branch").format[String]
         ~ (__ \ "timestamp").format[Instant]
         ~ (__ \ "reportId").format[ReportId](ReportId.format)
-        ~ (__ \ "warningMessageType").format[String]
+        ~ (__ \ "message").format[String]
       ) (Warning.apply, unlift(Warning.unapply))
   }
 

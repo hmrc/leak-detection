@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.config
 
-import javax.inject.Inject
-
 import com.google.inject.ImplementedBy
 import play.api.Configuration
 import play.api.libs.json.Json
 import pureconfig.syntax._
 import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
+
+import javax.inject.Inject
 
 @ImplementedBy(classOf[PlayConfigLoader])
 trait ConfigLoader {
@@ -42,7 +42,8 @@ final case class Cfg(
   githubSecrets: GithubSecrets,
   github: Github,
   maxLineLength: Int,
-  clearingCollectionEnabled: Boolean
+  clearingCollectionEnabled: Boolean,
+  warningMessages: Map[String, String]
 )
 
 final case class AllRules(
