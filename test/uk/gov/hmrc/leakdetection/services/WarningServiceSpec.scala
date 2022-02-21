@@ -141,7 +141,8 @@ class WarningServiceSpec
         githubSecrets = GithubSecrets("", ""),
         maxLineLength = Int.MaxValue,
         clearingCollectionEnabled = false,
-        github = Github("", "")
+        github = Github("", ""),
+        warningMessages = Map.empty
       )
 
     lazy val configLoader = new ConfigLoader {

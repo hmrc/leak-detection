@@ -59,7 +59,9 @@ class ReportsServiceSpec
     "allRules.publicRules"                   -> List(),
     "leakResolutionUrl"                      -> "PLACEHOLDER",
     "maxLineLength"                          -> 2147483647,
-    "clearingCollectionEnabled"              -> false)
+    "clearingCollectionEnabled"              -> false,
+    "warningMessages"                           -> Map.empty
+  )
   val configLoader: ConfigLoader = new PlayConfigLoader(configuration)
   val reportsService = new ReportsService(repository, configuration)
 
