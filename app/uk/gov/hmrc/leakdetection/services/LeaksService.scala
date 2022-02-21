@@ -17,8 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, IgnoreListConfig}
-
+import uk.gov.hmrc.leakdetection.config.IgnoreListConfig
 import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.LeakRepository

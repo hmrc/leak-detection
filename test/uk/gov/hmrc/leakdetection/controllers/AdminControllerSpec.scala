@@ -26,7 +26,7 @@ import play.api.test.FakeRequest
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
-import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, ScanningService}
+import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, RescanService, ScanningService}
 
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
@@ -108,9 +108,10 @@ class AdminControllerSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     val reportsService  = mock[ReportsService]
     val leaksService    = mock[LeaksService]
     val httpClient      = mock[HttpClient]
+    val rescanService   = mock[RescanService]
 
     val controller =
-      new AdminController(configLoader, scanningService, leaksService, httpClient, stubControllerComponents())(ExecutionContext.global)
+      new AdminController(configLoader, scanningService, leaksService, rescanService, httpClient, stubControllerComponents())(ExecutionContext.global)
   }
 
 }

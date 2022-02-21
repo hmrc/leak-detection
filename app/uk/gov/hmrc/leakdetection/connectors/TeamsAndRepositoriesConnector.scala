@@ -40,6 +40,16 @@ object Team {
   implicit val format = Json.format[Team]
 }
 
+case class RepositoryInfo(
+  name: String,
+  isPrivate: Boolean,
+  defaultBranch: String
+)
+
+object RepositoryInfo {
+  implicit val format = Json.format[RepositoryInfo]
+}
+
 @Singleton class TeamsAndRepositoriesConnector @Inject()(http: HttpClient, servicesConfig: ServicesConfig)(implicit val ec: ExecutionContext) {
 
   lazy private val baseUrl = servicesConfig.baseUrl("teams-and-repositories")
@@ -52,6 +62,11 @@ object Team {
   def team(teamName: String): Future[Option[Team]] = {
     implicit val hc = HeaderCarrier()
     http.GET[Option[Team]](url"${baseUrl}/api/teams/${teamName}?includeRepos=true")
+  }
+
+  def repo(repoName: String): Future[Option[RepositoryInfo]] = {
+    implicit val hc = HeaderCarrier()
+    http.GET[Option[RepositoryInfo]](url"${baseUrl}/api/repositories/$repoName")
   }
 
 }

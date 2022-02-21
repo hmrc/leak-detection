@@ -23,17 +23,18 @@ import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
-import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, ScanningService}
+import uk.gov.hmrc.leakdetection.services.{LeaksService, RescanService, ScanningService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class AdminController @Inject()(
                                  configLoader:    ConfigLoader,
                                  scanningService: ScanningService,
                                  leaksService:    LeaksService,
+                                 rescanService:   RescanService,
                                  httpClient:      HttpClient,
                                  cc:              ControllerComponents
                                )(implicit ec: ExecutionContext) extends BackendController(cc) {
@@ -63,6 +64,13 @@ class AdminController @Inject()(
         implicit val rf = Report.apiFormat
         Ok(Json.toJson(report))
       }
+  }
+
+  def rescan() = Action.async(parse.json) { implicit request =>
+    request.body.validate[List[String]].fold(
+      _     => Future.successful(BadRequest("Invalid list of repos")),
+      repos => rescanService.triggerRescan(repos).map(_ => Accepted(""))
+    )
   }
 
   def checkGithubRateLimits = Action.async { implicit request =>

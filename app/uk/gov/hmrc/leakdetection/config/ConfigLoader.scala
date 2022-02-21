@@ -51,13 +51,14 @@ final case class AllRules(
 )
 
 final case class Rule(
-  id: String,
-  scope: String,
-  regex: String,
-  description: String,
-  ignoredFiles: List[String]      = Nil,
+  id:                String,
+  scope:             String,
+  regex:             String,
+  description:       String,
+  ignoredFiles:      List[String] = Nil,
   ignoredExtensions: List[String] = Nil,
-  priority: String = Rule.Priority.Low
+  priority:          String       = Rule.Priority.Low,
+  draft:             Boolean      = false
 )
 
 object Rule {
@@ -67,9 +68,9 @@ object Rule {
     val FILE_NAME    = "fileName"
   }
   object Priority {
-    val Low = "low"
+    val Low    = "low"
     val Medium = "medium"
-    val High = "high"
+    val High   = "high"
   }
 }
 

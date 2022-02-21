@@ -22,27 +22,28 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
+import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
 import uk.gov.hmrc.leakdetection.services.ArtifactService.BranchNotFound
-import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
+import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
 
 import java.io.File
-import java.time.Instant
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 @Singleton
 class ScanningService @Inject()(
-  artifactService: ArtifactService,
-  configLoader: ConfigLoader,
-  reportsService: ReportsService,
-  leaksService: LeaksService,
-  alertingService: AlertingService,
-  githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  repoVisibilityChecker: RepoVisiblityChecker,
-  githubService: GithubService
+                                 artifactService:       ArtifactService,
+                                 configLoader:          ConfigLoader,
+                                 reportsService:        ReportsService,
+                                 draftReportsService:   DraftReportsService,
+                                 leaksService:          LeaksService,
+                                 alertingService:       AlertingService,
+                                 githubRequestsQueue:   GithubRequestsQueueRepository,
+                                 rescanRequestsQueue:   RescanRequestsQueueRepository,
+                                 repoVisibilityChecker: RepoVisiblityChecker,
+                                 githubService:         GithubService
 )(implicit ec: ExecutionContext) {
 
   import configLoader.cfg
@@ -53,15 +54,15 @@ class ScanningService @Inject()(
   lazy val publicMatchingEngine  = new RegexMatchingEngine(cfg.allRules.publicRules, cfg.maxLineLength)
 
   def scanRepository(
-    repository: Repository,
-    branch: Branch,
-    isPrivate: Boolean,
+    repository:    Repository,
+    branch:        Branch,
+    isPrivate:     Boolean,
     repositoryUrl: String,
-    commitId: String,
-    authorName: String,
-    archiveUrl: String,
-    dryRun: Boolean)
-                    (implicit hc: HeaderCarrier): Future[Report] =
+    commitId:      String,
+    authorName:    String,
+    archiveUrl:    String,
+    dryRun:        Boolean
+  )(implicit hc: HeaderCarrier): Future[Report] =
     try {
       artifactService.getZip(cfg.githubSecrets.personalAccessToken, archiveUrl, branch).flatMap {
         case Left(BranchNotFound(_)) =>
@@ -75,16 +76,20 @@ class ScanningService @Inject()(
           val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
           def executeIfNotDryRun(function: => Future[Unit]): Future[Unit] = if (!dryRun) function else Future.successful(Unit)
 
+
           val processingResult =
             for {
-              results <- Future { regexMatchingEngine.run(dir) }
-              report   = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
-              leaks    = Leak.createFromMatchedResults(report, results)
-              _       <- executeIfNotDryRun(reportsService.saveReport(report))
-              _       <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
-              _       <- executeIfNotDryRun(alertingService.alert(report))
-              _       <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
-              _       <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir, isPrivate))
+              matched           <- Future { regexMatchingEngine.run(dir) }
+              (drafts, results)  = matched.partition(_.draft)
+              report             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
+              draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts)
+              leaks              = Leak.createFromMatchedResults(report, results)
+              _                 <- if(draftReport.totalLeaks > 0) draftReportsService.saveReport(draftReport) else Future.unit
+              _                 <- executeIfNotDryRun(reportsService.saveReport(report))
+              _                 <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
+              _                 <- executeIfNotDryRun(alertingService.alert(report))
+              _                 <- executeIfNotDryRun(alertAboutRepoVisibility(repository, branch, authorName, dir, isPrivate))
+              _                 <- executeIfNotDryRun(alertAboutExemptionWarnings(repository, branch, authorName, dir, isPrivate))
             } yield report
 
           processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
@@ -96,10 +101,10 @@ class ScanningService @Inject()(
 
   private def alertAboutRepoVisibility(
                                         repository: Repository,
-                                        branch: Branch,
-                                        author: String,
-                                        dir: File,
-                                        isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+                                        branch:     Branch,
+                                        author:     String,
+                                        dir:        File,
+                                        isPrivate:  Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
     githubService.getDefaultBranchName(repository) flatMap { defaultBranchName =>
       if (branch == defaultBranchName) {
         if (!repoVisibilityChecker.hasCorrectVisibilityDefined(dir, isPrivate)) {
@@ -117,10 +122,10 @@ class ScanningService @Inject()(
 
   private def alertAboutExemptionWarnings(
                                     repository: Repository,
-                                    branch: Branch,
-                                    author: String,
-                                    dir: File,
-                                    isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+                                    branch:     Branch,
+                                    author:     String,
+                                    dir:        File,
+                                    isPrivate:  Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
     githubService.getDefaultBranchName(repository) flatMap { defaultBranch =>
     if (branch == defaultBranch) {
       val ruleSet = if (isPrivate) cfg.allRules.privateRules else cfg.allRules.publicRules
@@ -139,19 +144,32 @@ class ScanningService @Inject()(
   }
 
   def queueRequest(p: PayloadDetails): Future[Boolean] =
-    githubRequestsQueueRepository.pushNew(p).map(_ => true)
+    githubRequestsQueue.pushNew(p).map(_ => true)
+
+  def queueRescanRequest(p: PayloadDetails): Future[Boolean] =
+    rescanRequestsQueue.pushNew(p).map(_ => true)
 
   def scanAll(implicit ec: ExecutionContext): Future[Int] = {
     def processNext(acc: Int): Future[Int] =
-      githubRequestsQueueRepository.pullOutstanding.flatMap {
+      githubRequestsQueue.pullOutstanding.flatMap {
         case None     => Future.successful(acc)
-        case Some(wi) => scanOneItemAndMarkAsComplete(wi).flatMap(res => processNext(acc + res.size))
+        case Some(wi) => scanOneItemAndMarkAsComplete(githubRequestsQueue)(wi, dryRun = false).flatMap(res => processNext(acc + res.size))
       }
 
-    processNext(0)
+    for {
+      scanned   <- processNext(0)
+      rescanned <- rescanOne // limit rescanning to a single repo per cycle
+    } yield  scanned + rescanned
   }
 
-  def scanOneItemAndMarkAsComplete(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
+  def rescanOne(implicit ec: ExecutionContext): Future[Int] = {
+    rescanRequestsQueue.pullOutstanding.flatMap {
+      case None     => Future.successful(0)
+      case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi, dryRun = true).map(_.size)
+    }
+  }
+
+  def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails], dryRun: Boolean): Future[Option[Report]] = {
     val request     = workItem.item
     implicit val hc = HeaderCarrier()
     scanRepository(
@@ -162,12 +180,13 @@ class ScanningService @Inject()(
       commitId      = request.commitId,
       authorName    = request.authorName,
       archiveUrl    = request.archiveUrl,
-      dryRun        = false
-    ).flatMap(report => githubRequestsQueueRepository.completeAndDelete(workItem.id).map(_ => Some(report)))
+      dryRun        = dryRun
+    ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
       .recoverWith {
         case NonFatal(e) =>
           logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
-          githubRequestsQueueRepository.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
+          repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
       }
   }
+
 }

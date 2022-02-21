@@ -19,3 +19,7 @@ GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetecti
 GET        /admin/validate/public/:repository/:branch   @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = false, dryRun: Option[Boolean])
 GET        /admin/github-rate-limits                    @uk.gov.hmrc.leakdetection.controllers.AdminController.checkGithubRateLimits
 GET        /admin/stats                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.stats
+GET        /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findAllDraftViolations()
+DELETE     /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.clearAllDrafts()
+GET        /admin/draft/:ruleId                         @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findAllDraftViolationsForRule(ruleId)
+POST       /admin/rescan                                @uk.gov.hmrc.leakdetection.controllers.AdminController.rescan

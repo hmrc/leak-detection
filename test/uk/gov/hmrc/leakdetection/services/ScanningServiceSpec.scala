@@ -19,6 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
 import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
+import org.mockito.captor.ArgCaptor
 import org.mongodb.scala.bson.BsonDocument
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -29,7 +30,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
+import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus
@@ -250,6 +251,23 @@ class ScanningServiceSpec
 
       verifyZeroInteractions(reportsService, alertingService, repoVisiblityChecker)
     }
+
+    "write draft rules to the draft service, not trigger any alerts" in new TestSetup {
+      override val privateRules = List(rules.draftRule)
+      val argCap = ArgCaptor[Report]
+
+      when(draftService.saveReport(any)).thenReturn(Future.unit)
+
+      val report = generateReport
+
+      report.totalLeaks shouldBe 0
+
+      verify(draftService, times(1)).saveReport(argCap.capture)
+      val draftReport = argCap.value
+      draftReport.totalLeaks shouldBe 1
+      draftReport.rulesViolated.get(rules.draftRule.id) should contain (1)
+    }
+
   }
 
   "The service" should {
@@ -261,6 +279,17 @@ class ScanningServiceSpec
 
       scanningService.scanAll.futureValue shouldBe 1
       queue.collection.countDocuments().toFuture.futureValue shouldBe 0
+    }
+
+    "process one rescan request per scanAll cycle" in new TestSetup {
+      scanningService.queueRescanRequest(request).futureValue
+      scanningService.queueRescanRequest(request.copy(repositoryName = "another-repo")).futureValue
+      queue.collection.countDocuments().toFuture.futureValue shouldBe 0
+      rescanQueue.collection.countDocuments().toFuture.futureValue shouldBe 2
+
+      scanningService.scanAll.futureValue shouldBe 1
+
+      rescanQueue.collection.countDocuments().toFuture.futureValue shouldBe 1
     }
 
     "recover from exceptions expanding the zip and mark the item as failed" in new TestSetup {
@@ -408,6 +437,14 @@ class ScanningServiceSpec
           ignoredFiles = List("/application.conf", "/test-application.conf")
         )
 
+      val draftRule =
+        Rule(
+          id           = "draft-rule",
+          scope        = "fileContent",
+          regex        = """((foo).*)""",
+          description  = "detects the word foo in any file",
+          draft        = true
+        )
     }
 
     def relativePath(file: File) =
@@ -438,6 +475,13 @@ class ScanningServiceSpec
     }
 
     queue.collection.deleteMany(BsonDocument()).toFuture.futureValue
+
+    val rescanQueue = new RescanRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
+      override val inProgressRetryAfter: Duration = Duration.ofHours(1)
+      override lazy val retryIntervalMillis: Long      = 10000L
+    }
+
+    rescanQueue.collection.deleteMany(BsonDocument()).toFuture.futureValue
 
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
     val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
@@ -479,14 +523,18 @@ class ScanningServiceSpec
     private val githubService = mock[GithubService]
     when(githubService.getDefaultBranchName(Repository(any))(any, any)).thenReturn(Future.successful(Branch.main))
 
+    val draftService = mock[DraftReportsService]
+
     lazy val scanningService =
       new ScanningService(
         artifactService,
         configLoader,
         reportsService,
+        draftService,
         leaksService,
         alertingService,
         queue,
+        rescanQueue,
         repoVisiblityChecker,
         githubService)
   }
