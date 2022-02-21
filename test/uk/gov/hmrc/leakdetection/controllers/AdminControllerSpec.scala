@@ -24,7 +24,7 @@ import play.api.libs.json.{JsNumber, JsValue}
 import play.api.mvc.{Result, Results}
 import play.api.test.FakeRequest
 import uk.gov.hmrc.http.HttpClient
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
 import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, RescanService, ScanningService}
 

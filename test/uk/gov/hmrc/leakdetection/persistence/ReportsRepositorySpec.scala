@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import uk.gov.hmrc.leakdetection.model.{Report, ReportId, Repository}
+import uk.gov.hmrc.leakdetection.model.{Report, Repository}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
 import scala.concurrent.ExecutionContext.Implicits.global

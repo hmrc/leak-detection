@@ -57,8 +57,6 @@ class ScanningServiceSpec
 
       override val privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)
 
-      val startIndex = file2.getName.indexOf("id_rsa")
-
       val report = generateReport
 
       report.author            shouldBe "me"
@@ -134,8 +132,6 @@ class ScanningServiceSpec
 
       override val privateRules = List(rules.usesNullWithIgnoredExtensions, rules.checksInPrivateKeys)
 
-      val startIndex = file2.getName.indexOf("id_rsa")
-
       val report = generateReport
 
       report.author            shouldBe "me"
@@ -155,23 +151,23 @@ class ScanningServiceSpec
     }
 
     "send an alert if there were problems with repository.yaml" in new TestSetup {
-      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(true)
+      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
+
+      generateReport
+
+      verify(alertingService).alertAboutRepoVisibility(Repository(any), any)(any)
+    }
+
+    "not send alerts if repoVisibility correctly defined in repository.yaml" in new TestSetup {
+      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq.empty)
 
       generateReport
 
       verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
     }
 
-    "not send alerts if repoVisibility correctly defined in repository.yaml" in new TestSetup {
-      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(false)
-
-      generateReport
-
-      verify(alertingService).alertAboutRepoVisibility(repository = Repository("repoName"), author = "me")(hc)
-    }
-
     "not send alerts if the branch is not main" in new TestSetup {
-      when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(false)
+      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
 
       override val branch = "not-main"
       when(
@@ -185,47 +181,16 @@ class ScanningServiceSpec
       verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
     }
 
-    "send exemption warnings alert if there are file level exemptions for rules with scope FileContent" in new TestSetup {
-      override val privateRules = List(rules.usesUnencryptedKey, rules.checksInPrivateKeys)
-
-      writeRepositoryYaml {
-        s"""
-           |leakDetectionExemptions:
-           |  - ruleId: 'rule-4'
-           |    filePath: 'file'
-        """.stripMargin
-      }
+    "send exemption warnings alert if there are file level exemptions" in new TestSetup {
+      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), FileLevelExemptions.toString)))
 
       generateReport
 
-      verify(alertingService).alertAboutExemptionWarnings(repository = Repository("repoName"), Branch("main"), author = "me")(hc)
+      verify(alertingService).alertAboutExemptionWarnings(Repository("repoName"), Branch("main"), "me")(hc)
     }
 
-    "not alert on exemption warnings if file level exemptions exist for rules with scope FileName" in new TestSetup {
-      override val privateRules = List(rules.usesUnencryptedKey, rules.checksInPrivateKeys)
-
-      writeRepositoryYaml {
-        s"""
-           |leakDetectionExemptions:
-           |  - ruleId: 'rule-2'
-           |    filePath: 'file'
-        """.stripMargin
-      }
-
-      generateReport
-
-      verify(alertingService, times(0)).alertAboutExemptionWarnings(Repository(any), Branch(any), any)(any)
-    }
-
-    "not alert on exemption warnings if all exemptions are line level exemptions" in new TestSetup {
-      writeRepositoryYaml {
-        s"""
-           |leakDetectionExemptions:
-           |  - ruleId: 'rule-1'
-           |    filePath: 'file'
-           |    text: 'false-positive'
-        """.stripMargin
-      }
+    "not send exemption warnings alert if there are no file level exemptions" in new TestSetup {
+      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq.empty)
 
       generateReport
 
@@ -233,13 +198,14 @@ class ScanningServiceSpec
     }
 
     "not alert on exemption warnings if not on default branch" in new TestSetup {
+      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), FileLevelExemptions.toString)))
+
       override val branch = "not-main"
       when(
         artifactService.getZip(
           eqTo(githubSecrets.personalAccessToken),
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
           Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
-
 
       generateReport
 
@@ -249,7 +215,7 @@ class ScanningServiceSpec
     "not save the report or trigger any alerts if a dry run" in new TestSetup {
       performScan(true)
 
-      verifyZeroInteractions(reportsService, alertingService, repoVisiblityChecker)
+      verifyZeroInteractions(reportsService, alertingService)
     }
 
     "write draft rules to the draft service, not trigger any alerts" in new TestSetup {
@@ -305,7 +271,7 @@ class ScanningServiceSpec
           Branch(eqTo("main")))).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue shouldBe 0
-      queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
+      queue.count(ProcessingStatus.Failed).futureValue shouldBe 1
     }
 
     "recover from exceptions saving a report and mark the item as failed" in new TestSetup {
@@ -317,7 +283,7 @@ class ScanningServiceSpec
       when(reportsService.saveReport(any)).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue shouldBe 0
-      queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
+      queue.count(ProcessingStatus.Failed).futureValue shouldBe 1
     }
 
     "recover from failures and mark the item as failed" in new TestSetup {
@@ -329,7 +295,7 @@ class ScanningServiceSpec
       when(reportsService.saveReport(any)).thenReturn(Future.failed(new RuntimeException("Some error")))
 
       scanningService.scanAll.futureValue shouldBe 0
-      queue.count(ProcessingStatus.Failed).futureValue          shouldBe 1
+      queue.count(ProcessingStatus.Failed).futureValue shouldBe 1
     }
   }
 
@@ -458,7 +424,8 @@ class ScanningServiceSpec
         githubSecrets             = githubSecrets,
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
-        github = Github("", "")
+        github = Github("", ""),
+        warningMessages = Map.empty
       )
 
     lazy val configLoader = new ConfigLoader {
@@ -467,11 +434,12 @@ class ScanningServiceSpec
 
     val artifactService = mock[ArtifactService]
     val reportsService  = mock[ReportsService]
-    val leaksService = mock[LeaksService]
+    val leaksService    = mock[LeaksService]
+    val warningsService = mock[WarningsService]
 
     val queue = new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
       override val inProgressRetryAfter: Duration = Duration.ofHours(1)
-      override lazy val retryIntervalMillis: Long      = 10000L
+      override lazy val retryIntervalMillis: Long = 10000L
     }
 
     queue.collection.deleteMany(BsonDocument()).toFuture.futureValue
@@ -504,6 +472,8 @@ class ScanningServiceSpec
 
     when(reportsService.saveReport(any)).thenReturn(Future.successful(()))
     when(leaksService.saveLeaks(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
+    when(warningsService.saveWarnings(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
+    when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq.empty)
 
     when(
       artifactService.getZip(
@@ -516,9 +486,6 @@ class ScanningServiceSpec
     when(alertingService.alertAboutRepoVisibility(Repository(any), any)(any)).thenReturn(Future.successful(()))
 
     val configuration = Configuration()
-
-    val repoVisiblityChecker = mock[RepoVisiblityChecker]
-    when(repoVisiblityChecker.hasCorrectVisibilityDefined(any, any)).thenReturn(false)
 
     private val githubService = mock[GithubService]
     when(githubService.getDefaultBranchName(Repository(any))(any, any)).thenReturn(Future.successful(Branch.main))
@@ -535,12 +502,13 @@ class ScanningServiceSpec
         alertingService,
         queue,
         rescanQueue,
-        repoVisiblityChecker,
+        warningsService,
         githubService)
   }
 
   def write(content: String, destination: File) =
     new PrintWriter(destination) {
-      write(content); close()
+      write(content);
+      close()
     }
 }

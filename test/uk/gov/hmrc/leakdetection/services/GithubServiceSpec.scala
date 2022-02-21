@@ -20,8 +20,8 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import play.api.Configuration
-import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse, Upstream5xxResponse}
 import uk.gov.hmrc.http.test.{ExternalWireMockSupport, HttpClientSupport}
+import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse, Upstream5xxResponse}
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.model.{Branch, Repository}
 
@@ -41,7 +41,8 @@ class GithubServiceSpec extends AsyncWordSpec with Matchers with ExternalWireMoc
     "allRules.publicRules"                   -> List(),
     "leakResolutionUrl"                      -> "PLACEHOLDER",
     "maxLineLength"                          -> 2147483647,
-    "clearingCollectionEnabled"              -> false
+    "clearingCollectionEnabled"              -> false,
+    "warningMessages"                           -> Map.empty
   )
   private lazy val configLoader: ConfigLoader = new PlayConfigLoader(defaultConfiguration)
 

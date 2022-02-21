@@ -16,8 +16,6 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import java.time.Instant
-
 import org.scalatest.Inspectors
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -28,6 +26,7 @@ import uk.gov.hmrc.leakdetection.model.PayloadDetails
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
 
+import java.time.Instant
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class GithubRequestsQueueRepositorySpec

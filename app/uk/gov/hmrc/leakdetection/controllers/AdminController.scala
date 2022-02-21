@@ -44,10 +44,6 @@ class AdminController @Inject()(
   import AdminController._
   import configLoader.cfg
 
-  def rules() = Action {
-    Ok(Json.toJson(cfg.allRules))
-  }
-
   def validate(repository: Repository, branch: Branch, isPrivate: Boolean, dryRun: Option[Boolean]) = Action.async { implicit request =>
     scanningService
       .scanRepository(

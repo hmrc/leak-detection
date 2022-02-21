@@ -5,16 +5,17 @@ GET        /api/repository                            @uk.gov.hmrc.leakdetection
 
 GET        /api/report/:id                            @uk.gov.hmrc.leakdetection.controllers.ApiController.report(id: ReportId)
 GET        /api/report/:id/leaks                      @uk.gov.hmrc.leakdetection.controllers.ApiController.reportLeaks(id: ReportId)
+GET        /api/report/:id/warnings                   @uk.gov.hmrc.leakdetection.controllers.ApiController.reportWarnings(id: ReportId)
 GET        /api/leaks                                 @uk.gov.hmrc.leakdetection.controllers.ApiController.leaks
-GET        /api/leaks/summary                         @uk.gov.hmrc.leakdetection.controllers.ApiController.leaksSummary
 GET        /api/:repository/:branch/report            @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReport(repository: Repository, branch: Branch)
-
+GET        /api/rules                                 @uk.gov.hmrc.leakdetection.controllers.ApiController.rules
+GET        /api/rules/summary                         @uk.gov.hmrc.leakdetection.controllers.ApiController.ruleSummary
+GET        /api/repositories/summary                  @uk.gov.hmrc.leakdetection.controllers.ApiController.repositorySummary
 
 # Webhooks
 POST       /validate                                    @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook
 
 # Admin endpoints
-GET        /admin/rules                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.rules
 GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = true, dryRun: Option[Boolean])
 GET        /admin/validate/public/:repository/:branch   @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = false, dryRun: Option[Boolean])
 GET        /admin/github-rate-limits                    @uk.gov.hmrc.leakdetection.controllers.AdminController.checkGithubRateLimits

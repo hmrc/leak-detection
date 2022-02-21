@@ -18,8 +18,6 @@ package uk.gov.hmrc.leakdetection.model
 
 import play.api.libs.json.{Reads, __}
 
-import scala.language.implicitConversions
-
 case class Branch(asString: String) extends AnyVal {}
 
 object Branch {

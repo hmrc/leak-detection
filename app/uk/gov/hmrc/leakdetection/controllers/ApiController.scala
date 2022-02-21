@@ -19,44 +19,70 @@ package uk.gov.hmrc.leakdetection.controllers
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.leakdetection.model._
-import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService}
+import uk.gov.hmrc.leakdetection.services._
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 @Singleton
-class ApiController @Inject()(reportsService: ReportsService, leaksService: LeaksService, cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
-
-  private implicit val rptf = Report.apiFormat
-  private implicit val rsf = Summary.apiFormat
-  private implicit val lf = Leak.apiFormat
+class ApiController @Inject()(reportsService: ReportsService,
+                              leaksService: LeaksService,
+                              warningsService: WarningsService,
+                              summaryService: SummaryService,
+                              ruleService: RuleService,
+                              cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
 
   def leaks(): Action[AnyContent] = Action.async { implicit request =>
+    implicit val lf = Leak.apiFormat
     leaksService
       .getLeaks(
         repoName = request.getQueryString("repository"),
-        branch   = request.getQueryString("branch"),
-        ruleId   = request.getQueryString("rule"))
+        branch = request.getQueryString("branch"),
+        ruleId = request.getQueryString("rule"))
       .map(r => Ok(Json.toJson(r)))
   }
 
-  def leaksSummary(): Action[AnyContent] = Action.async { implicit request =>
-    leaksService
-      .getSummaries(
-        ruleId   = request.getQueryString("rule"),
+  def rules(): Action[AnyContent] = Action {
+    Ok(Json.toJson(ruleService.getAllRules()))
+  }
+
+  def ruleSummary(): Action[AnyContent] = Action.async { implicit request =>
+    implicit val sf = Summary.apiFormat
+    summaryService
+      .getRuleSummaries(
+        ruleId = request.getQueryString("rule"),
         repoName = request.getQueryString("repository"),
         teamName = request.getQueryString("team"))
       .map(r => Ok(Json.toJson(r)))
   }
 
+  def repositorySummary(): Action[AnyContent] = Action.async { implicit request =>
+    implicit val rsf = RepositorySummary.format
+    summaryService
+      .getRepositorySummaries(
+        ruleId = request.getQueryString("rule"),
+        repoName = request.getQueryString("repository"),
+        teamName = request.getQueryString("team"))
+      .map(rs => Ok(Json.toJson(rs)))
+  }
+
   def reportLeaks(reportId: ReportId): Action[AnyContent] = Action.async { implicit request =>
+    implicit val lf = Leak.apiFormat
     leaksService
       .getLeaksForReport(reportId)
-      .map(r => Ok(Json.toJson(r)))
+      .map(l => Ok(Json.toJson(l)))
+  }
+
+  def reportWarnings(reportId: ReportId): Action[AnyContent] = Action.async { implicit request =>
+    implicit val wf = Warning.apiFormat
+    warningsService
+      .getWarningsForReport(reportId)
+      .map(w => Ok(Json.toJson(w)))
   }
 
   def latestReport(repository: Repository, branch: Branch): Action[AnyContent] = Action.async { implicit request =>
+    implicit val rf = Report.apiFormat
     reportsService
       .getLatestReport(repository, branch)
       .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
@@ -69,9 +95,9 @@ class ApiController @Inject()(reportsService: ReportsService, leaksService: Leak
   }
 
   def report(reportId: ReportId): Action[AnyContent] = Action.async { implicit request =>
+    implicit val rf = Report.apiFormat
     reportsService
       .getReport(reportId)
       .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
   }
-
 }
