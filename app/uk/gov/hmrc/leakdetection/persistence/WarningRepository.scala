@@ -44,7 +44,7 @@ class WarningRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: E
       _ = logger.info(s"removed $deleted warnings, added $inserted warnings for $repo/$branch")
     } yield LeakUpdateResult(inserted, deleted)
 
-  private def removeWarnings(repo: String, branch: String): Future[Long] =
+  def removeWarnings(repo: String, branch: String): Future[Long] =
     collection.deleteMany(filter = and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
 
   def findForReport(reportId: String): Future[Seq[Warning]] =

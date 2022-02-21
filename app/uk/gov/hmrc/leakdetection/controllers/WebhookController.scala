@@ -21,7 +21,7 @@ import play.api.libs.json.Json.toJson
 import play.api.mvc.{BodyParser, ControllerComponents}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
-import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, ScanningService}
+import uk.gov.hmrc.leakdetection.services.{LeaksService, ReportsService, ScanningService, WarningsService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
@@ -33,6 +33,7 @@ class WebhookController @Inject()(
   scanningService: ScanningService,
   reportsService: ReportsService,
   leakService: LeaksService,
+  warningsService: WarningsService,
   webhookRequestValidator: WebhookRequestValidator,
   cc: ControllerComponents)(implicit ec: ExecutionContext)
     extends BackendController(cc) {
@@ -57,6 +58,7 @@ class WebhookController @Inject()(
           for {
             _ <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
             _ <- leakService.clearLeaksAfterBranchDeleted(deleteBranchEvent)
+            _ <- warningsService.clearWarningsAfterBranchDeleted(deleteBranchEvent)
           } yield Ok (toJson (WebhookResponse ("report(s) successfully cleared")))
 
         case ZenMessage(_) =>
