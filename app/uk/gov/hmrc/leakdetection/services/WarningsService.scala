@@ -35,6 +35,9 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
   def saveWarnings(repository: Repository, branch: Branch, warnings: Seq[Warning]): Future[Unit] =
     warningRepository.update(repository.asString, branch.asString, warnings).map(_ => ())
 
+  def clearWarningsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Long] =
+    warningRepository.removeWarnings(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+
   def getWarnings(repoName: Option[String], branch: Option[String]): Future[Seq[Warning]] =
     warningRepository.findBy(repoName, branch)
 
