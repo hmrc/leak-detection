@@ -424,7 +424,6 @@ class ScanningServiceSpec
         githubSecrets             = githubSecrets,
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
-        github = Github("", ""),
         warningMessages = Map.empty
       )
 

@@ -286,8 +286,6 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       "alerts.slack.enabledForExemptionWarnings"  -> false,
       "githubSecrets.personalAccessToken"         -> "PLACEHOLDER",
       "githubSecrets.webhookSecretKey"            -> "PLACEHOLDER",
-      "github.url"                                -> "url",
-      "github.apiUrl"                             -> "url",
       "allRules.privateRules"                     -> List(),
       "allRules.publicRules"                      -> List(),
       "leakResolutionUrl"                         -> "PLACEHOLDER",

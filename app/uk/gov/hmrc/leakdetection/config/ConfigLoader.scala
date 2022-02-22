@@ -40,7 +40,6 @@ class PlayConfigLoader @Inject()(configuration: Configuration) extends ConfigLoa
 final case class Cfg(
   allRules: AllRules,
   githubSecrets: GithubSecrets,
-  github: Github,
   maxLineLength: Int,
   clearingCollectionEnabled: Boolean,
   warningMessages: Map[String, String]
@@ -74,11 +73,6 @@ object Rule {
     val High   = "high"
   }
 }
-
-final case class Github(
-  url: String,
-  apiUrl: String
-)
 
 final case class GithubSecrets(
   personalAccessToken: String,

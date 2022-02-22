@@ -53,8 +53,6 @@ class ReportsServiceSpec
   private val configuration: Configuration = Configuration(
     "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
     "githubSecrets.webhookSecretKey"         -> "PLACEHOLDER",
-    "github.url"                             -> "url",
-    "github.apiUrl"                          -> "url",
     "allRules.privateRules"                  -> List(),
     "allRules.publicRules"                   -> List(),
     "leakResolutionUrl"                      -> "PLACEHOLDER",
