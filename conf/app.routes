@@ -16,11 +16,10 @@ GET        /api/repositories/summary                  @uk.gov.hmrc.leakdetection
 POST       /validate                                    @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook
 
 # Admin endpoints
-GET        /admin/validate/private/:repository/:branch  @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = true, dryRun: Option[Boolean])
-GET        /admin/validate/public/:repository/:branch   @uk.gov.hmrc.leakdetection.controllers.AdminController.validate(repository: Repository, branch: Branch, isPrivate: Boolean = false, dryRun: Option[Boolean])
 GET        /admin/github-rate-limits                    @uk.gov.hmrc.leakdetection.controllers.AdminController.checkGithubRateLimits
 GET        /admin/stats                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.stats
 GET        /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findAllDraftViolations()
 DELETE     /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.clearAllDrafts()
 GET        /admin/draft/:ruleId                         @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findAllDraftViolationsForRule(ruleId)
 POST       /admin/rescan                                @uk.gov.hmrc.leakdetection.controllers.AdminController.rescan
+GET        /admin/rescan/:repository/:branch            @uk.gov.hmrc.leakdetection.controllers.AdminController.rescanRepo(repository: Repository, branch: Branch, dryRun: Option[Boolean])
