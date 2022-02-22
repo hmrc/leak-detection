@@ -16,15 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import java.time.{Duration, Instant}
-import javax.inject.{Inject, Singleton}
-
 import play.api.Configuration
-import play.api.libs.json.__
 import uk.gov.hmrc.leakdetection.model.PayloadDetails
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
 
+import java.time.{Duration, Instant}
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 

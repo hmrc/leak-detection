@@ -30,7 +30,7 @@ class DraftReportController @Inject()(draftReportsService: DraftReportsService,
                                       cc: ControllerComponents)(implicit ec: ExecutionContext) extends BackendController(cc) {
   implicit val rf = Report.apiFormat
 
-  def findAllDraftViolationsForRule(ruleId: String) = Action.async { implicit request =>
+  def findAllDraftViolationsForRule(ruleId: String) = Action.async {
     ruleService
       .getAllRules()
       .find(_.id == ruleId)
@@ -39,9 +39,9 @@ class DraftReportController @Inject()(draftReportsService: DraftReportsService,
     )
   }
 
-  def findAllDraftViolations() = Action.async { implicit request =>
+  def findAllDraftViolations() = Action.async {
     draftReportsService.findAllDraftReports().map(d => Ok(Json.toJson(d)))
   }
 
-  def clearAllDrafts() = Action.async { implicit request => draftReportsService.clearDrafts().map(_ => Ok("all drafts delete"))}
+  def clearAllDrafts() = Action.async { draftReportsService.clearDrafts().map(_ => Ok("all drafts delete"))}
 }

@@ -43,7 +43,7 @@ class AdminController @Inject()(
   import configLoader.cfg
 
   def rescanRepo(repository: Repository, branch: Branch, dryRun: Option[Boolean]) = Action.async { implicit request =>
-    implicit val rf = Report.apiFormat
+    implicit val rf: Format[Report] = Report.apiFormat
     rescanService.rescan(repository, branch, dryRun)
       .flatMap {
         case Some(f) => f.map(r => Ok(Json.toJson(r)))
