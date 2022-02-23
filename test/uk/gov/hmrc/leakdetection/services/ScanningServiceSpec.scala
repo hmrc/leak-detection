@@ -18,8 +18,8 @@ package uk.gov.hmrc.leakdetection.services
 
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
-import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.mockito.captor.ArgCaptor
+import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.mongodb.scala.bson.BsonDocument
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -29,9 +29,9 @@ import play.api.mvc.Results
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.config._
+import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
-import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus
 
@@ -155,7 +155,7 @@ class ScanningServiceSpec
 
       generateReport
 
-      verify(alertingService).alertAboutRepoVisibility(Repository(any), any)(any)
+      verify(alertingService).alertAboutRepoVisibility(Repository(any), Branch(any), any)(any)
     }
 
     "not send alerts if repoVisibility correctly defined in repository.yaml" in new TestSetup {
@@ -163,7 +163,7 @@ class ScanningServiceSpec
 
       generateReport
 
-      verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
+      verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), Branch(any), any)(any)
     }
 
     "not send alerts if the branch is not main" in new TestSetup {
@@ -178,7 +178,7 @@ class ScanningServiceSpec
 
       generateReport
 
-      verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), any)(any)
+      verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), Branch(any), any)(any)
     }
 
     "send exemption warnings alert if there are file level exemptions" in new TestSetup {
@@ -424,7 +424,6 @@ class ScanningServiceSpec
         githubSecrets             = githubSecrets,
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
-        github = Github("", ""),
         warningMessages = Map.empty
       )
 
@@ -436,6 +435,7 @@ class ScanningServiceSpec
     val reportsService  = mock[ReportsService]
     val leaksService    = mock[LeaksService]
     val warningsService = mock[WarningsService]
+    val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
 
     val queue = new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
       override val inProgressRetryAfter: Duration = Duration.ofHours(1)
@@ -474,6 +474,7 @@ class ScanningServiceSpec
     when(leaksService.saveLeaks(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
     when(warningsService.saveWarnings(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
     when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq.empty)
+    when(teamsAndRepositoriesConnector.repo(any)).thenReturn(Future.successful(Some(RepositoryInfo("", true, "main"))))
 
     when(
       artifactService.getZip(
@@ -483,12 +484,9 @@ class ScanningServiceSpec
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))
-    when(alertingService.alertAboutRepoVisibility(Repository(any), any)(any)).thenReturn(Future.successful(()))
+    when(alertingService.alertAboutRepoVisibility(Repository(any), Branch(any), any)(any)).thenReturn(Future.successful(()))
 
     val configuration = Configuration()
-
-    private val githubService = mock[GithubService]
-    when(githubService.getDefaultBranchName(Repository(any))(any, any)).thenReturn(Future.successful(Branch.main))
 
     val draftService = mock[DraftReportsService]
 
@@ -503,7 +501,7 @@ class ScanningServiceSpec
         queue,
         rescanQueue,
         warningsService,
-        githubService)
+        teamsAndRepositoriesConnector)
   }
 
   def write(content: String, destination: File) =

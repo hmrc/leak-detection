@@ -141,7 +141,6 @@ class WarningServiceSpec
         githubSecrets = GithubSecrets("", ""),
         maxLineLength = Int.MaxValue,
         clearingCollectionEnabled = false,
-        github = Github("", ""),
         warningMessages = Map.empty
       )
 

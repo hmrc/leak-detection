@@ -82,7 +82,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
 
         val contentResults: Seq[MatchedResult] = try {
           source.getLines
-            .foldLeft(1, Seq.empty[MatchedResult], false) {
+            .foldLeft((1, Seq.empty[MatchedResult], false)) {
               case ((lineNumber, acc, isInLine), line) =>
                 (lineNumber + 1, acc ++ applicableFileContentScanners.flatMap {
                   _.scanLine(line, lineNumber, filePath)

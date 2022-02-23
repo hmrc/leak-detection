@@ -20,6 +20,7 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
@@ -41,7 +42,7 @@ class ScanningService @Inject()(
                                  githubRequestsQueue:   GithubRequestsQueueRepository,
                                  rescanRequestsQueue:   RescanRequestsQueueRepository,
                                  warningsService:       WarningsService,
-                                 githubService:         GithubService
+                                 teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
 )(implicit ec: ExecutionContext) {
 
   import configLoader.cfg
@@ -104,19 +105,17 @@ class ScanningService @Inject()(
                                   author: String,
                                   absolutePath: String,
                                   warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] =
-    githubService.getDefaultBranchName(repository) flatMap { defaultBranchName =>
-      if (branch == defaultBranchName) {
-
+    teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
+      if (branch.asString == repo.defaultBranch) {
         if (warnings.map(_.warningMessageType).intersect(Seq(MissingRepositoryYamlFile.toString, InvalidEntry.toString, MissingEntry.toString, ParseFailure.toString)).nonEmpty) {
           logger.warn(s"Incorrect configuration for repo ${repository.asString} on ${branch.asString} branch! File path: $absolutePath. Sending alert")
-          alertingService.alertAboutRepoVisibility(repository, author)
+          alertingService.alertAboutRepoVisibility(repository, branch, author)
         }
         if (warnings.map(_.warningMessageType).contains(FileLevelExemptions.toString)) {
           alertingService.alertAboutExemptionWarnings(repository, branch, author)
         }
       }
-      Future.unit
-    }
+    ))
 
   def queueRequest(p: PayloadDetails): Future[Boolean] =
     githubRequestsQueue.pushNew(p).map(_ => true)

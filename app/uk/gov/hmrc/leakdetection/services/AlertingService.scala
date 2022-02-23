@@ -28,8 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class AlertingService @Inject()(configuration: Configuration,
-                                slackConnector: SlackNotificationsConnector,
-                                githubService: GithubService)(
+                                slackConnector: SlackNotificationsConnector)(
   implicit ec: ExecutionContext) {
 
   private val logger = Logger(this.getClass.getName)
@@ -45,7 +44,7 @@ class AlertingService @Inject()(configuration: Configuration,
 
   import slackConfig._
 
-  def alertAboutRepoVisibility(repository: Repository, author: String)(implicit hc: HeaderCarrier): Future[Unit] =
+  def alertAboutRepoVisibility(repository: Repository, branch: Branch, author: String)(implicit hc: HeaderCarrier): Future[Unit] =
     if (!enabledForRepoVisibility) {
       Future.successful(())
     } else {
@@ -57,12 +56,10 @@ class AlertingService @Inject()(configuration: Configuration,
           attachments = Seq()
         )
 
-      githubService.getDefaultBranchName(repository) flatMap { defaultBranchName =>
-        val commitInfo = CommitInfo(author, defaultBranchName, repository)
+        val commitInfo = CommitInfo(author, branch, repository)
         Future
           .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
           .map(_ => ())
-      }
     }
 
   def alertAboutExemptionWarnings(repository: Repository, branch: Branch, author: String)(implicit hc: HeaderCarrier): Future[Unit] = {

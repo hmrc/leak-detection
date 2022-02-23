@@ -202,7 +202,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         Configuration("alerts.slack.enabledForRepoVisibility" -> true).withFallback(defaultConfiguration)
 
       val author = "me"
-      service.alertAboutRepoVisibility(repository = Repository("a-repo"), author = author).futureValue
+      service.alertAboutRepoVisibility(repository = Repository("a-repo"), Branch("a-branch"), author = author).futureValue
 
       val messageDetails = MessageDetails(
         text        = "Repo visiblity problem detected",
@@ -226,7 +226,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     }
 
     "not send repo visibility alerts if not enabled" in new Fixtures {
-      service.alertAboutRepoVisibility(Repository("repo-doesnt-matter"), "author-doesnt-matter").futureValue
+      service.alertAboutRepoVisibility(Repository("repo-doesnt-matter"), Branch("branch-doesnt-matter"), "author-doesnt-matter").futureValue
 
       verifyZeroInteractions(slackConnector)
     }
@@ -270,10 +270,6 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     val slackConnector = mock[SlackNotificationsConnector]
     when(slackConnector.sendMessage(any)(any)).thenReturn(Future.successful(SlackNotificationResponse(Nil)))
 
-    val githubService = mock[GithubService]
-    when(githubService.getDefaultBranchName(Repository(any))(any,any)).thenReturn(Future.successful(Branch.main))
-
-
     val defaultConfiguration = Configuration(
       "alerts.slack.leakDetectionUri"             -> "https://somewhere",
       "alerts.slack.enabled"                      -> true,
@@ -290,8 +286,6 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       "alerts.slack.enabledForExemptionWarnings"  -> false,
       "githubSecrets.personalAccessToken"         -> "PLACEHOLDER",
       "githubSecrets.webhookSecretKey"            -> "PLACEHOLDER",
-      "github.url"                                -> "url",
-      "github.apiUrl"                             -> "url",
       "allRules.privateRules"                     -> List(),
       "allRules.publicRules"                      -> List(),
       "leakResolutionUrl"                         -> "PLACEHOLDER",
@@ -303,7 +297,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     val configuration = defaultConfiguration
     val configLoader: ConfigLoader = new PlayConfigLoader(defaultConfiguration)
 
-    lazy val service = new AlertingService(configuration, slackConnector, githubService)(ExecutionContext.global)
+    lazy val service = new AlertingService(configuration, slackConnector)(ExecutionContext.global)
 
   }
 }

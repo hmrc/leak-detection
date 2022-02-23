@@ -23,7 +23,7 @@ import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
-import uk.gov.hmrc.leakdetection.services.{LeaksService, RescanService, ScanningService}
+import uk.gov.hmrc.leakdetection.services.{LeaksService, RescanService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
@@ -32,7 +32,6 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class AdminController @Inject()(
                                  configLoader:    ConfigLoader,
-                                 scanningService: ScanningService,
                                  leaksService:    LeaksService,
                                  rescanService:   RescanService,
                                  httpClient:      HttpClient,
@@ -41,24 +40,14 @@ class AdminController @Inject()(
 
   val logger = Logger(this.getClass.getName)
 
-  import AdminController._
   import configLoader.cfg
 
-  def validate(repository: Repository, branch: Branch, isPrivate: Boolean, dryRun: Option[Boolean]) = Action.async { implicit request =>
-    scanningService
-      .scanRepository(
-        repository    = repository,
-        branch        = branch,
-        isPrivate     = isPrivate,
-        repositoryUrl = s"https://github.com/hmrc/${repository.asString}",
-        commitId      = NOT_APPLICABLE,
-        authorName    = NOT_APPLICABLE,
-        archiveUrl    = s"https://api.github.com/repos/hmrc/${repository.asString}/{archive_format}{/ref}",
-        dryRun        = dryRun.getOrElse(false)
-      )
-      .map { report =>
-        implicit val rf = Report.apiFormat
-        Ok(Json.toJson(report))
+  def rescanRepo(repository: Repository, branch: Branch, dryRun: Option[Boolean]) = Action.async { implicit request =>
+    implicit val rf: Format[Report] = Report.apiFormat
+    rescanService.rescan(repository, branch, dryRun)
+      .flatMap {
+        case Some(f) => f.map(r => Ok(Json.toJson(r)))
+        case _ => Future.successful(NotFound(s"rescan could not be performed as '${repository.asString}' is not a known HMRC repository"))
       }
   }
 

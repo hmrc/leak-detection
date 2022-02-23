@@ -16,20 +16,41 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import cats.implicits._
+import play.api.Logger
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.controllers.AdminController.NOT_APPLICABLE
-import uk.gov.hmrc.leakdetection.model.PayloadDetails
+import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, Repository}
+import uk.gov.hmrc.leakdetection.persistence.RescanRequestsQueueRepository
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import cats.implicits._
-import play.api.Logger
-import uk.gov.hmrc.leakdetection.persistence.RescanRequestsQueueRepository
 
 @Singleton
-class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, rescanQueue: RescanRequestsQueueRepository)(implicit ec: ExecutionContext){
+class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, rescanQueue: RescanRequestsQueueRepository, scanningService: ScanningService)(implicit ec: ExecutionContext) {
 
   private val logger = Logger(getClass)
+
+  def rescan(repository: Repository, branch: Branch, dryRun: Option[Boolean])(implicit headerCarrier: HeaderCarrier): Future[Option[Future[Report]]] = {
+    teamsAndRepos.repo(repository.asString)
+      .map(f =>
+        f.map(repoToPayload(_))
+          .map(p =>
+            scanningService
+              .scanRepository(
+                repository    = repository,
+                branch        = branch,
+                isPrivate     = p.isPrivate,
+                repositoryUrl = p.repositoryUrl,
+                commitId      = p.commitId,
+                authorName    = p.authorName,
+                archiveUrl    = p.archiveUrl,
+                dryRun        = dryRun.getOrElse(false)
+              )
+          )
+      )
+  }
 
   def triggerRescan(repos: List[String]): Future[Unit] = {
     for {
