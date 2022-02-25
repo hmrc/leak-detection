@@ -78,7 +78,9 @@ object SlackNotificationError {
 final case class SlackNotificationResponse(
   successfullySentTo: Seq[String] = Nil,
   errors: List[SlackNotificationError] = Nil
-)
+) {
+  def hasSentMessages: Boolean = successfullySentTo.nonEmpty
+}
 
 object SlackNotificationResponse {
 
