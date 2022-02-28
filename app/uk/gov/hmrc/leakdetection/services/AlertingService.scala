@@ -143,13 +143,10 @@ class AlertingService @Inject()(configuration: Configuration,
   private def sendSlackMessage(slackNotificationAndErrorMessage: SlackNotificationAndErrorMessage)(
     implicit hc: HeaderCarrier): Future[Unit] =
     slackConnector.sendMessage(slackNotificationAndErrorMessage.request).map {
-      case SlackNotificationResponse(errors) if errors.isEmpty => ()
-      case SlackNotificationResponse(errors) =>
-        logger.error(s"Errors sending notification: ${errors.mkString("[", ",", "]")}")
-        alertAdminsIfNoSlackChannelFound(errors, slackNotificationAndErrorMessage.commitInfo)
-      case _ =>
-        logger.error(
-          s"error: ${slackNotificationAndErrorMessage.errorMsg}, commitInfo: ${slackNotificationAndErrorMessage.commitInfo}")
+      case response if response.hasSentMessages => ()
+      case response =>
+        logger.error(s"Errors sending notification: ${response.errors.mkString("[", ",", "]")}")
+        alertAdminsIfNoSlackChannelFound(response.errors, slackNotificationAndErrorMessage.commitInfo)
     }
 
   private def alertAdminsIfNoSlackChannelFound(errors: List[SlackNotificationError], commitInfo: CommitInfo)(

@@ -142,22 +142,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       verifyZeroInteractions(slackConnector)
 
     }
-
-    "send a message to the admin channel if slack notification failed because team was not on slack" in new Fixtures {
-      val errorsRequiringAlerting =
-        List(
-          "teams_not_found_for_github_username",
-          "slack_channel_not_found",
-          "teams_not_found_for_repository",
-          "slack_channel_not_found_for_team_in_ump").map { code =>
-          SlackNotificationError(code, message = "")
-        }
-
-      errorsRequiringAlerting.foreach { error =>
+    "handle slack notifications errors" when {
+      "no messages were delivered successfully then send alert to admin channel" in new Fixtures {
         val report = ModelFactory.aReportWithLeaks()
 
         when(slackConnector.sendMessage(any)(any))
-          .thenReturn(Future.successful(SlackNotificationResponse(errors = List(error))))
+          .thenReturn(Future.successful(SlackNotificationResponse(errors = List(SlackNotificationError("slack_channel_not_found", message = "")))))
 
         service.alert(report).futureValue
 
@@ -166,6 +156,18 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         reset(slackConnector)
       }
 
+      "some messages were delivered successfully then ignore failed messages" in new Fixtures {
+        val report = ModelFactory.aReportWithLeaks()
+
+        when(slackConnector.sendMessage(any)(any))
+          .thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("team-channel"), errors = List(SlackNotificationError("slack_channel_not_found", message = "")))))
+
+        service.alert(report).futureValue
+
+        val expectedNumberOfMessages = 2 // 1 for alert channel, 1 for team channel
+        verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(any)(any)
+        reset(slackConnector)
+      }
     }
 
     "include error context details in the slack message for the admin channel" in new Fixtures {
