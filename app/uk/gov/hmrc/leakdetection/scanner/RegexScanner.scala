@@ -16,10 +16,10 @@
 
 package uk.gov.hmrc.leakdetection.scanner
 
-import uk.gov.hmrc.leakdetection.config.Rule
+import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
 import MatchedResult.ensureLengthIsBelowLimit
 
-case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[String] = Seq()) {
+case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
 
   private val compiledRegex = rule.regex.r
 
@@ -52,7 +52,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
       case _ => None
     }
 
-  def scanLine(line: String, lineNumber: Int, filePath: String, inLineExemption: Boolean): Option[MatchedResult] =
+  def scanLine(line: String, lineNumber: Int, filePath: String, inLineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Option[MatchedResult] =
     line match {
       case Extractor(lineText, matches) =>
         Some(
@@ -67,7 +67,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
               matches     = matches,
               priority    = rule.priority,
               draft       = rule.draft,
-              excluded    = isExempt(line, inLineExemption)
+              excluded    = isExempt(rule.id, filePath, line, inLineExemption, ruleExemptions)
             ),
             lineLengthLimit
           )
@@ -76,8 +76,14 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
     }
 
   val fileExtensionR = """\.[A-Za-z0-9]+$""".r
-  private def isExempt(line: String, inLineExemption: Boolean): Boolean = {
-    inLineExemption || lineExemptions.exists(exemption => line.contains(exemption))
+  private def isExempt(ruleId: String, filePath: String, line: String, inLineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Boolean = {
+    val exemptions = ruleExemptions
+      .filter(_.ruleId == ruleId)
+      .filter(_.filePaths.contains(filePath))
+
+    inLineExemption ||
+      exemptions.flatMap(_.text).exists(line.contains(_)) ||
+      exemptions.exists(_.text == None)
   }
 
 }

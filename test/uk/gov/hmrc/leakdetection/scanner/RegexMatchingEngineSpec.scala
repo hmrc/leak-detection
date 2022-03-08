@@ -224,6 +224,75 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
 
     }
 
+    "should flag as excluded if filename matches file level exemption" in {
+      val repositoryYamlContent =
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: 'rule-1'
+          |    filePaths:
+          |       - /dir/file1
+          |       - /dir/file2
+        """.stripMargin
+
+      val wd = tmp.dir()
+      write(wd / 'zip_file_name_xyz / 'dir / "file1", "secret=false-positive\neven if multiple matches for secret=real-secret")
+      write(wd / 'zip_file_name_xyz / 'dir / "file2", "secret=other-value")
+      write(wd / 'zip_file_name_xyz / 'dir / "file3", "secret=anything")
+      write(wd / 'zip_file_name_xyz / "repository.yaml", repositoryYamlContent)
+
+      val rules = List(
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
+      )
+
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
+
+      results shouldBe Seq(
+        MatchedResult(
+          filePath    = "/dir/file3",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "secret=anything",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 0, end = 7)),
+          priority    = Rule.Priority.Low
+        ),
+        MatchedResult(
+          filePath    = "/dir/file2",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "secret=other-value",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 0, end = 7)),
+          priority    = Rule.Priority.Low,
+          excluded = true
+        ),
+        MatchedResult(
+          filePath    = "/dir/file1",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "secret=false-positive",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 0, end = 7)),
+          priority    = Rule.Priority.Low,
+          excluded = true
+        ),
+        MatchedResult(
+          filePath    = "/dir/file1",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "even if multiple matches for secret=real-secret",
+          lineNumber  = 2,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 29, end = 36)),
+          priority    = Rule.Priority.Low,
+          excluded = true
+        )
+      )
+
+    }
     "should flag as excluded if line text matches supplied exemption text" in {
       val repositoryYamlContent =
         """

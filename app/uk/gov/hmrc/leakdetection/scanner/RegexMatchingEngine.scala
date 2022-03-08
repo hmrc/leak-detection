@@ -60,22 +60,10 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
         def applicableScanners(scanners: Seq[RegexScanner]) =
           scanners.filterNot { scanner =>
             scanner.rule.ignoredExtensions.contains(fileExtension) ||
-            scanner.rule.ignoredFiles.exists(pattern => filePath.matches(pattern)) ||
-            serviceDefinedExemptions
-              .find(_.ruleId == scanner.rule.id)
-              .fold(false)(exemption => exemption.filePaths.contains(filePath) && exemption.text == None)
+            scanner.rule.ignoredFiles.exists(pattern => filePath.matches(pattern))
           }
 
-        def scannersWithExemptions(scanners: Seq[RegexScanner]) =
-          scanners.map (scanner =>
-            scanner.copy(lineExemptions = serviceDefinedExemptions
-              .filter(_.ruleId == scanner.rule.id)
-              .filter(_.filePaths.contains(filePath))
-              .flatMap(_.text)
-            )
-          )
-
-        val applicableFileContentScanners = scannersWithExemptions(applicableScanners(fileContentScanners))
+        val applicableFileContentScanners = applicableScanners(fileContentScanners)
         val applicableFileNameScanners    = applicableScanners(fileNameScanners)
 
         val source = Source.fromFile(file)
@@ -85,7 +73,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
             .foldLeft((1, Seq.empty[MatchedResult], false)) {
               case ((lineNumber, acc, isInLine), line) =>
                 (lineNumber + 1, acc ++ applicableFileContentScanners.flatMap {
-                  _.scanLine(line, lineNumber, filePath, isInLine)
+                  _.scanLine(line, lineNumber, filePath, isInLine, serviceDefinedExemptions)
                 }, line.contains("LDS ignore"))
             }
             ._2
