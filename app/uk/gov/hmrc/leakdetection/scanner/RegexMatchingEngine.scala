@@ -86,7 +86,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
         }
 
         val fileNameResult: Seq[MatchedResult] = applicableFileNameScanners.flatMap {
-          _.scanFileName(file.getName, filePath)
+          _.scanFileName(file.getName, filePath, serviceDefinedExemptions)
         }
 
         contentResults ++ fileNameResult

@@ -33,7 +33,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
       }
   }
 
-  def scanFileName(text: String, filePath: String): Option[MatchedResult] =
+  def scanFileName(text: String, filePath: String, ruleExemptions: Seq[RuleExemption]): Option[MatchedResult] =
     text match {
       case Extractor(_, matches) =>
         Some(
@@ -46,7 +46,8 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
             description = rule.description,
             matches     = matches,
             priority    = rule.priority,
-            draft       = rule.draft
+            draft       = rule.draft,
+            excluded    = isFileExempt(rule.id, filePath, ruleExemptions)
           )
         )
       case _ => None
@@ -67,7 +68,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
               matches     = matches,
               priority    = rule.priority,
               draft       = rule.draft,
-              excluded    = isExempt(rule.id, filePath, line, inLineExemption, ruleExemptions)
+              excluded    = isLineExempt(rule.id, filePath, line, inLineExemption, ruleExemptions) || isFileExempt(rule.id, filePath, ruleExemptions)
             ),
             lineLengthLimit
           )
@@ -76,14 +77,20 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
     }
 
   val fileExtensionR = """\.[A-Za-z0-9]+$""".r
-  private def isExempt(ruleId: String, filePath: String, line: String, inLineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Boolean = {
-    val exemptions = ruleExemptions
+  private def isLineExempt(ruleId: String, filePath: String, line: String, inLineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Boolean = {
+      inLineExemption ||
+      ruleExemptions
+        .filter(_.ruleId == ruleId)
+        .filter(_.filePaths.contains(filePath))
+        .flatMap(_.text)
+        .exists(line.contains(_))
+  }
+
+  private def isFileExempt(ruleId: String, filePath: String, ruleExemptions: Seq[RuleExemption]): Boolean = {
+    ruleExemptions
       .filter(_.ruleId == ruleId)
       .filter(_.filePaths.contains(filePath))
-
-    inLineExemption ||
-      exemptions.flatMap(_.text).exists(line.contains(_)) ||
-      exemptions.exists(_.text == None)
+      .exists(_.text == None)
   }
 
 }

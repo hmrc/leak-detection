@@ -105,7 +105,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
       val descr    = "descr"
       val rule     = Rule(ruleId, Rule.Scope.FILE_NAME, """^.*\.key$""", descr)
 
-      RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "filepath") shouldBe
+      RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "filepath", Seq()) shouldBe
         Some(
           MatchedResult(
             scope       = Rule.Scope.FILE_NAME,
@@ -122,8 +122,17 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
       val fileName = "foo.key"
       val rule     = Rule("rule-id", Rule.Scope.FILE_NAME, "doesn't match", "descr")
 
-      RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "filepath") shouldBe None
+      RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "filepath", Seq()) shouldBe None
     }
+    "mark as excluded if rule exemptions exist for file" in {
+      val fileName = "foo.key"
+      val ruleId   = "rule-1"
+      val descr    = "descr"
+      val rule     = Rule(ruleId, Rule.Scope.FILE_NAME, """^.*\.key$""", descr)
 
+      val matchedResult = RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "filepath", Seq(RuleExemption("rule-1", Seq("foo.key"), None)))
+
+      matchedResult.map(_.excluded) shouldBe true
+    }
   }
 }

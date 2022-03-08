@@ -232,16 +232,20 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           |    filePaths:
           |       - /dir/file1
           |       - /dir/file2
+          |  - ruleId: 'rule-2'
+          |    filePath: '/dir/file4.key'
         """.stripMargin
 
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir / "file1", "secret=false-positive\neven if multiple matches for secret=real-secret")
       write(wd / 'zip_file_name_xyz / 'dir / "file2", "secret=other-value")
       write(wd / 'zip_file_name_xyz / 'dir / "file3", "secret=anything")
+      write(wd / 'zip_file_name_xyz / 'dir / "file4.key", "")
       write(wd / 'zip_file_name_xyz / "repository.yaml", repositoryYamlContent)
 
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
+        Rule("rule-2", Rule.Scope.FILE_NAME, """^.*\.key$""", "leaked secret found in filename")
       )
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
@@ -269,6 +273,17 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           excluded = true
         ),
         MatchedResult(
+          filePath    = "/dir/file4.key",
+          scope       = Rule.Scope.FILE_NAME,
+          lineText    = "file4.key",
+          lineNumber  = 1,
+          ruleId      = "rule-2",
+          description = "leaked secret found in filename",
+          matches     = List(Match(0, 9)),
+          priority    = Rule.Priority.Low,
+          excluded    = true
+        ),
+        MatchedResult(
           filePath    = "/dir/file1",
           scope       = Rule.Scope.FILE_CONTENT,
           lineText    = "secret=false-positive",
@@ -291,7 +306,6 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           excluded = true
         )
       )
-
     }
     "should flag as excluded if line text matches supplied exemption text" in {
       val repositoryYamlContent =
