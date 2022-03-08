@@ -27,7 +27,6 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
     def unapply(arg: String): Option[(String, List[Match])] =
       compiledRegex.findAllMatchIn(arg)
         .toList
-        .filterNot(_ => lineExemptions.exists(exemption => arg.contains(exemption)))
       match {
         case Nil     => None
         case matches => Some((arg, matches.map(Match.create)))
@@ -68,12 +67,17 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
               matches     = matches,
               priority    = rule.priority,
               draft       = rule.draft,
-              excluded    = inLineExemption
+              excluded    = isExempt(line, inLineExemption)
             ),
             lineLengthLimit
           )
         )
       case _ => None
     }
+
+  val fileExtensionR = """\.[A-Za-z0-9]+$""".r
+  private def isExempt(line: String, inLineExemption: Boolean): Boolean = {
+    inLineExemption || lineExemptions.exists(exemption => line.contains(exemption))
+  }
 
 }

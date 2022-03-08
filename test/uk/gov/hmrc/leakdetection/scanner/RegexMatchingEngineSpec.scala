@@ -224,7 +224,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
 
     }
 
-    "should filter out based on text if supplied" in {
+    "should flag as excluded if line text matches supplied exemption text" in {
       val repositoryYamlContent =
         """
           |leakDetectionExemptions:
@@ -251,33 +251,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
-      results should have size 3
-
-      results should contain(
-          MatchedResult(
-            filePath    = "/dir/file1",
-            scope       = Rule.Scope.FILE_CONTENT,
-            lineText    = "match should be found on secret=real-secret",
-            lineNumber  = 2,
-            ruleId      = "rule-1",
-            description = "leaked secret found for rule 1",
-            matches     = List(Match(start = 25, end = 32)),
-            priority    = Rule.Priority.Low
-          )
-      )
-      results should contain(
-        MatchedResult(
-          filePath    = "/dir/file1",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineText    = "rule 2 match should still be found on: key=false-positive",
-          lineNumber  = 3,
-          ruleId      = "rule-2",
-          description = "leaked secret found for rule 2",
-          matches     = List(Match(start = 39, end = 43)),
-          priority    = Rule.Priority.Low
-        )
-      )
-      results should contain(
+      results shouldBe Seq(
         MatchedResult(
           filePath    = "/dir/file2",
           scope       = Rule.Scope.FILE_CONTENT,
@@ -286,6 +260,37 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           ruleId      = "rule-1",
           description = "leaked secret found for rule 1",
           matches     = List(Match(start = 26, end = 33)),
+          priority    = Rule.Priority.Low
+        ),
+        MatchedResult(
+          filePath    = "/dir/file1",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "no match to be found on: secret=false-positive",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 25, end = 32)),
+          priority    = Rule.Priority.Low,
+          excluded = true
+        ),
+        MatchedResult(
+          filePath    = "/dir/file1",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "match should be found on secret=real-secret",
+          lineNumber  = 2,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 25, end = 32)),
+          priority    = Rule.Priority.Low
+        ),
+        MatchedResult(
+          filePath    = "/dir/file1",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "rule 2 match should still be found on: key=false-positive",
+          lineNumber  = 3,
+          ruleId      = "rule-2",
+          description = "leaked secret found for rule 2",
+          matches     = List(Match(start = 39, end = 43)),
           priority    = Rule.Priority.Low
         )
       )
@@ -306,7 +311,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
       val aMatchedResult = MatchedResult("/dir/file", "fileContent", "", 0, "rule", "leaked secret", List(), Priority.Low, false)
-      results shouldBe List(
+      results shouldBe Seq(
         aMatchedResult.copy(lineText = "first match on: secret", lineNumber = 1, matches = List(Match(16, 22))),
         aMatchedResult.copy(lineText = "ignore match on: secret", lineNumber = 3, matches = List(Match(17, 23)), excluded = true),
         aMatchedResult.copy(lineText = "second match on: secret", lineNumber = 4, matches = List(Match(17, 23))),

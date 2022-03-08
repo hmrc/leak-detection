@@ -63,27 +63,25 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
       matchedResult.lineText shouldBe "[…] BB […]"
       matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
     }
-    "not mark as excluded if inLine flag is false" in {
-      val text  = "abc AA def BB ghi CC xyz"
-      val rule  = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
-      val limit = 2
+    "handle exclusions by" - {
+      "marking as excluded if inLine flag is true" in {
+        val text = "abc AA def BB ghi CC xyz"
+        val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
+        val limit = 2
 
-      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1,"filepath", false).get
+        val matchedResult = RegexScanner(rule, limit).scanLine(text, 1, "filepath", true).get
 
-      matchedResult.lineText shouldBe "[…] BB […]"
-      matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
-      matchedResult.excluded shouldBe false
-    }
-    "mark as excluded if inLine flag is true" in {
-      val text  = "abc AA def BB ghi CC xyz"
-      val rule  = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
-      val limit = 2
+        matchedResult.excluded shouldBe true
+      }
+      "marking as excluded if line matches any line exemptions" in {
+        val text = "abc AA def BB ghi CC xyz"
+        val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
+        val limit = 2
 
-      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1,"filepath", true).get
+        val matchedResult = RegexScanner(rule, limit, Seq("xyz")).scanLine(text, 1, "filepath", false).get
 
-      matchedResult.lineText shouldBe "[…] BB […]"
-      matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
-      matchedResult.excluded shouldBe true
+        matchedResult.excluded shouldBe true
+      }
     }
   }
 
