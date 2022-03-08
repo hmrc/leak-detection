@@ -85,8 +85,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
             .foldLeft((1, Seq.empty[MatchedResult], false)) {
               case ((lineNumber, acc, isInLine), line) =>
                 (lineNumber + 1, acc ++ applicableFileContentScanners.flatMap {
-                  _.scanLine(line, lineNumber, filePath)
-                    .filterNot(_ => isInLine)
+                  _.scanLine(line, lineNumber, filePath, isInLine)
                 }, line.contains("LDS ignore"))
             }
             ._2

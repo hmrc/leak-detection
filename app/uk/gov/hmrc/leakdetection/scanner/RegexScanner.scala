@@ -53,7 +53,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
       case _ => None
     }
 
-  def scanLine(line: String, lineNumber: Int, filePath: String): Option[MatchedResult] =
+  def scanLine(line: String, lineNumber: Int, filePath: String, inLineExemption: Boolean): Option[MatchedResult] =
     line match {
       case Extractor(lineText, matches) =>
         Some(
@@ -67,7 +67,8 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int, lineExemptions: Seq[St
               description = rule.description,
               matches     = matches,
               priority    = rule.priority,
-              draft       = rule.draft
+              draft       = rule.draft,
+              excluded    = inLineExemption
             ),
             lineLengthLimit
           )

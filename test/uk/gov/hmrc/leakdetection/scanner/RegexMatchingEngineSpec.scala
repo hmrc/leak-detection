@@ -21,6 +21,7 @@ import org.mockito.MockitoSugar
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.leakdetection.config.Rule
+import uk.gov.hmrc.leakdetection.config.Rule.Priority
 
 class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matchers {
 
@@ -290,7 +291,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       )
     }
 
-    "should filter out in-line exceptions" in {
+    "should flag in-line exceptions as excluded" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir / "file",
         "first match on: secret\n" +
@@ -304,8 +305,13 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
-      results should have size 2
-      results.map(r => r.lineNumber) shouldBe Seq(1,4)
+      val aMatchedResult = MatchedResult("/dir/file", "fileContent", "", 0, "rule", "leaked secret", List(), Priority.Low, false)
+      results shouldBe List(
+        aMatchedResult.copy(lineText = "first match on: secret", lineNumber = 1, matches = List(Match(16, 22))),
+        aMatchedResult.copy(lineText = "ignore match on: secret", lineNumber = 3, matches = List(Match(17, 23)), excluded = true),
+        aMatchedResult.copy(lineText = "second match on: secret", lineNumber = 4, matches = List(Match(17, 23))),
+        aMatchedResult.copy(lineText = "ignore another match on: secret", lineNumber = 6, matches = List(Match(25, 31)), excluded = true),
+      )
     }
   }
 

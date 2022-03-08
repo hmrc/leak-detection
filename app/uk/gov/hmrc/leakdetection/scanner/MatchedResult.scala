@@ -28,7 +28,8 @@ final case class MatchedResult(
   description: String,
   matches: List[Match],
   priority: String,
-  draft: Boolean = false
+  draft: Boolean = false,
+  excluded: Boolean = false
 )
 
 final case class Match(

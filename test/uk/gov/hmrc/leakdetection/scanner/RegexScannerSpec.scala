@@ -30,7 +30,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
         val ruleId = "rule-1"
         val rule   = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(matches)", descr)
 
-        RegexScanner(rule, Int.MaxValue).scanLine(text1, 7, "filepath") shouldBe Some(
+        RegexScanner(rule, Int.MaxValue).scanLine(text1, 7, "filepath", false) shouldBe Some(
           MatchedResult(
             scope       = Rule.Scope.FILE_CONTENT,
             lineText    = "this matches the regex",
@@ -50,7 +50,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
 
         val rule = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(was)", "descr")
 
-        RegexScanner(rule, Int.MaxValue).scanLine(text, 1, "filepath") shouldBe None
+        RegexScanner(rule, Int.MaxValue).scanLine(text, 1, "filepath", false) shouldBe None
       }
     }
     "respect max line length and truncate lineText" in {
@@ -58,10 +58,32 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
       val rule  = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
       val limit = 2
 
-      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1,"filepath").get
+      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1,"filepath", false).get
 
       matchedResult.lineText shouldBe "[…] BB […]"
       matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
+    }
+    "not mark as excluded if inLine flag is false" in {
+      val text  = "abc AA def BB ghi CC xyz"
+      val rule  = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
+      val limit = 2
+
+      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1,"filepath", false).get
+
+      matchedResult.lineText shouldBe "[…] BB […]"
+      matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
+      matchedResult.excluded shouldBe false
+    }
+    "mark as excluded if inLine flag is true" in {
+      val text  = "abc AA def BB ghi CC xyz"
+      val rule  = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
+      val limit = 2
+
+      val matchedResult = RegexScanner(rule, limit).scanLine(text, 1,"filepath", true).get
+
+      matchedResult.lineText shouldBe "[…] BB […]"
+      matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
+      matchedResult.excluded shouldBe true
     }
   }
 
