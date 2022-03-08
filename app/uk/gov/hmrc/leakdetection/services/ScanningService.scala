@@ -84,13 +84,13 @@ class ScanningService @Inject()(
               draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts)
               leaks              = Leak.createFromMatchedResults(report, results)
               warnings           = warningsService.checkForWarnings(report, dir, isPrivate)
-              _                 <- if(draftReport.totalLeaks > 0) draftReportsService.saveReport(draftReport) else Future.unit
+              _                 <- if(draftReport.totalLeaks > 0) draftReportsService.saveReport(draftReport.copy(totalWarnings = warnings.length)) else Future.unit
               _                 <- executeIfNotDryRun(reportsService.saveReport(report))
               _                 <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
               _                 <- executeIfNotDryRun(warningsService.saveWarnings(repository, branch, warnings))
               _                 <- executeIfNotDryRun(alertingService.alert(report))
               _                 <- executeIfNotDryRun(alertAboutWarnings(repository, branch, authorName, dir.getAbsolutePath, warnings))
-            } yield report
+            } yield report.copy(totalWarnings = warnings.length)
 
           processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
           processingResult

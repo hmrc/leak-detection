@@ -62,7 +62,9 @@ final case class Report(
                          timestamp        : Instant,
                          author           : String,
                          totalLeaks       : Int,
-                         rulesViolated    : Map[String, Int]
+                         totalWarnings    : Int = 0,
+                         rulesViolated    : Map[String, Int],
+                         exclusions       : Map[String, Int]
 )
 
 object Report {
@@ -84,7 +86,8 @@ object Report {
       timestamp     = Instant.now,
       author        = authorName,
       totalLeaks    = results.length,
-      rulesViolated = results.groupBy(_.ruleId).mapValues(_.length)
+      rulesViolated = results.filterNot(_.excluded).groupBy(_.ruleId).mapValues(_.length),
+      exclusions    = results.filter(_.excluded).groupBy(_.ruleId).mapValues(_.length)
     )
 
   val apiFormat: Format[Report] = {
@@ -110,7 +113,9 @@ object Report {
     ~ (__ \ "timestamp"        ).format[Instant]
     ~ (__ \ "author"           ).format[String]
     ~ (__ \ "totalLeaks"       ).format[Int]
+    ~ (__ \ "totalWarnings"    ).format[Int]
     ~ (__ \ "rulesViolated"    ).format[Map[String,Int]]
+    ~ (__ \ "exclusions"       ).format[Map[String,Int]]
     )(Report.apply, unlift(Report.unapply))
   }
 }
