@@ -117,7 +117,7 @@ class WarningServiceSpec
 
     val timestamp = Instant.now()
 
-    def aReport = Report(ReportId("report"), "repoName", "url", "commit", "branch", timestamp, "author", 0, Map.empty)
+    def aReport = Report(ReportId("report"), "repoName", "url", "commit", "branch", timestamp, "author", 0, 0, Map.empty, Map.empty)
 
     val fileContentRule =
       Rule(

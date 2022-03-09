@@ -134,7 +134,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       )
     }
 
-    "should filter out results that match exemptions rules" in {
+    "should filter out results that match rules ignoredFiles" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
       write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again")
@@ -191,40 +191,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       )
     }
 
-    "should filter out results that match exemptions in repository.yaml" in {
-      val repositoryYamlContent =
-        """
-          |leakDetectionExemptions:
-          |  - ruleId: 'rule-1'
-          |    filePath: /dir2/file1
-          |  - ruleId: 'rule-2'
-          |    filePaths: 
-          |       - /dir2/file1
-          |       - /dir2/file2
-          |  - ruleId: 'rule-3'
-          |    filePaths: 
-          |       - /dir2/file3
-        """.stripMargin
-
-      val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / 'dir2 / "file1", "no match to be found on: secret1 or secret2, rule 1 and 2")
-      write(wd / 'zip_file_name_xyz / 'dir2 / "file2", "no match to be found on: secret2, rule 2")
-      write(wd / 'zip_file_name_xyz / 'dir2 / "file3", "no match to be found in this file, rule 3\n")
-      write(wd / 'zip_file_name_xyz / "repository.yaml", repositoryYamlContent)
-
-      val rules = List(
-        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret1", "descr 1"),
-        Rule("rule-2", Rule.Scope.FILE_CONTENT, "secret2", "descr 2"),
-        Rule("rule-3", Rule.Scope.FILE_NAME, "file3", "file with some secrets")
-      )
-
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
-
-      results should have size 0
-
-    }
-
-    "should flag as excluded if filename matches file level exemption" in {
+    "should flag as excluded if filename matches file level exemption in repository.yaml" in {
       val repositoryYamlContent =
         """
           |leakDetectionExemptions:
@@ -307,7 +274,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
         )
       )
     }
-    "should flag as excluded if line text matches supplied exemption text" in {
+    "should flag as excluded if line text matches supplied exemption text in repository.yaml" in {
       val repositoryYamlContent =
         """
           |leakDetectionExemptions:
