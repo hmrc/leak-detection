@@ -113,9 +113,9 @@ object Report {
     ~ (__ \ "timestamp"        ).format[Instant]
     ~ (__ \ "author"           ).format[String]
     ~ (__ \ "totalLeaks"       ).format[Int]
-    ~ (__ \ "totalWarnings"    ).format[Int]
+    ~ (__ \ "totalWarnings"    ).formatWithDefault[Int](0)
     ~ (__ \ "rulesViolated"    ).format[Map[String,Int]]
-    ~ (__ \ "exclusions"       ).format[Map[String,Int]]
+    ~ (__ \ "exclusions"       ).formatWithDefault[Map[String,Int]](Map.empty)
     )(Report.apply, unlift(Report.unapply))
   }
 }

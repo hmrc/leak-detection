@@ -78,7 +78,7 @@ object Leak {
     ~ (__ \ "lineText").format[String]
     ~ (__ \ "matches").format[List[Match]]
     ~ (__ \ "priority").format[String]
-    ~ (__ \ "excluded").format[Boolean]
+    ~ (__ \ "excluded").formatWithDefault[Boolean](false)
     )(Leak.apply, unlift(Leak.unapply))
   }
 
