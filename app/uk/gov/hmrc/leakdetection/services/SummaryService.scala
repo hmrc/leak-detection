@@ -44,10 +44,18 @@ class SummaryService @Inject()(ruleService: RuleService,
               ruleLeaksByRepo.minBy(_.timestamp).timestamp,
               ruleLeaksByRepo.maxBy(_.timestamp).timestamp,
               warnings.count(_.repoName == repoName),
-              ruleLeaksByRepo.length,
+              getUnresolvedLeakCount(ruleLeaksByRepo),
+              getExcludedLeakCount(ruleLeaksByRepo),
               ruleLeaksByRepo.groupBy(_.branch)
-                .map { case (branch, leaksByBranch) => BranchSummary(
-                  branch, leaksByBranch.head.reportId, leaksByBranch.head.timestamp, warnings.count(w => w.repoName == repoName && w.branch == branch), leaksByBranch.length)
+                .map { case (branch, leaksByBranch) =>
+                  BranchSummary(
+                    branch,
+                    leaksByBranch.head.reportId,
+                    leaksByBranch.head.timestamp,
+                    warnings.count(w => w.repoName == repoName && w.branch == branch),
+                    getUnresolvedLeakCount(leaksByBranch),
+                    getExcludedLeakCount(leaksByBranch)
+                  )
                 }.toSeq)
             }.toSeq)
         }
@@ -74,7 +82,8 @@ class SummaryService @Inject()(ruleService: RuleService,
           if (repoLeaks.nonEmpty) repoLeaks.minBy(_.timestamp).timestamp else repoWarnings.minBy(_.timestamp).timestamp,
           if (repoLeaks.nonEmpty) repoLeaks.maxBy(_.timestamp).timestamp else repoWarnings.maxBy(_.timestamp).timestamp,
           repoWarnings.length,
-          repoLeaks.length,
+          getUnresolvedLeakCount(repoLeaks),
+          getExcludedLeakCount(repoLeaks),
           buildBranchSummaries(repoLeaks, repoWarnings)
         )
       }
@@ -89,12 +98,18 @@ class SummaryService @Inject()(ruleService: RuleService,
         branchLeaks.headOption.map(_.reportId).getOrElse(branchWarnings.head.reportId),
         branchLeaks.headOption.map(_.timestamp).getOrElse(branchWarnings.head.timestamp),
         branchWarnings.length,
-        branchLeaks.length,
-        Some(branchLeaks.groupBy(_.ruleId).map(leaksByRule =>
+        getUnresolvedLeakCount(branchLeaks),
+        getExcludedLeakCount(branchLeaks),
+        Some(branchLeaks
+          .filterNot(_.excluded)
+          .groupBy(_.ruleId).map(leaksByRule =>
           leaksByRule._1 -> leaksByRule._2.length))
       )
     }
   }
+
+  private def getUnresolvedLeakCount(leaks: Seq[Leak]): Int = leaks.filterNot(_.excluded).length
+  private def getExcludedLeakCount(leaks: Seq[Leak]): Int = leaks.filter(_.excluded).length
 
   private def getTeamRepos(teamName: Option[String]): Future[Option[Seq[String]]] = teamName match {
     case Some(t) => teamsAndRepositoriesConnector.team(t).map(_.map(_.repos.map(_.values.toSeq.flatten).toSeq.flatten))

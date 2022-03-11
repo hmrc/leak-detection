@@ -41,6 +41,7 @@ case class RepositorySummary(
                               lastScannedAt: Instant,
                               warningCount: Int,
                               unresolvedCount: Int,
+                              excludedCount: Int,
                               branchSummary: Seq[BranchSummary]
                             )
 
@@ -55,6 +56,7 @@ case class BranchSummary(
                           scannedAt: Instant,
                           warningCount: Int,
                           unresolvedCount: Int,
+                          excludedCount: Int,
                           rulesViolated: Option[Map[String, Int]] = None
                         )
 
