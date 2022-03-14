@@ -128,11 +128,11 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 0, 2, 1, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1, Some(Map("rule-1" -> 1, "rule-2" -> 1)))
+            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1)
           )),
           RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 0, 2, 0, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 0, 1, 0, Some(Map("rule-1" -> 1))),
-            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, 0, Some(Map("rule-1" -> 1)))
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 0, 1, 0),
+            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, 0)
           ))
         )
       }
@@ -145,14 +145,14 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 0, 0, Seq(
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0, Some(Map.empty))
+            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0)
           )),
           RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(3, HOURS), 1, 0, 0, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 0, 0, Some(Map.empty))
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 0, 0)
           )),
           RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, 0, Some(Map.empty)),
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, 0, Some(Map.empty))
+            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, 0),
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, 0)
           ))
         )
       }
@@ -165,16 +165,16 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1, Some(Map("rule-1" -> 1, "rule-2" -> 1))),
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0, Some(Map.empty)))
-          ),
+            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1),
+            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0)
+          )),
           RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 1, 0, Some(Map("rule-1" -> 1))),
-            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, 0, Some(Map("rule-1" -> 1)))
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 1, 0),
+            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, 0)
           )),
           RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, 0, Some(Map.empty)),
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, 0, Some(Map.empty))
+            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, 0),
+            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, 0)
           ))
         )
       }
@@ -192,8 +192,8 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1, Some(Map("rule-1" -> 1, "rule-2" -> 1))),
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0, Some(Map.empty))
+            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1),
+            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0)
           ))
         )
       }

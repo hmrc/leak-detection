@@ -56,8 +56,7 @@ case class BranchSummary(
                           scannedAt: Instant,
                           warningCount: Int,
                           unresolvedCount: Int,
-                          excludedCount: Int,
-                          rulesViolated: Option[Map[String, Int]] = None
+                          excludedCount: Int
                         )
 
 object BranchSummary {
