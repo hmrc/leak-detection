@@ -18,14 +18,14 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import ammonite.ops.{tmp, write}
 import org.mockito.MockitoSugar
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.config.Rule.Priority
 
-class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matchers {
+class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matchers {
 
-  "run" - {
+  "run" should {
     "should scan all the files in all subdirectories and return a report with correct file paths" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
@@ -217,39 +217,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
-      results shouldBe Seq(
-        MatchedResult(
-          filePath    = "/dir/file3",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineText    = "secret=anything",
-          lineNumber  = 1,
-          ruleId      = "rule-1",
-          description = "leaked secret found for rule 1",
-          matches     = List(Match(start = 0, end = 7)),
-          priority    = Rule.Priority.Low
-        ),
-        MatchedResult(
-          filePath    = "/dir/file2",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineText    = "secret=other-value",
-          lineNumber  = 1,
-          ruleId      = "rule-1",
-          description = "leaked secret found for rule 1",
-          matches     = List(Match(start = 0, end = 7)),
-          priority    = Rule.Priority.Low,
-          excluded = true
-        ),
-        MatchedResult(
-          filePath    = "/dir/file4.key",
-          scope       = Rule.Scope.FILE_NAME,
-          lineText    = "file4.key",
-          lineNumber  = 1,
-          ruleId      = "rule-2",
-          description = "leaked secret found in filename",
-          matches     = List(Match(0, 9)),
-          priority    = Rule.Priority.Low,
-          excluded    = true
-        ),
+      results should contain theSameElementsAs Seq(
         MatchedResult(
           filePath    = "/dir/file1",
           scope       = Rule.Scope.FILE_CONTENT,
@@ -271,6 +239,38 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           matches     = List(Match(start = 29, end = 36)),
           priority    = Rule.Priority.Low,
           excluded = true
+        ),
+        MatchedResult(
+          filePath    = "/dir/file2",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "secret=other-value",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 0, end = 7)),
+          priority    = Rule.Priority.Low,
+          excluded = true
+        ),
+        MatchedResult(
+          filePath    = "/dir/file3",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "secret=anything",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 0, end = 7)),
+          priority    = Rule.Priority.Low
+        ),
+        MatchedResult(
+          filePath    = "/dir/file4.key",
+          scope       = Rule.Scope.FILE_NAME,
+          lineText    = "file4.key",
+          lineNumber  = 1,
+          ruleId      = "rule-2",
+          description = "leaked secret found in filename",
+          matches     = List(Match(0, 9)),
+          priority    = Rule.Priority.Low,
+          excluded    = true
         )
       )
     }
@@ -301,17 +301,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
-      results shouldBe Seq(
-        MatchedResult(
-          filePath    = "/dir/file2",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineText    = "match should be found on: secret=false-positive in this file",
-          lineNumber  = 1,
-          ruleId      = "rule-1",
-          description = "leaked secret found for rule 1",
-          matches     = List(Match(start = 26, end = 33)),
-          priority    = Rule.Priority.Low
-        ),
+      results should contain theSameElementsAs Seq(
         MatchedResult(
           filePath    = "/dir/file1",
           scope       = Rule.Scope.FILE_CONTENT,
@@ -341,6 +331,16 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           ruleId      = "rule-2",
           description = "leaked secret found for rule 2",
           matches     = List(Match(start = 39, end = 43)),
+          priority    = Rule.Priority.Low
+        ),
+        MatchedResult(
+          filePath    = "/dir/file2",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "match should be found on: secret=false-positive in this file",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "leaked secret found for rule 1",
+          matches     = List(Match(start = 26, end = 33)),
           priority    = Rule.Priority.Low
         )
       )
