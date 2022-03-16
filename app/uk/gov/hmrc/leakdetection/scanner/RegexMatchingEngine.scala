@@ -71,9 +71,9 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
         val contentResults: Seq[MatchedResult] = try {
           source.getLines
             .foldLeft((1, Seq.empty[MatchedResult], false)) {
-              case ((lineNumber, acc, isInLine), line) =>
+              case ((lineNumber, acc, isInline), line) =>
                 (lineNumber + 1, acc ++ applicableFileContentScanners.flatMap {
-                  _.scanLine(line, lineNumber, filePath, isInLine, serviceDefinedExemptions)
+                  _.scanLine(line, lineNumber, filePath, isInline, serviceDefinedExemptions)
                 }, line.contains("LDS ignore"))
             }
             ._2

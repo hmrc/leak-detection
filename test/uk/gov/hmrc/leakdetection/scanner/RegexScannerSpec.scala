@@ -64,7 +64,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
       matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
     }
     "handle exclusions by" - {
-      "marking as excluded if inLine flag is true" in {
+      "marking as excluded if inline flag is true" in {
         val text = "abc AA def BB ghi CC xyz"
         val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
         val limit = 2

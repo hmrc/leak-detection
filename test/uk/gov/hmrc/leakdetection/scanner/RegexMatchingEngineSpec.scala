@@ -18,14 +18,14 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import ammonite.ops.{tmp, write}
 import org.mockito.MockitoSugar
+import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.config.Rule.Priority
 
-class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matchers {
+class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matchers {
 
-  "run" should {
+  "run" - {
     "should scan all the files in all subdirectories and return a report with correct file paths" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")

@@ -53,7 +53,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
       case _ => None
     }
 
-  def scanLine(line: String, lineNumber: Int, filePath: String, inLineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Option[MatchedResult] =
+  def scanLine(line: String, lineNumber: Int, filePath: String, inlineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Option[MatchedResult] =
     line match {
       case Extractor(lineText, matches) =>
         Some(
@@ -68,7 +68,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
               matches     = matches,
               priority    = rule.priority,
               draft       = rule.draft,
-              excluded    = isLineExempt(rule.id, filePath, line, inLineExemption, ruleExemptions) || isFileExempt(rule.id, filePath, ruleExemptions)
+              excluded    = isLineExempt(rule.id, filePath, line, inlineExemption, ruleExemptions) || isFileExempt(rule.id, filePath, ruleExemptions)
             ),
             lineLengthLimit
           )
@@ -76,9 +76,8 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
       case _ => None
     }
 
-  val fileExtensionR = """\.[A-Za-z0-9]+$""".r
-  private def isLineExempt(ruleId: String, filePath: String, line: String, inLineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Boolean = {
-      inLineExemption ||
+  private def isLineExempt(ruleId: String, filePath: String, line: String, inlineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Boolean = {
+      inlineExemption ||
       ruleExemptions
         .filter(_.ruleId == ruleId)
         .filter(_.filePaths.contains(filePath))
