@@ -71,7 +71,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
 
         val matchedResult = RegexScanner(rule, limit).scanLine(text, 1, "filepath", true, Seq()).get
 
-        matchedResult.excluded shouldBe true
+        matchedResult.isExcluded shouldBe true
       }
       "marking as excluded if line matches rule exemptions text" in {
         val text = "abc AA def BB ghi CC xyz"
@@ -82,7 +82,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
           RuleExemption("ruleId", Seq("filepath"), Some("xyz")))
         ).get
 
-        matchedResult.excluded shouldBe true
+        matchedResult.isExcluded shouldBe true
       }
       "marking as excluded if file level rule exemption matches filename" in {
         val text = "abc AA def BB ghi CC xyz"
@@ -93,7 +93,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
           RuleExemption("ruleId", Seq("filepath"), None))
         ).get
 
-        matchedResult.excluded shouldBe true
+        matchedResult.isExcluded shouldBe true
       }
     }
   }
@@ -132,7 +132,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
 
       val matchedResult = RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "/filepath/foo.key", Seq(RuleExemption("rule-1", Seq("/filepath/foo.key"), None)))
 
-      matchedResult.map(_.excluded) shouldBe Some(true)
+      matchedResult.map(_.isExcluded) shouldBe Some(true)
     }
   }
 }

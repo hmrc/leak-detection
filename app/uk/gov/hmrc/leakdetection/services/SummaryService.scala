@@ -88,8 +88,8 @@ class SummaryService @Inject()(ruleService: RuleService,
     }
   }
 
-  private def getUnresolvedLeakCount(leaks: Seq[Leak]): Int = leaks.filterNot(_.excluded).length
-  private def getExcludedLeakCount(leaks: Seq[Leak]): Int   = leaks.filter(_.excluded).length
+  private def getUnresolvedLeakCount(leaks: Seq[Leak]): Int = leaks.filterNot(_.isExcluded).length
+  private def getExcludedLeakCount(leaks: Seq[Leak]): Int   = leaks.filter(_.isExcluded).length
 
   private def getTeamRepos(teamName: Option[String]): Future[Option[Seq[String]]] = teamName match {
     case Some(t) => teamsAndRepositoriesConnector.team(t).map(_.map(_.repos.map(_.values.toSeq.flatten).toSeq.flatten))

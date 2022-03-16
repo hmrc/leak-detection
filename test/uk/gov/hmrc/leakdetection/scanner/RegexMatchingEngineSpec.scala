@@ -227,7 +227,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           description = "leaked secret found for rule 1",
           matches     = List(Match(start = 0, end = 7)),
           priority    = Rule.Priority.Low,
-          excluded = true
+          isExcluded = true
         ),
         MatchedResult(
           filePath    = "/dir/file1",
@@ -238,7 +238,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           description = "leaked secret found for rule 1",
           matches     = List(Match(start = 29, end = 36)),
           priority    = Rule.Priority.Low,
-          excluded = true
+          isExcluded = true
         ),
         MatchedResult(
           filePath    = "/dir/file2",
@@ -249,7 +249,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           description = "leaked secret found for rule 1",
           matches     = List(Match(start = 0, end = 7)),
           priority    = Rule.Priority.Low,
-          excluded = true
+          isExcluded = true
         ),
         MatchedResult(
           filePath    = "/dir/file3",
@@ -270,7 +270,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           description = "leaked secret found in filename",
           matches     = List(Match(0, 9)),
           priority    = Rule.Priority.Low,
-          excluded    = true
+          isExcluded    = true
         )
       )
     }
@@ -311,7 +311,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
           description = "leaked secret found for rule 1",
           matches     = List(Match(start = 25, end = 32)),
           priority    = Rule.Priority.Low,
-          excluded = true
+          isExcluded = true
         ),
         MatchedResult(
           filePath    = "/dir/file1",
@@ -363,9 +363,9 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       val aMatchedResult = MatchedResult("/dir/file", "fileContent", "", 0, "rule", "leaked secret", List(), Priority.Low, false)
       results shouldBe Seq(
         aMatchedResult.copy(lineText = "first match on: secret", lineNumber = 1, matches = List(Match(16, 22))),
-        aMatchedResult.copy(lineText = "ignore match on: secret", lineNumber = 3, matches = List(Match(17, 23)), excluded = true),
+        aMatchedResult.copy(lineText = "ignore match on: secret", lineNumber = 3, matches = List(Match(17, 23)), isExcluded = true),
         aMatchedResult.copy(lineText = "second match on: secret", lineNumber = 4, matches = List(Match(17, 23))),
-        aMatchedResult.copy(lineText = "ignore another match on: secret", lineNumber = 6, matches = List(Match(25, 31)), excluded = true),
+        aMatchedResult.copy(lineText = "ignore another match on: secret", lineNumber = 6, matches = List(Match(25, 31)), isExcluded = true),
       )
     }
   }

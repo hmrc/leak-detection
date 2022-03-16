@@ -47,7 +47,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
             matches     = matches,
             priority    = rule.priority,
             draft       = rule.draft,
-            excluded    = isFileExempt(rule.id, filePath, ruleExemptions)
+            isExcluded  = isFileExempt(rule.id, filePath, ruleExemptions)
           )
         )
       case _ => None
@@ -68,7 +68,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
               matches     = matches,
               priority    = rule.priority,
               draft       = rule.draft,
-              excluded    = isLineExempt(rule.id, filePath, line, inlineExemption, ruleExemptions) || isFileExempt(rule.id, filePath, ruleExemptions)
+              isExcluded  = isLineExempt(rule.id, filePath, line, inlineExemption, ruleExemptions) || isFileExempt(rule.id, filePath, ruleExemptions)
             ),
             lineLengthLimit
           )

@@ -65,8 +65,12 @@ object RepositoryInfo {
   }
 
   def repo(repoName: String): Future[Option[RepositoryInfo]] = {
-    implicit val hc = HeaderCarrier()
-    http.GET[Option[RepositoryInfo]](url"${baseUrl}/api/repositories/$repoName")
+    if(repoName.equals("leak-detection")) {
+      Future.successful(Some(RepositoryInfo("leak-detection", false, "main")))
+    } else {
+      implicit val hc = HeaderCarrier()
+      http.GET[Option[RepositoryInfo]](url"${baseUrl}/api/repositories/$repoName")
+    }
   }
 
 }

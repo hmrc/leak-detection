@@ -38,7 +38,7 @@ case class Leak( repoName   : String,
                  lineText   : String,
                  matches    : List[Match],
                  priority   : String,
-                 excluded   : Boolean)
+                 isExcluded   : Boolean)
 
 object Leak {
 
@@ -58,7 +58,7 @@ object Leak {
     ~ (__ \ "lineText").format[String]
     ~ (__ \ "matches").format[List[Match]]
     ~ (__ \ "priority").format[String]
-    ~ (__ \ "excluded").format[Boolean]
+    ~ (__ \ "isExcluded").format[Boolean]
     )(Leak.apply, unlift(Leak.unapply))
   }
 
@@ -78,7 +78,7 @@ object Leak {
     ~ (__ \ "lineText").format[String]
     ~ (__ \ "matches").format[List[Match]]
     ~ (__ \ "priority").format[String]
-    ~ (__ \ "excluded").formatWithDefault[Boolean](false)
+    ~ (__ \ "isExcluded").formatWithDefault[Boolean](false)
     )(Leak.apply, unlift(Leak.unapply))
   }
 
@@ -97,6 +97,6 @@ object Leak {
         lineText    = result.lineText,
         matches     = result.matches,
         priority    = result.priority,
-        excluded    = result.excluded
+        isExcluded    = result.isExcluded
       ))
 }

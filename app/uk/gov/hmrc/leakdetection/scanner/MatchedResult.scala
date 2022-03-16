@@ -29,7 +29,7 @@ final case class MatchedResult(
   matches: List[Match],
   priority: String,
   draft: Boolean = false,
-  excluded: Boolean = false
+  isExcluded: Boolean = false
 )
 
 final case class Match(

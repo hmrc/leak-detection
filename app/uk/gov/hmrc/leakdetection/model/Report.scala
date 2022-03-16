@@ -86,8 +86,8 @@ object Report {
       timestamp     = Instant.now,
       author        = authorName,
       totalLeaks    = results.length,
-      rulesViolated = results.filterNot(_.excluded).groupBy(_.ruleId).mapValues(_.length),
-      exclusions    = results.filter(_.excluded).groupBy(_.ruleId).mapValues(_.length)
+      rulesViolated = results.filterNot(_.isExcluded).groupBy(_.ruleId).mapValues(_.length),
+      exclusions    = results.filter(_.isExcluded).groupBy(_.ruleId).mapValues(_.length)
     )
 
   val apiFormat: Format[Report] = {

@@ -49,7 +49,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       aLeak.copy(repoName = "repo1", ruleId = "rule-2", timestamp = timestamp),
       aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch1", timestamp = timestamp.minus(3, HOURS)),
       aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch2", timestamp = timestamp.minus(1, HOURS)),
-      aLeak.copy(repoName = "repo1", ruleId = "rule-1", timestamp = timestamp, excluded = true),
+      aLeak.copy(repoName = "repo1", ruleId = "rule-1", timestamp = timestamp, isExcluded = true),
     )))
 
   def givenSomeWarnings(timestamp: Instant) = when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(
