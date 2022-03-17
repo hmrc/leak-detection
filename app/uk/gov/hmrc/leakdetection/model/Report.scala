@@ -34,17 +34,22 @@ final case class ReportId(value: String) extends AnyVal {
 object ReportId {
   def random = ReportId(UUID.randomUUID().toString)
 
-  implicit val format: Format[ReportId] = new Format[ReportId] {
-    def writes(o: ReportId): JsValue = JsString(o.value)
-
-    def reads(json: JsValue): JsResult[ReportId] = json match {
-      case JsString(v) => JsSuccess(ReportId(v))
-      case _           => JsError("invalid reportId")
-    }
-  }
+  implicit val format: Format[ReportId] =
+    implicitly[Format[String]]
+      .inmap(ReportId.apply, unlift(ReportId.unapply))
 
   implicit val binder: PathBindable[ReportId] =
     new SimpleObjectBinder[ReportId](ReportId.apply, _.value)
+}
+
+final case class RuleId(value: String) extends AnyVal {
+  override def toString: String = value
+}
+
+object RuleId {
+  implicit val format: Format[RuleId] =
+    implicitly[Format[String]]
+      .inmap(RuleId.apply, unlift(RuleId.unapply))
 }
 
 final case class ResolvedLeak(ruleId: String, description: String)
@@ -63,8 +68,8 @@ final case class Report(
                          author           : String,
                          totalLeaks       : Int,
                          totalWarnings    : Int = 0,
-                         rulesViolated    : Map[String, Int],
-                         exclusions       : Map[String, Int]
+                         rulesViolated    : Map[RuleId, Int],
+                         exclusions       : Map[RuleId, Int]
 )
 
 object Report {
@@ -86,8 +91,14 @@ object Report {
       timestamp     = Instant.now,
       author        = authorName,
       totalLeaks    = results.length,
-      rulesViolated = results.filterNot(_.isExcluded).groupBy(_.ruleId).mapValues(_.length),
-      exclusions    = results.filter(_.isExcluded).groupBy(_.ruleId).mapValues(_.length)
+      rulesViolated = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
+      exclusions    = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length)
+    )
+
+  private val ruleIdMapFormat: Format[Map[RuleId, Int]] =
+    implicitly[Format[Map[String, Int]]].inmap(
+      _.map { case (k, v) => (RuleId(k), v) },
+      _.map { case (RuleId(k), v) => (k, v) }
     )
 
   val apiFormat: Format[Report] = {
@@ -114,8 +125,8 @@ object Report {
     ~ (__ \ "author"           ).format[String]
     ~ (__ \ "totalLeaks"       ).format[Int]
     ~ (__ \ "totalWarnings"    ).formatWithDefault[Int](0)
-    ~ (__ \ "rulesViolated"    ).format[Map[String,Int]]
-    ~ (__ \ "exclusions"       ).formatWithDefault[Map[String,Int]](Map.empty)
+    ~ (__ \ "rulesViolated"    ).format[Map[RuleId, Int]](ruleIdMapFormat)
+    ~ (__ \ "exclusions"       ).formatWithDefault[Map[RuleId, Int]](Map.empty)(ruleIdMapFormat)
     )(Report.apply, unlift(Report.unapply))
   }
 }

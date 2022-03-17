@@ -25,7 +25,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository, RuleId}
 
 import java.time.Instant
 import scala.collection.JavaConverters._
@@ -47,7 +47,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         timestamp = Instant.now(),
         author    = "me",
         totalLeaks = 1,
-        rulesViolated = Map("no nulls allowed" -> 1),
+        rulesViolated = Map(RuleId("no nulls allowed") -> 1),
         exclusions = Map.empty
       )
 
@@ -85,7 +85,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         timestamp     = Instant.now(),
         author        = "me",
         totalLeaks    = 1,
-        rulesViolated = Map("no nulls allowed" -> 1),
+        rulesViolated = Map(RuleId("no nulls allowed") -> 1),
         exclusions = Map.empty
       )
 
@@ -117,7 +117,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         timestamp = Instant.now(),
         author    = "me",
         totalLeaks = 1,
-        rulesViolated = Map("no nulls allowed" -> 1),
+        rulesViolated = Map(RuleId("no nulls allowed") -> 1),
         exclusions = Map.empty
       )
 
@@ -158,7 +158,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         author        = "me",
         totalLeaks    = 1,
         rulesViolated = Map.empty,
-        exclusions = Map("an excluded leak" -> 1)
+        exclusions = Map(RuleId("an excluded leak") -> 1)
       )
 
       service.alert(report).futureValue
