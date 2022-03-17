@@ -55,9 +55,9 @@ class ArtifactService @Inject()(ws: WSClient, metrics: Metrics)(implicit  ec: Ex
         case 200 =>
           registry.counter(s"github.open.zip.success").inc()
           val savedZipFilePath = Files.createTempFile("unzipped_", "")
-          logger.debug(s"Got ${response.body.length} bytes from $zipUrl... saving it to ${savedZipFilePath.toString}")
+          logger.debug(s"Saving $zipUrl to $savedZipFilePath")
           response.bodyAsSource.runWith(FileIO.toPath(savedZipFilePath)) map { _ =>
-            logger.info(s"Saved file: ${savedZipFilePath.toString}")
+            logger.info(s"Saved file: $savedZipFilePath")
             ZipUtil.explode(savedZipFilePath.toFile)
             Right(savedZipFilePath.toFile)
           }
