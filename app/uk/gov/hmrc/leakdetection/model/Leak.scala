@@ -37,7 +37,8 @@ case class Leak( repoName   : String,
                  urlToSource: String,
                  lineText   : String,
                  matches    : List[Match],
-                 priority   : String)
+                 priority   : String,
+                 isExcluded   : Boolean)
 
 object Leak {
 
@@ -57,6 +58,7 @@ object Leak {
     ~ (__ \ "lineText").format[String]
     ~ (__ \ "matches").format[List[Match]]
     ~ (__ \ "priority").format[String]
+    ~ (__ \ "isExcluded").format[Boolean]
     )(Leak.apply, unlift(Leak.unapply))
   }
 
@@ -76,6 +78,7 @@ object Leak {
     ~ (__ \ "lineText").format[String]
     ~ (__ \ "matches").format[List[Match]]
     ~ (__ \ "priority").format[String]
+    ~ (__ \ "isExcluded").formatWithDefault[Boolean](false)
     )(Leak.apply, unlift(Leak.unapply))
   }
 
@@ -93,6 +96,7 @@ object Leak {
         urlToSource = url"${report.repoUrl}/blame/${report.commitId}${result.filePath}#L${result.lineNumber}".toString,
         lineText    = result.lineText,
         matches     = result.matches,
-        priority    = result.priority
+        priority    = result.priority,
+        isExcluded    = result.isExcluded
       ))
 }

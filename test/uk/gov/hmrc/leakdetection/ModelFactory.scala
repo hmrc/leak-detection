@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection
 import play.api.libs.json.{Json, Writes}
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.config.Rule.{Priority, Scope}
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, Leak, PayloadDetails, Report, ReportId}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, Leak, PayloadDetails, Report, ReportId, RuleId}
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
 
 import java.time.Instant
@@ -95,11 +95,11 @@ object ModelFactory {
   }
 
   def aLeak(repoName: String = aString("repositoryName"), branch: String = aString("branch")): Leak =
-    Leak(repoName, branch,Instant.now(), ReportId(aString("reportId")), aString("rule-"), aString(), aString(""), Scope.FILE_CONTENT, aPositiveInt, aString("/"), aString(), few(() => Match( aPositiveInt, aPositiveInt)), Priority.Low)
+    Leak(repoName, branch,Instant.now(), ReportId(aString("reportId")), aString("rule-"), aString(), aString(""), Scope.FILE_CONTENT, aPositiveInt, aString("/"), aString(), few(() => Match( aPositiveInt, aPositiveInt)), Priority.Low, false)
 
 
   def aReportWithLeaks(repoName: String = aString("repositoryName")): Report =
-    aReport(repoName).copy(totalLeaks = 1, rulesViolated = Map("rule1" -> 1))
+    aReport(repoName).copy(totalLeaks = 1, rulesViolated = Map(RuleId("rule1") -> 1))
 
   def aReportWithoutLeaks(repoName: String = aString("repositoryName")): Report =
     aReport(repoName).copy(totalLeaks = 0, rulesViolated = Map.empty)

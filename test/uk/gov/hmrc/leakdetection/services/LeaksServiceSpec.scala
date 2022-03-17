@@ -145,7 +145,8 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     "url",
     "abc = 123",
     List(Match(3, 7)),
-    "high"
+    "high",
+    false
   )
 
 }

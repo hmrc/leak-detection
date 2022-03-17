@@ -25,7 +25,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
+import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository, RuleId}
 
 import java.time.Instant
 import scala.collection.JavaConverters._
@@ -47,7 +47,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         timestamp = Instant.now(),
         author    = "me",
         totalLeaks = 1,
-        rulesViolated = Map("no nulls allowed" -> 1)
+        rulesViolated = Map(RuleId("no nulls allowed") -> 1),
+        exclusions = Map.empty
       )
 
       service.alert(report).futureValue
@@ -84,7 +85,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         timestamp     = Instant.now(),
         author        = "me",
         totalLeaks    = 1,
-        rulesViolated = Map("no nulls allowed" -> 1)
+        rulesViolated = Map(RuleId("no nulls allowed") -> 1),
+        exclusions = Map.empty
       )
 
       service.alert(report).futureValue
@@ -115,7 +117,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         timestamp = Instant.now(),
         author    = "me",
         totalLeaks = 1,
-        rulesViolated = Map("no nulls allowed" -> 1)
+        rulesViolated = Map(RuleId("no nulls allowed") -> 1),
+        exclusions = Map.empty
       )
 
       service.alert(report).futureValue
@@ -123,7 +126,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       verifyZeroInteractions(slackConnector)
 
     }
-    "not send alerts to slack if there is no leaks" in new Fixtures {
+    "not send alerts to slack if there are no leaks" in new Fixtures {
 
       val report = Report(
         id            = ReportId.random,
@@ -134,7 +137,28 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         timestamp     = Instant.now(),
         author        = "me",
         totalLeaks    = 0,
-        rulesViolated = Map.empty
+        rulesViolated = Map.empty,
+        exclusions = Map.empty
+      )
+
+      service.alert(report).futureValue
+
+      verifyZeroInteractions(slackConnector)
+
+    }
+    "not send alerts to slack if only excluded leaks" in new Fixtures {
+
+      val report = Report(
+        id            = ReportId.random,
+        repoName      = "a-repo",
+        repoUrl       = "https://github.com/hmrc/a-repo",
+        commitId      = "123",
+        branch        = "main",
+        timestamp     = Instant.now(),
+        author        = "me",
+        totalLeaks    = 1,
+        rulesViolated = Map.empty,
+        exclusions = Map(RuleId("an excluded leak") -> 1)
       )
 
       service.alert(report).futureValue

@@ -81,7 +81,7 @@ class AlertingService @Inject()(configuration: Configuration,
   }
 
   def alert(report: Report)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (!enabled || report.totalLeaks == 0) {
+    if (!enabled || report.rulesViolated.isEmpty) {
       Future.successful(())
     } else {
 

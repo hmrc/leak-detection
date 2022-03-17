@@ -64,7 +64,7 @@ class ScanningServiceSpec
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.totalLeaks        shouldBe 2
-      report.rulesViolated     shouldBe Map("rule-1" -> 1, "rule-2" -> 1)
+      report.rulesViolated     shouldBe Map(RuleId("rule-1") -> 1, RuleId("rule-2") -> 1)
     }
 
     "scan a git repository and ignore a rule with the filename included in the ignoredFiles property" in new TestSetup {
@@ -106,7 +106,7 @@ class ScanningServiceSpec
       report.totalLeaks        shouldBe 0
     }
 
-    "scan a git repository and don't include project specific exempted violations" in new TestSetup {
+    "scan a git repository and exclude project specific exempted violations" in new TestSetup {
 
       override val privateRules = List(rules.checksInPrivateKeys)
 
@@ -114,8 +114,7 @@ class ScanningServiceSpec
         s"""
            |leakDetectionExemptions:
            |  - ruleId: 'rule-2'
-           |    filePaths:
-           |      - ${relativePath(file2)}
+           |    filePath: ${relativePath(file2)}
         """.stripMargin
       }
 
@@ -125,7 +124,9 @@ class ScanningServiceSpec
       report.repoName          shouldBe "repoName"
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
-      report.totalLeaks        shouldBe 0
+      report.totalLeaks        shouldBe 1
+      report.rulesViolated     shouldBe empty
+      report.exclusions        should not be empty
     }
 
     "scan the git repository and skip files that match the ignoredExtensions" in new TestSetup {
@@ -139,7 +140,7 @@ class ScanningServiceSpec
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.totalLeaks        shouldBe 1
-      report.rulesViolated     shouldBe Map("rule-2" -> 1)
+      report.rulesViolated     shouldBe Map(RuleId("rule-2") -> 1)
     }
 
     "trigger alerts" in new TestSetup {
@@ -231,7 +232,7 @@ class ScanningServiceSpec
       verify(draftService, times(1)).saveReport(argCap.capture)
       val draftReport = argCap.value
       draftReport.totalLeaks shouldBe 1
-      draftReport.rulesViolated.get(rules.draftRule.id) should contain (1)
+      draftReport.rulesViolated.get(RuleId(rules.draftRule.id)) should contain (1)
     }
 
   }
