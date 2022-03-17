@@ -16,15 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.scanner
 
-import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
 
-class RegexScannerSpec extends AnyFreeSpec with Matchers {
+class RegexScannerSpec extends AnyWordSpec with Matchers {
 
-  "scanning file content" - {
-    "should look for a regex in a given text" - {
-      "and return line numbers for matches" in {
+  "scanning file content" should {
+    "look for a regex in a given text and" should {
+      "return line numbers for matches" in {
         val text1  = "this matches the regex"
         val descr  = "descr for regex"
         val ruleId = "rule-1"
@@ -44,7 +44,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
         )
       }
 
-      "and return None if text doesn't have matching the given regex" in {
+      "return None if text doesn't have matching the given regex" in {
         val text   = "this is a test"
         val ruleId = "rule-1"
 
@@ -63,8 +63,8 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
       matchedResult.lineText shouldBe "[…] BB […]"
       matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
     }
-    "handle exclusions by" - {
-      "marking as excluded if inline flag is true" in {
+    "handling exclusions" should {
+      "mark as excluded if inline flag is true" in {
         val text = "abc AA def BB ghi CC xyz"
         val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
         val limit = 2
@@ -73,7 +73,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
 
         matchedResult.isExcluded shouldBe true
       }
-      "marking as excluded if line matches rule exemptions text" in {
+      "mark as excluded if line matches rule exemptions text" in {
         val text = "abc AA def BB ghi CC xyz"
         val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
         val limit = 2
@@ -84,7 +84,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
 
         matchedResult.isExcluded shouldBe true
       }
-      "marking as excluded if file level rule exemption matches filename" in {
+      "mark as excluded if file level rule exemption matches filename" in {
         val text = "abc AA def BB ghi CC xyz"
         val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
         val limit = 2
@@ -98,8 +98,8 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
     }
   }
 
-  "scanning file names should return" - {
-    "a result if regex found a problem" in {
+  "scanning file names" should {
+    "return a result if regex found a problem" in {
       val fileName = "foo.key"
       val ruleId   = "rule-1"
       val descr    = "descr"
@@ -118,7 +118,7 @@ class RegexScannerSpec extends AnyFreeSpec with Matchers {
             filePath    = "filepath"
           ))
     }
-    "nothing if no match was found" in {
+    "return nothing if no match was found" in {
       val fileName = "foo.key"
       val rule     = Rule("rule-id", Rule.Scope.FILE_NAME, "doesn't match", "descr")
 

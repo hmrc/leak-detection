@@ -18,15 +18,15 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import ammonite.ops.{tmp, write}
 import org.mockito.MockitoSugar
-import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.config.Rule.Priority
 
-class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matchers {
+class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matchers {
 
-  "run" - {
-    "should scan all the files in all subdirectories and return a report with correct file paths" in {
+  "run" should  {
+    "scan all the files in all subdirectories and return a report with correct file paths" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
       write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again")
@@ -134,7 +134,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       )
     }
 
-    "should filter out results that match rules ignoredFiles" in {
+    "filter out results that match rules ignoredFiles" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again")
       write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again")
@@ -191,7 +191,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       )
     }
 
-    "should flag as excluded if filename matches file level exemption in repository.yaml" in {
+    "flag as excluded if filename matches file level exemption in repository.yaml" in {
       val repositoryYamlContent =
         """
           |leakDetectionExemptions:
@@ -274,7 +274,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
         )
       )
     }
-    "should flag as excluded if line text matches supplied exemption text in repository.yaml" in {
+    "flag as excluded if line text matches supplied exemption text in repository.yaml" in {
       val repositoryYamlContent =
         """
           |leakDetectionExemptions:
@@ -346,7 +346,7 @@ class RegexMatchingEngineSpec extends AnyFreeSpec with MockitoSugar with Matcher
       )
     }
 
-    "should flag in-line exceptions as excluded" in {
+    "flag in-line exceptions as excluded" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir / "file",
         "first match on: secret\n" +
