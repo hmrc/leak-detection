@@ -92,7 +92,7 @@ class ActiveBranchesRepositorySpec
           val result = repository.findForRepo("repo").futureValue
 
           result.length        shouldBe 2
-          result.map(_.branch) shouldBe Seq("branch", "other branch")
+          result.map(_.branch) should contain theSameElementsAs Seq("branch", "other branch")
         }
         "no documents exist" in {
           val result = repository.findForRepo("repo").futureValue
@@ -111,8 +111,8 @@ class ActiveBranchesRepositorySpec
         val result = repository.findAll().futureValue
 
         result.length                   shouldBe 3
-        result.map(_.repoName).distinct shouldBe Seq("repo", "other repo")
-        result.map(_.branch)            shouldBe Seq("branch", "other branch", "main")
+        result.map(_.repoName).distinct should contain theSameElementsAs Seq("repo", "other repo")
+        result.map(_.branch)            should contain theSameElementsAs Seq("branch", "other branch", "main")
       }
     }
   }

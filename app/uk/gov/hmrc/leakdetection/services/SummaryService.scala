@@ -108,7 +108,7 @@ class SummaryService @Inject()(ruleService: RuleService,
     (leaks, warnings, activeBranches) match {
       case (l, _, _) if l.nonEmpty => l.minBy(_.timestamp).timestamp
       case (_, w, _) if w.nonEmpty => w.minBy(_.timestamp).timestamp
-      case (_, _, a) => a.minBy(_.updated).updated
+      case (_, _, a) => a.minBy(_.created).created
     }
 
   private def getLastScanned(leaks: Seq[Leak], warnings: Seq[Warning], activeBranches: Seq[ActiveBranch]): Instant =
