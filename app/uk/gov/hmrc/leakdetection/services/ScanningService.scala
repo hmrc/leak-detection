@@ -86,11 +86,11 @@ class ScanningService @Inject()(
               draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts)
               leaks              = Leak.createFromMatchedResults(report, results)
               warnings           = warningsService.checkForWarnings(report, dir, isPrivate)
-              _                 <- activeBranchesService.markAsActive(repository, branch, report.id)
               _                 <- if(draftReport.totalLeaks > 0) draftReportsService.saveReport(draftReport.copy(totalWarnings = warnings.length)) else Future.unit
               _                 <- executeIfNotDryRun(reportsService.saveReport(report))
               _                 <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
               _                 <- executeIfNotDryRun(warningsService.saveWarnings(repository, branch, warnings))
+              _                 <- executeIfNotDryRun(activeBranchesService.markAsActive(repository, branch, report.id))
               _                 <- executeIfNotDryRun(alertingService.alert(report))
               _                 <- executeIfNotDryRun(alertAboutWarnings(repository, branch, authorName, dir.getAbsolutePath, warnings))
             } yield report.copy(totalWarnings = warnings.length)
