@@ -42,6 +42,7 @@ class ScanningService @Inject()(
                                  githubRequestsQueue:   GithubRequestsQueueRepository,
                                  rescanRequestsQueue:   RescanRequestsQueueRepository,
                                  warningsService:       WarningsService,
+                                 activeBranchesService: ActiveBranchesService,
                                  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
 )(implicit ec: ExecutionContext) {
 
@@ -67,6 +68,7 @@ class ScanningService @Inject()(
         case Left(BranchNotFound(_)) =>
           val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, deleted = true, repositoryUrl = repositoryUrl)
           for {
+            _      <- activeBranchesService.clearAfterBranchDeleted(deleteBranchEvent)
             _      <- leaksService.clearLeaksAfterBranchDeleted(deleteBranchEvent)
             _      <- warningsService.clearWarningsAfterBranchDeleted(deleteBranchEvent)
             report <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
@@ -84,6 +86,7 @@ class ScanningService @Inject()(
               draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts)
               leaks              = Leak.createFromMatchedResults(report, results)
               warnings           = warningsService.checkForWarnings(report, dir, isPrivate)
+              _                 <- activeBranchesService.markAsActive(repository, branch, report.id)
               _                 <- if(draftReport.totalLeaks > 0) draftReportsService.saveReport(draftReport.copy(totalWarnings = warnings.length)) else Future.unit
               _                 <- executeIfNotDryRun(reportsService.saveReport(report))
               _                 <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
