@@ -52,7 +52,7 @@ object RepositorySummary {
 
 case class BranchSummary(
                           branch: String,
-                          reportId: ReportId,
+                          reportId: String,
                           scannedAt: Instant,
                           warningCount: Int,
                           unresolvedCount: Int,

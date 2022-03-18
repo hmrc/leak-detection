@@ -20,11 +20,13 @@ import com.google.inject.Inject
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 class SummaryService @Inject()(ruleService: RuleService,
                                leaksService: LeaksService,
                                warningsService: WarningsService,
+                               activeBranchesService: ActiveBranchesService,
                                teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector)
                               (implicit ec: ExecutionContext) {
 
@@ -42,12 +44,13 @@ class SummaryService @Inject()(ruleService: RuleService,
 
   def getRepositorySummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String]): Future[Seq[RepositorySummary]] =
     for {
+      activeBranches   <- repoName.map(r => activeBranchesService.getActiveBranchesForRepo(r)).getOrElse(Future.successful(Seq.empty))
       leaks            <- leaksService.getLeaks(repoName, None, ruleId)
       warnings         <- warningsService.getWarnings(repoName, None)
       teamRepos        <- getTeamRepos(teamName)
       filteredLeaks    = filterLeaksByTeam(leaks, teamRepos)
       filteredWarnings = filterWarningsByTeam(warnings, teamRepos)
-      allRepositories  = filteredLeaks.map(_.repoName) ++ filteredWarnings.map(_.repoName)
+      allRepositories = filteredLeaks.map(_.repoName) ++ filteredWarnings.map(_.repoName) ++ repoName
     } yield {
       val repositoryDetails =
         allRepositories
@@ -60,26 +63,31 @@ class SummaryService @Inject()(ruleService: RuleService,
         case (repoName, repoLeaks, repoWarnings) =>
           RepositorySummary(
             repoName,
-            if (repoLeaks.nonEmpty) repoLeaks.minBy(_.timestamp).timestamp else repoWarnings.minBy(_.timestamp).timestamp,
-            if (repoLeaks.nonEmpty) repoLeaks.maxBy(_.timestamp).timestamp else repoWarnings.maxBy(_.timestamp).timestamp,
+            getFirstScanned(repoLeaks, repoWarnings, activeBranches),
+            getLastScanned(repoLeaks, repoWarnings, activeBranches),
             repoWarnings.length,
             getUnresolvedLeakCount(repoLeaks),
             getExcludedLeakCount(repoLeaks),
-            buildBranchSummaries(repoLeaks, repoWarnings)
+            buildBranchSummaries(activeBranches, repoLeaks, repoWarnings)
           )
       }
     }
 
-  def buildBranchSummaries(leaks: Seq[Leak], warnings: Seq[Warning]): Seq[BranchSummary] = {
+  def buildBranchSummaries(activeBranches: Seq[ActiveBranch], leaks: Seq[Leak], warnings: Seq[Warning]): Seq[BranchSummary] = {
     val allBranches = leaks.map(_.branch) ++ warnings.map(_.branch)
     val branchDetails =
       allBranches.distinct.map(r => (r, leaks.filter(l => l.branch == r), warnings.filter(w => w.branch == r)))
 
+    activeBranches
+      .filterNot(b => branchDetails.map(_._1).contains(b.branch))
+      .map(activeBranch =>
+      BranchSummary(activeBranch.branch, activeBranch.reportId, activeBranch.updated, 0, 0, 0)
+    ) ++
     branchDetails.map {
       case (branch, branchLeaks, branchWarnings) =>
         BranchSummary(
           branch,
-          branchLeaks.headOption.map(_.reportId).getOrElse(branchWarnings.head.reportId),
+          branchLeaks.headOption.map(_.reportId).getOrElse(branchWarnings.head.reportId).value,
           branchLeaks.headOption.map(_.timestamp).getOrElse(branchWarnings.head.timestamp),
           branchWarnings.length,
           getUnresolvedLeakCount(branchLeaks),
@@ -89,7 +97,22 @@ class SummaryService @Inject()(ruleService: RuleService,
   }
 
   private def getUnresolvedLeakCount(leaks: Seq[Leak]): Int = leaks.filterNot(_.isExcluded).length
+
   private def getExcludedLeakCount(leaks: Seq[Leak]): Int   = leaks.filter(_.isExcluded).length
+
+  private def getFirstScanned(leaks: Seq[Leak], warnings: Seq[Warning], activeBranches: Seq[ActiveBranch]): Instant =
+    (leaks, warnings, activeBranches) match {
+      case (l, _, _) if l.nonEmpty => l.minBy(_.timestamp).timestamp
+      case (_, w, _) if w.nonEmpty => w.minBy(_.timestamp).timestamp
+      case (_, _, a) => a.minBy(_.updated).updated
+    }
+
+  private def getLastScanned(leaks: Seq[Leak], warnings: Seq[Warning], activeBranches: Seq[ActiveBranch]): Instant =
+    (leaks, warnings, activeBranches) match {
+      case (l, _, _) if l.nonEmpty => l.maxBy(_.timestamp).timestamp
+      case (_, w, _) if w.nonEmpty => w.maxBy(_.timestamp).timestamp
+      case (_, _, a) => a.maxBy(_.updated).updated
+    }
 
   private def getTeamRepos(teamName: Option[String]): Future[Option[Seq[String]]] = teamName match {
     case Some(t) => teamsAndRepositoriesConnector.team(t).map(_.map(_.repos.map(_.values.toSeq.flatten).toSeq.flatten))
@@ -129,7 +152,7 @@ class SummaryService @Inject()(ruleService: RuleService,
                       case (branch, leaksByBranch) =>
                         BranchSummary(
                           branch,
-                          leaksByBranch.head.reportId,
+                          leaksByBranch.head.reportId.value,
                           leaksByBranch.head.timestamp,
                           warnings.count(w => w.repoName == repoName && w.branch == branch),
                           getUnresolvedLeakCount(leaksByBranch),
