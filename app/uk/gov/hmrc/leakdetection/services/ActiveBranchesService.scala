@@ -29,6 +29,9 @@ class ActiveBranchesService @Inject()(activeBranchesRepository: ActiveBranchesRe
   def getActiveBranchesForRepo(repoName: String): Future[Seq[ActiveBranch]] =
     activeBranchesRepository.findForRepo(repoName)
 
+  def getAllActiveBranches(): Future[Seq[ActiveBranch]] =
+    activeBranchesRepository.findAll()
+
   def markAsActive(repository: Repository, branch: Branch, reportId: ReportId): Future[Unit] =
     activeBranchesRepository
       .find(repository.asString, branch.asString)

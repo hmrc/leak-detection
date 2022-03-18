@@ -61,11 +61,19 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       aWarning.copy(repoName = "repo3", branch = "branch1", timestamp = timestamp.minus(1, HOURS))
     )))
 
-  def givenSomeActiveBranches() = when(activeBranchesService.getActiveBranchesForRepo(any)).thenReturn(Future.successful(
+  def givenSomeActiveBranches() = when(activeBranchesService.getAllActiveBranches()).thenReturn(Future.successful(
     Seq(anActiveBranch.copy(repoName = "repo1", branch = "branch"),
-      anActiveBranch.copy(repoName = "repo1", branch = "noIssues")
+      anActiveBranch.copy(repoName = "repo1", branch = "other"),
+      anActiveBranch.copy(repoName = "repo1", branch = "noIssues"),
+      anActiveBranch.copy(repoName = "repo2", branch = "branch1"),
+      anActiveBranch.copy(repoName = "repo3", branch = "branch"),
+      anActiveBranch.copy(repoName = "repo3", branch = "branch1")
     )))
 
+  def givenSomeActiveBranches(repoName: String) = when(activeBranchesService.getActiveBranchesForRepo(repoName)).thenReturn(Future.successful(
+    Seq(anActiveBranch.copy(repoName = repoName, branch = "branch"),
+      anActiveBranch.copy(repoName = repoName, branch = "noIssues")
+    )))
 
   "summary service" should {
     val timestamp = Instant.now.minus(2, HOURS)
@@ -129,6 +137,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     "generate repository summaries by repository, branch and rule" should {
       "include details when just leaks exist" in {
         when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
+        when(activeBranchesService.getAllActiveBranches()).thenReturn(Future.successful(Seq.empty))
         givenSomeLeaks(timestamp)
 
         val results = service.getRepositorySummaries(None, None, None).futureValue
@@ -146,6 +155,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
       "include details when just warnings exist" in {
         when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
+        when(activeBranchesService.getAllActiveBranches()).thenReturn(Future.successful(Seq.empty))
         givenSomeWarnings(timestamp)
 
         val results = service.getRepositorySummaries(None, None, None).futureValue
@@ -165,6 +175,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       }
 
       "include all details when both leaks and warnings exist" in {
+        when(activeBranchesService.getAllActiveBranches()).thenReturn(Future.successful(Seq.empty))
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
 
@@ -186,20 +197,20 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         )
       }
 
-      "ignore active branches without issues when repoNName not provided" in {
+      "include all active branches when repoName not provided" in {
         when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
-        givenSomeLeaks(timestamp)
         givenSomeActiveBranches()
 
         val results = service.getRepositorySummaries(None, None, None).futureValue
 
-        results.flatMap(_.branchSummary.map(_.branch)) shouldBe Seq("branch", "branch1", "branch2")
+        results.flatMap(_.branchSummary.map(_.branch)).distinct should contain theSameElementsAs
+          Seq("branch", "branch1", "branch2", "other", "noIssues")
       }
 
-      "include all active branches when repoName provided" in {
+      "include active branches for repo when repoName provided" in {
         when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
         when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
-        givenSomeActiveBranches()
+        givenSomeActiveBranches("repo1")
 
         val results = service.getRepositorySummaries(None, Some("repo1"), None).futureValue
 
@@ -209,6 +220,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       "only include details associated to the team if teamName is provided" in {
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
+        givenSomeActiveBranches()
 
         when(teamsAndRepositoriesConnector.team(mockEq("team1")))
           .thenReturn(Future.successful(Option(Team("team1", None, None, None, Some(Map("Service" -> Seq("repo1")))))))
@@ -217,12 +229,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         val results = service.getRepositorySummaries(None, None, Some("team1")).futureValue
 
-        results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, Seq(
-            BranchSummary("branch", "reportId", timestamp, 0, 2, 1),
-            BranchSummary("other", "reportId", timestamp, 2, 0, 0)
-          ))
-        )
+        results.map(_.repository) shouldBe Seq("repo1")
       }
     }
   }

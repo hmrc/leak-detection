@@ -38,6 +38,10 @@ class ActiveBranchesRepository @Inject()(mongoComponent: MongoComponent)(implici
     )
     with Logging {
 
+  def findAll(): Future[Seq[ActiveBranch]] = {
+    collection.find().toFuture()
+  }
+
   def findForRepo(repoName: String): Future[Seq[ActiveBranch]] = {
     collection.find(filter = Filters.eq("repoName", repoName)).toFuture()
   }

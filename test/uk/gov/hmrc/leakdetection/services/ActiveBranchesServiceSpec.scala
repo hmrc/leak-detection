@@ -32,6 +32,20 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
 
   val service = new ActiveBranchesService(repository)
   "active branches service" should {
+    "get all active branches" in {
+      val activeBranches = Seq(
+        anActiveBranch,
+        anActiveBranch.copy(branch   = "other branch"),
+        anActiveBranch.copy(repoName = "other repo", branch = "main")
+      )
+      repository.collection.insertMany(activeBranches).toFuture().futureValue
+
+      val result = service.getAllActiveBranches().futureValue
+
+      result.length                   shouldBe 3
+      result.map(_.repoName).distinct should contain theSameElementsAs Seq("repo", "other repo")
+      result.map(_.branch)            shouldBe Seq("branch", "other branch", "main")
+    }
     "get all active branches for a given repository" in {
       val activeBranches = Seq(
         anActiveBranch,

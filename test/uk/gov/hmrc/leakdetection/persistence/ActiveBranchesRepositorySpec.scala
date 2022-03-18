@@ -100,6 +100,20 @@ class ActiveBranchesRepositorySpec
           result shouldBe Seq.empty
         }
       }
+      "find all" in {
+        val activeBranches = Seq(
+          anActiveBranch,
+          anActiveBranch.copy(branch   = "other branch"),
+          anActiveBranch.copy(repoName = "other repo", branch = "main")
+        )
+        repository.collection.insertMany(activeBranches).toFuture().futureValue
+
+        val result = repository.findAll().futureValue
+
+        result.length                   shouldBe 3
+        result.map(_.repoName).distinct shouldBe Seq("repo", "other repo")
+        result.map(_.branch)            shouldBe Seq("branch", "other branch", "main")
+      }
     }
   }
 
