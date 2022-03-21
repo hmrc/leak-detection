@@ -69,3 +69,42 @@ db.getCollection('reports').update({}, {$unset: {inspectionResults:1, leakResolu
 Destructive update, adds leak counts to the report record and removes the nested arrays of violations (these are now in the leaks collection).
 Done as a js script rather than an aggregation due to the complexity of the conversions.
 Takes ~60 secs to run, as it has to update every record.
+
+## Back-fill active branches collection with default branch details
+_0.151.0 -> 0.152.0_
+
+```javascript
+db.getCollection('reports').aggregate([
+    {$match: {$or: [{branch: "master"}, {branch: "main"}]}},
+    {$sort: {timestamp: -1}},
+    {
+        $group: {
+            _id: {repoName: "$repoName", branch: "$branch"},
+            repoName: {$first: "$repoName"},
+            branch: {$first: "$branch"},
+            reportId: {$first: "$_id"},
+            created: {$min: "$timestamp"},
+            updated: {$first: "$timestamp"}
+        }
+    },
+    {$sort: {updated: -1}},
+    {
+        $group: {
+            _id: {repoName: "$_id.repoName"},
+            data: {$first: '$$ROOT'}
+        }
+    },
+    {$replaceRoot: {newRoot: "$data"}},
+    {
+        $project: {
+            _id: 0,
+            "repoName": 1,
+            "branch": 1,
+            "reportId": 1,
+            "created": 1,
+            "updated": 1
+        }
+    },
+    {$out: "activeBranches"}], {allowDiskUse: true})
+```
+Non-destructive, aggregates the reports for default branches from the `reports` collection into the `activeBranches` collection.
