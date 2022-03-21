@@ -67,8 +67,8 @@ class SummaryService @Inject()(ruleService: RuleService,
         case (repoName, repoLeaks, repoWarnings, repoActiveBranches) =>
           RepositorySummary(
             repoName,
-            getFirstScanned(repoLeaks, repoWarnings, repoActiveBranches),
-            getLastScanned(repoLeaks, repoWarnings, repoActiveBranches),
+            (repoLeaks.map(_.timestamp) ++ repoWarnings.map(_.timestamp) ++ repoActiveBranches.map(_.created)).min,
+            (repoLeaks.map(_.timestamp) ++ repoWarnings.map(_.timestamp) ++ repoActiveBranches.map(_.updated)).max,
             repoWarnings.length,
             getUnresolvedLeakCount(repoLeaks),
             getExcludedLeakCount(repoLeaks),
@@ -103,20 +103,6 @@ class SummaryService @Inject()(ruleService: RuleService,
   private def getUnresolvedLeakCount(leaks: Seq[Leak]): Int = leaks.filterNot(_.isExcluded).length
 
   private def getExcludedLeakCount(leaks: Seq[Leak]): Int   = leaks.filter(_.isExcluded).length
-
-  private def getFirstScanned(leaks: Seq[Leak], warnings: Seq[Warning], activeBranches: Seq[ActiveBranch]): Instant =
-    (leaks, warnings, activeBranches) match {
-      case (l, _, _) if l.nonEmpty => l.minBy(_.timestamp).timestamp
-      case (_, w, _) if w.nonEmpty => w.minBy(_.timestamp).timestamp
-      case (_, _, a) => a.minBy(_.created).created
-    }
-
-  private def getLastScanned(leaks: Seq[Leak], warnings: Seq[Warning], activeBranches: Seq[ActiveBranch]): Instant =
-    (leaks, warnings, activeBranches) match {
-      case (l, _, _) if l.nonEmpty => l.maxBy(_.timestamp).timestamp
-      case (_, w, _) if w.nonEmpty => w.maxBy(_.timestamp).timestamp
-      case (_, _, a) => a.maxBy(_.updated).updated
-    }
 
   private def getTeamRepos(teamName: Option[String]): Future[Option[Seq[String]]] = teamName match {
     case Some(t) => teamsAndRepositoriesConnector.team(t).map(_.map(_.repos.map(_.values.toSeq.flatten).toSeq.flatten))
@@ -156,7 +142,7 @@ class SummaryService @Inject()(ruleService: RuleService,
                   warnings.count(_.repoName == repoName),
                   getUnresolvedLeakCount(ruleLeaksByRepo),
                   getExcludedLeakCount(ruleLeaksByRepo),
-                  None
+                  branchSummary = None
                 )
             }
             .toSeq)
