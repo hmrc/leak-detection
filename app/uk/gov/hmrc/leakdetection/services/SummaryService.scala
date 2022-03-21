@@ -42,7 +42,7 @@ class SummaryService @Inject()(ruleService: RuleService,
       rules.map(rule => Summary(rule, leaksByRule.getOrElse(rule.id, Seq())))
     }
 
-  def getRepositorySummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String]): Future[Seq[RepositorySummary]] =
+  def getRepositorySummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String], isBranchSummary: Boolean): Future[Seq[RepositorySummary]] =
     for {
       activeBranches <- repoName.map(r => activeBranchesService.getActiveBranchesForRepo(r)).getOrElse(activeBranchesService.getAllActiveBranches())
       leaks <- leaksService.getLeaks(repoName, None, ruleId)
@@ -72,7 +72,7 @@ class SummaryService @Inject()(ruleService: RuleService,
             repoWarnings.length,
             getUnresolvedLeakCount(repoLeaks),
             getExcludedLeakCount(repoLeaks),
-            buildBranchSummaries(repoActiveBranches, repoLeaks, repoWarnings)
+            if(isBranchSummary) Some(buildBranchSummaries(repoActiveBranches, repoLeaks, repoWarnings)) else None
           )
       }
     }
@@ -156,20 +156,7 @@ class SummaryService @Inject()(ruleService: RuleService,
                   warnings.count(_.repoName == repoName),
                   getUnresolvedLeakCount(ruleLeaksByRepo),
                   getExcludedLeakCount(ruleLeaksByRepo),
-                  ruleLeaksByRepo
-                    .groupBy(_.branch)
-                    .map {
-                      case (branch, leaksByBranch) =>
-                        BranchSummary(
-                          branch,
-                          leaksByBranch.head.reportId.value,
-                          leaksByBranch.head.timestamp,
-                          warnings.count(w => w.repoName == repoName && w.branch == branch),
-                          getUnresolvedLeakCount(leaksByBranch),
-                          getExcludedLeakCount(leaksByBranch)
-                        )
-                    }
-                    .toSeq
+                  None
                 )
             }
             .toSeq)

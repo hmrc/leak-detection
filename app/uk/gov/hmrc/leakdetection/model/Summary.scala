@@ -42,7 +42,7 @@ case class RepositorySummary(
                               warningCount: Int,
                               unresolvedCount: Int,
                               excludedCount: Int,
-                              branchSummary: Seq[BranchSummary]
+                              branchSummary: Option[Seq[BranchSummary]]
                             )
 
 object RepositorySummary {
