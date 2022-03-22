@@ -65,9 +65,10 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     Seq(anActiveBranch.copy(repoName = "repo1", branch = "branch", created = timestamp, updated = timestamp),
       anActiveBranch.copy(repoName = "repo1", branch = "other", created = timestamp, updated = timestamp),
       anActiveBranch.copy(repoName = "repo1", branch = "noIssues", created = timestamp, updated = timestamp),
-      anActiveBranch.copy(repoName = "repo2", branch = "branch1", created = timestamp, updated = timestamp),
+      anActiveBranch.copy(repoName = "repo2", branch = "branch1", created = timestamp.minus(3, HOURS), updated = timestamp.minus(3, HOURS)),
+      anActiveBranch.copy(repoName = "repo2", branch = "branch2", created = timestamp.minus(1, HOURS), updated = timestamp.minus(1, HOURS)),
       anActiveBranch.copy(repoName = "repo3", branch = "branch", created = timestamp, updated = timestamp),
-      anActiveBranch.copy(repoName = "repo3", branch = "branch1", created = timestamp, updated = timestamp)
+      anActiveBranch.copy(repoName = "repo3", branch = "branch1", created = timestamp.minus(1, HOURS), updated = timestamp.minus(1, HOURS))
     )))
 
   def givenSomeActiveBranches(repoName: String) = when(activeBranchesService.getActiveBranchesForRepo(repoName)).thenReturn(Future.successful(
