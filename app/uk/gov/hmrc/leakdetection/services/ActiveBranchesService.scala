@@ -26,13 +26,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class ActiveBranchesService @Inject()(activeBranchesRepository: ActiveBranchesRepository)(
   implicit ec: ExecutionContext) {
 
-  def getActiveBranches(repoName: Option[String], includeAllRepos: Boolean): Future[Seq[ActiveBranch]] = {
-    (repoName, includeAllRepos) match {
-      case (Some(r), _) => activeBranchesRepository.findForRepo(r)
-      case (None, true) => activeBranchesRepository.findAll()
-      case (None, false) => Future.successful(Seq.empty)
-    }
-  }
+  def getActiveBranches(repoName: Option[String]): Future[Seq[ActiveBranch]] =
+    repoName.fold(activeBranchesRepository.findAll)(activeBranchesRepository.findForRepo)
 
   def markAsActive(repository: Repository, branch: Branch, reportId: ReportId): Future[Unit] =
     activeBranchesRepository

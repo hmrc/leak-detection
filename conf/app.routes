@@ -10,8 +10,7 @@ GET        /api/leaks                                 @uk.gov.hmrc.leakdetection
 GET        /api/:repository/:branch/report            @uk.gov.hmrc.leakdetection.controllers.ApiController.latestReport(repository: Repository, branch: Branch)
 GET        /api/rules                                 @uk.gov.hmrc.leakdetection.controllers.ApiController.rules
 GET        /api/rules/summary                         @uk.gov.hmrc.leakdetection.controllers.ApiController.ruleSummary(ruleId: Option[String] ?= None, repository: Option[String] ?= None, team: Option[String] ?= None)
-GET        /api/repositories/summary                  @uk.gov.hmrc.leakdetection.controllers.ApiController.repositorySummary(ruleId: Option[String] ?= None, repository: Option[String] ?= None, team: Option[String] ?= None, includeAllRepos: Boolean ?= false, isBranchSummary: Boolean = false)
-GET        /api/branches/summary                      @uk.gov.hmrc.leakdetection.controllers.ApiController.repositorySummary(ruleId: Option[String] ?= None, repository: Option[String] ?= None, team: Option[String] ?= None, includeAllRepos: Boolean ?= false, isBranchSummary: Boolean = true)
+GET        /api/repositories/summary                  @uk.gov.hmrc.leakdetection.controllers.ApiController.repositorySummary(ruleId: Option[String] ?= None, repository: Option[String] ?= None, team: Option[String] ?= None, excludeNonIssues: Boolean ?= false, includeBranches: Boolean ?= false)
 
 # Webhooks
 POST       /validate                                    @uk.gov.hmrc.leakdetection.controllers.WebhookController.processGithubWebhook

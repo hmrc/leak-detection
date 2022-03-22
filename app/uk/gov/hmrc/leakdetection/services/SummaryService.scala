@@ -20,7 +20,6 @@ import com.google.inject.Inject
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 
-import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 class SummaryService @Inject()(ruleService: RuleService,
@@ -35,23 +34,23 @@ class SummaryService @Inject()(ruleService: RuleService,
       leaks         <- leaksService.getLeaks(repoName, None, ruleId)
       warnings      <- warningsService.getWarnings(repoName, None)
       teamRepos     <- getTeamRepos(teamName)
-      filteredLeaks = filterLeaksByTeam(leaks, teamRepos)
+      filteredLeaks = teamRepos.foldLeft(leaks)((acc, l) => acc.filter(a => l.contains(a.repoName)))
       rules         = ruleService.getAllRules()
       leaksByRule   = groupLeaksByRule(filteredLeaks, warnings)
     } yield {
       rules.map(rule => Summary(rule, leaksByRule.getOrElse(rule.id, Seq())))
     }
 
-  def getRepositorySummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String], includeAllRepos: Boolean, isBranchSummary: Boolean): Future[Seq[RepositorySummary]] =
+  def getRepositorySummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String], excludeNonIssues: Boolean, includeBranches: Boolean): Future[Seq[RepositorySummary]] =
     for {
-      activeBranches <- activeBranchesService.getActiveBranches(repoName, includeAllRepos)
-      leaks <- leaksService.getLeaks(repoName, None, ruleId)
-      warnings <- warningsService.getWarnings(repoName, None)
-      teamRepos <- getTeamRepos(teamName)
-      filteredBranches = filterActiveBranchesByTeam(activeBranches, teamRepos)
-      filteredLeaks = filterLeaksByTeam(leaks, teamRepos)
-      filteredWarnings = filterWarningsByTeam(warnings, teamRepos)
-      allRepositories = filteredLeaks.map(_.repoName) ++ filteredWarnings.map(_.repoName) ++ filteredBranches.map(_.repoName)
+      activeBranches  <- if(excludeNonIssues) Future.successful(Seq.empty) else activeBranchesService.getActiveBranches(repoName)
+      leaks           <- leaksService.getLeaks(repoName, None, ruleId)
+      warnings        <- warningsService.getWarnings(repoName, None)
+      teamRepos       <- getTeamRepos(teamName)
+      filteredBranches = teamRepos.foldLeft(activeBranches)((acc, r) => acc.filter(a => r.contains(a.repoName)))
+      filteredLeaks    = teamRepos.foldLeft(leaks)((acc, l) => acc.filter(a => l.contains(a.repoName)))
+      filteredWarnings = teamRepos.foldLeft(warnings)((acc, w) => acc.filter(a => w.contains(a.repoName)))
+      allRepositories  = filteredLeaks.map(_.repoName) ++ filteredWarnings.map(_.repoName) ++ filteredBranches.map(_.repoName)
     } yield {
       val repositoryDetails =
         allRepositories
@@ -72,7 +71,7 @@ class SummaryService @Inject()(ruleService: RuleService,
             repoWarnings.length,
             getUnresolvedLeakCount(repoLeaks),
             getExcludedLeakCount(repoLeaks),
-            if(isBranchSummary) Some(buildBranchSummaries(repoActiveBranches, repoLeaks, repoWarnings)) else None
+            if(includeBranches) Some(buildBranchSummaries(repoActiveBranches, repoLeaks, repoWarnings)) else None
           )
       }
     }
@@ -108,22 +107,6 @@ class SummaryService @Inject()(ruleService: RuleService,
     case Some(t) => teamsAndRepositoriesConnector.team(t).map(_.map(_.repos.map(_.values.toSeq.flatten).toSeq.flatten))
     case None    => Future.successful(None)
   }
-
-  private def filterLeaksByTeam(leaks: Seq[Leak], repos: Option[Seq[String]]): Seq[Leak] = repos match {
-    case Some(r) => leaks.filter(l => r.contains(l.repoName))
-    case None    => leaks
-  }
-
-  private def filterWarningsByTeam(warnings: Seq[Warning], repos: Option[Seq[String]]): Seq[Warning] = repos match {
-    case Some(r) => warnings.filter(l => r.contains(l.repoName))
-    case None    => warnings
-  }
-
-  private def filterActiveBranchesByTeam(activeBranches: Seq[ActiveBranch], repos: Option[Seq[String]]): Seq[ActiveBranch] =
-    repos match {
-      case Some(r) => activeBranches.filter(l => r.contains(l.repoName))
-      case None => activeBranches
-    }
 
   private def groupLeaksByRule(leaks: Seq[Leak], warnings: Seq[Warning]): Map[String, Seq[RepositorySummary]] = leaks
     .groupBy(_.ruleId)

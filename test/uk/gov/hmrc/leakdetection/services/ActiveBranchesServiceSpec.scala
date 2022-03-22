@@ -40,7 +40,7 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
       )
       repository.collection.insertMany(activeBranches).toFuture().futureValue
 
-      val result = service.getActiveBranches(None, true).futureValue
+      val result = service.getActiveBranches(None).futureValue
 
       result.length                   shouldBe 3
       result.map(_.repoName).distinct should contain theSameElementsAs Seq("repo", "other repo")
@@ -54,20 +54,7 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
       )
       repository.collection.insertMany(activeBranches).toFuture().futureValue
 
-      val result = service.getActiveBranches(Some("repo"), false).futureValue
-
-      result.length        shouldBe 2
-      result.map(_.branch) shouldBe Seq("branch", "other branch")
-    }
-    "only get active branches for a given repository even if include all repos is true" in {
-      val activeBranches = Seq(
-        anActiveBranch,
-        anActiveBranch.copy(branch   = "other branch"),
-        anActiveBranch.copy(repoName = "other repo", branch = "main")
-      )
-      repository.collection.insertMany(activeBranches).toFuture().futureValue
-
-      val result = service.getActiveBranches(Some("repo"), true).futureValue
+      val result = service.getActiveBranches(Some("repo")).futureValue
 
       result.length        shouldBe 2
       result.map(_.branch) shouldBe Seq("branch", "other branch")
