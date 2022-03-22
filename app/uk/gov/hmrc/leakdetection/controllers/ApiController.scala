@@ -57,14 +57,15 @@ class ApiController @Inject()(reportsService: ReportsService,
       .map(r => Ok(Json.toJson(r)))
   }
 
-  def repositorySummary(ruleId: Option[String], repository: Option[String], team: Option[String], isBranchSummary: Boolean): Action[AnyContent] = Action.async { implicit request =>
+  def repositorySummary(ruleId: Option[String], repository: Option[String], team: Option[String], includeAllRepos: Boolean, isBranchSummary: Boolean): Action[AnyContent] = Action.async { implicit request =>
     implicit val rsf: OFormat[RepositorySummary] = RepositorySummary.format
     summaryService
       .getRepositorySummaries(
         ruleId = ruleId,
         repoName = repository,
         teamName = team,
-        isBranchSummary)
+        includeAllRepos = includeAllRepos,
+        isBranchSummary = isBranchSummary)
       .map(rs => Ok(Json.toJson(rs)))
   }
 

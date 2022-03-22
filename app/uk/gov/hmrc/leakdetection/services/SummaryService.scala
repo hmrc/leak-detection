@@ -42,9 +42,9 @@ class SummaryService @Inject()(ruleService: RuleService,
       rules.map(rule => Summary(rule, leaksByRule.getOrElse(rule.id, Seq())))
     }
 
-  def getRepositorySummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String], isBranchSummary: Boolean): Future[Seq[RepositorySummary]] =
+  def getRepositorySummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String], includeAllRepos: Boolean, isBranchSummary: Boolean): Future[Seq[RepositorySummary]] =
     for {
-      activeBranches <- repoName.map(r => activeBranchesService.getActiveBranchesForRepo(r)).getOrElse(activeBranchesService.getAllActiveBranches())
+      activeBranches <- activeBranchesService.getActiveBranches(repoName, includeAllRepos)
       leaks <- leaksService.getLeaks(repoName, None, ruleId)
       warnings <- warningsService.getWarnings(repoName, None)
       teamRepos <- getTeamRepos(teamName)

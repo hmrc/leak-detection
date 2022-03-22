@@ -61,7 +61,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       aWarning.copy(repoName = "repo3", branch = "branch1", timestamp = timestamp.minus(1, HOURS))
     )))
 
-  def givenSomeActiveBranches(timestamp: Instant) = when(activeBranchesService.getAllActiveBranches()).thenReturn(Future.successful(
+  def givenSomeActiveBranches(timestamp: Instant) = when(activeBranchesService.getActiveBranches(any, mockEq(true))).thenReturn(Future.successful(
     Seq(anActiveBranch.copy(repoName = "repo1", branch = "branch", created = timestamp, updated = timestamp),
       anActiveBranch.copy(repoName = "repo1", branch = "other", created = timestamp, updated = timestamp),
       anActiveBranch.copy(repoName = "repo1", branch = "noIssues", created = timestamp, updated = timestamp),
@@ -69,11 +69,6 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       anActiveBranch.copy(repoName = "repo2", branch = "branch2", created = timestamp.minus(1, HOURS), updated = timestamp.minus(1, HOURS)),
       anActiveBranch.copy(repoName = "repo3", branch = "branch", created = timestamp, updated = timestamp),
       anActiveBranch.copy(repoName = "repo3", branch = "branch1", created = timestamp.minus(1, HOURS), updated = timestamp.minus(1, HOURS))
-    )))
-
-  def givenSomeActiveBranches(repoName: String) = when(activeBranchesService.getActiveBranchesForRepo(repoName)).thenReturn(Future.successful(
-    Seq(anActiveBranch.copy(repoName = repoName, branch = "branch"),
-      anActiveBranch.copy(repoName = repoName, branch = "noIssues")
     )))
 
   "summary service" should {
@@ -129,10 +124,10 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     "generate repository summaries by repository, branch and rule" should {
       "include details when just leaks exist" in {
         when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
-        when(activeBranchesService.getAllActiveBranches()).thenReturn(Future.successful(Seq.empty))
+        when(activeBranchesService.getActiveBranches(any, any)).thenReturn(Future.successful(Seq.empty))
         givenSomeLeaks(timestamp)
 
-        val results = service.getRepositorySummaries(None, None, None, false).futureValue
+        val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 0, 2, 1, None),
@@ -142,10 +137,10 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
       "include details when just warnings exist" in {
         when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
-        when(activeBranchesService.getAllActiveBranches()).thenReturn(Future.successful(Seq.empty))
+        when(activeBranchesService.getActiveBranches(any, any)).thenReturn(Future.successful(Seq.empty))
         givenSomeWarnings(timestamp)
 
-        val results = service.getRepositorySummaries(None, None, None, false).futureValue
+        val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 0, 0, None),
@@ -155,11 +150,11 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       }
 
       "include all details when both leaks and warnings exist" in {
-        when(activeBranchesService.getAllActiveBranches()).thenReturn(Future.successful(Seq.empty))
+        when(activeBranchesService.getActiveBranches(any, any)).thenReturn(Future.successful(Seq.empty))
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
 
-        val results = service.getRepositorySummaries(None, None, None, false).futureValue
+        val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, None),
@@ -168,12 +163,12 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         )
       }
 
-      "include all repos with active branches when repoName not provided" in {
+      "include all repos with active branches when includeAllRepos is true" in {
         when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
         when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
         givenSomeActiveBranches(timestamp)
 
-        val results = service.getRepositorySummaries(None, None, None, false).futureValue
+        val results = service.getRepositorySummaries(None, None, None, true, false).futureValue
 
         results.map(_.repository).distinct should contain theSameElementsAs
           Seq("repo1", "repo2", "repo3")
@@ -189,7 +184,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
-        val results = service.getRepositorySummaries(None, None, Some("team1"), false).futureValue
+        val results = service.getRepositorySummaries(None, None, Some("team1"), false, false).futureValue
 
         results.map(_.repository) shouldBe Seq("repo1")
       }
@@ -199,7 +194,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeWarnings(timestamp)
         givenSomeActiveBranches(timestamp)
 
-        val results = service.getRepositorySummaries(None, None, None, true).futureValue
+        val results = service.getRepositorySummaries(None, None, None, true, true).futureValue
 
         results shouldBe Seq(
           RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, Some(Seq(
@@ -216,16 +211,6 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
             BranchSummary("branch1", "reportId", timestamp.minus(1, HOURS), 1, 0, 0)
           )))
         )
-      }
-
-      "include branch summaries for repo when repoName provided" in {
-        when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
-        when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
-        givenSomeActiveBranches("repo1")
-
-        val results = service.getRepositorySummaries(None, Some("repo1"), None, true).futureValue
-
-        results.flatMap(_.branchSummary.getOrElse(Seq.empty).map(_.branch)) shouldBe Seq("branch", "noIssues")
       }
     }
   }
