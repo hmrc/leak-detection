@@ -16,14 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.connectors
 
-import java.time.LocalDateTime
-
-import javax.inject.{Inject, Singleton}
 import play.api.libs.json._
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, StringContextOps}
 import uk.gov.hmrc.http.HttpReads.Implicits._
+import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, StringContextOps}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
+import java.time.LocalDateTime
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 case class Team(
@@ -65,12 +64,7 @@ object RepositoryInfo {
   }
 
   def repo(repoName: String): Future[Option[RepositoryInfo]] = {
-    if(repoName.equals("leak-detection")) {
-      Future.successful(Some(RepositoryInfo("leak-detection", false, "main")))
-    } else {
-      implicit val hc = HeaderCarrier()
-      http.GET[Option[RepositoryInfo]](url"${baseUrl}/api/repositories/$repoName")
-    }
+    implicit val hc = HeaderCarrier()
+    http.GET[Option[RepositoryInfo]](url"${baseUrl}/api/repositories/$repoName")
   }
-
 }

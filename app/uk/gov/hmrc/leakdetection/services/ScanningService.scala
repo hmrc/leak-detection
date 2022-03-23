@@ -42,6 +42,7 @@ class ScanningService @Inject()(
                                  githubRequestsQueue:   GithubRequestsQueueRepository,
                                  rescanRequestsQueue:   RescanRequestsQueueRepository,
                                  warningsService:       WarningsService,
+                                 activeBranchesService: ActiveBranchesService,
                                  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
 )(implicit ec: ExecutionContext) {
 
@@ -67,6 +68,7 @@ class ScanningService @Inject()(
         case Left(BranchNotFound(_)) =>
           val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, deleted = true, repositoryUrl = repositoryUrl)
           for {
+            _      <- activeBranchesService.clearAfterBranchDeleted(deleteBranchEvent)
             _      <- leaksService.clearLeaksAfterBranchDeleted(deleteBranchEvent)
             _      <- warningsService.clearWarningsAfterBranchDeleted(deleteBranchEvent)
             report <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
@@ -88,6 +90,7 @@ class ScanningService @Inject()(
               _                 <- executeIfNotDryRun(reportsService.saveReport(report))
               _                 <- executeIfNotDryRun(leaksService.saveLeaks(repository, branch, leaks))
               _                 <- executeIfNotDryRun(warningsService.saveWarnings(repository, branch, warnings))
+              _                 <- executeIfNotDryRun(activeBranchesService.markAsActive(repository, branch, report.id))
               _                 <- executeIfNotDryRun(alertingService.alert(report))
               _                 <- executeIfNotDryRun(alertAboutWarnings(repository, branch, authorName, dir.getAbsolutePath, warnings))
             } yield report.copy(totalWarnings = warnings.length)

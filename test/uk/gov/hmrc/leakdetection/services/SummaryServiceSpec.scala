@@ -37,12 +37,13 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
   val leaksService = mock[LeaksService]
   val warningsService = mock[WarningsService]
+  val activeBranchesService = mock[ActiveBranchesService]
 
   lazy val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
   lazy val ruleService = mock[RuleService]
   lazy val ignoreListConfig = mock[IgnoreListConfig]
 
-  val service = new SummaryService(ruleService, leaksService, warningsService, teamsAndRepositoriesConnector)
+  val service = new SummaryService(ruleService, leaksService, warningsService, activeBranchesService, teamsAndRepositoriesConnector)
 
   def givenSomeLeaks(timestamp: Instant) = when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(
     Seq(aLeak.copy(repoName = "repo1", ruleId = "rule-1", timestamp = timestamp),
@@ -58,6 +59,16 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
       aWarning.copy(repoName = "repo2", branch = "branch1", timestamp = timestamp.minus(3, HOURS)),
       aWarning.copy(repoName = "repo3", timestamp = timestamp),
       aWarning.copy(repoName = "repo3", branch = "branch1", timestamp = timestamp.minus(1, HOURS))
+    )))
+
+  def givenSomeActiveBranches(timestamp: Instant) = when(activeBranchesService.getActiveBranches(any)).thenReturn(Future.successful(
+    Seq(anActiveBranch.copy(repoName = "repo1", branch = "branch", created = timestamp, updated = timestamp),
+      anActiveBranch.copy(repoName = "repo1", branch = "other", created = timestamp, updated = timestamp),
+      anActiveBranch.copy(repoName = "repo1", branch = "noIssues", created = timestamp, updated = timestamp),
+      anActiveBranch.copy(repoName = "repo2", branch = "branch1", created = timestamp.minus(3, HOURS), updated = timestamp.minus(3, HOURS)),
+      anActiveBranch.copy(repoName = "repo2", branch = "branch2", created = timestamp.minus(1, HOURS), updated = timestamp.minus(1, HOURS)),
+      anActiveBranch.copy(repoName = "repo3", branch = "branch", created = timestamp, updated = timestamp),
+      anActiveBranch.copy(repoName = "repo3", branch = "branch1", created = timestamp.minus(1, HOURS), updated = timestamp.minus(1, HOURS))
     )))
 
   "summary service" should {
@@ -77,18 +88,11 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         results shouldBe Seq(
           Summary(aRule.copy(id = "rule-1"), Seq(
-            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 1, Seq(
-              BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1, 1)
-            )),
-            RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, Seq(
-              BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 1, 0),
-              BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, 0)
-            ))
+            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 1, None),
+            RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, None)
           )),
           Summary(aRule.copy(id = "rule-2"), Seq(
-            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 0, Seq(
-              BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1, 0)
-            ))
+            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 0, None)
           )),
           Summary(aRule.copy(id = "rule-3"), Seq())
         )
@@ -107,94 +111,105 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         results shouldBe Seq(
           Summary(aRule.copy(id = "rule-1"), Seq(
-            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 1, Seq(BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1, 1))))
-          ),
+            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 1, None)
+          )),
           Summary(aRule.copy(id = "rule-2"), Seq(
-            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 0, Seq(
-              BranchSummary("branch", ReportId("reportId"), timestamp, 0, 1, 0)
-            ))
+            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 0, None)
           )),
           Summary(aRule.copy(id = "rule-3"), Seq())
-        )
+          )
       }
     }
 
     "generate repository summaries by repository, branch and rule" should {
       "include details when just leaks exist" in {
         when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
+        when(activeBranchesService.getActiveBranches(any)).thenReturn(Future.successful(Seq.empty))
         givenSomeLeaks(timestamp)
 
-        val results = service.getRepositorySummaries(None, None, None).futureValue
+        val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 0, 2, 1, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1)
-          )),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 0, 2, 0, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 0, 1, 0),
-            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, 0)
-          ))
+          RepositorySummary("repo1", timestamp, timestamp, 0, 2, 1, None),
+          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 0, 2, 0, None)
         )
       }
 
       "include details when just warnings exist" in {
         when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
+        when(activeBranchesService.getActiveBranches(any)).thenReturn(Future.successful(Seq.empty))
         givenSomeWarnings(timestamp)
 
-        val results = service.getRepositorySummaries(None, None, None).futureValue
+        val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 0, 0, Seq(
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0)
-          )),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(3, HOURS), 1, 0, 0, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 0, 0)
-          )),
-          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, 0),
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, 0)
-          ))
+          RepositorySummary("repo1", timestamp, timestamp, 2, 0, 0, None),
+          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(3, HOURS), 1, 0, 0, None),
+          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, None)
         )
       }
 
       "include all details when both leaks and warnings exist" in {
+        when(activeBranchesService.getActiveBranches(any)).thenReturn(Future.successful(Seq.empty))
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
 
-        val results = service.getRepositorySummaries(None, None, None).futureValue
+        val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1),
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0)
-          )),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, Seq(
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(3, HOURS), 1, 1, 0),
-            BranchSummary("branch2", ReportId("reportId"), timestamp.minus(1, HOURS), 0, 1, 0)
-          )),
-          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 1, 0, 0),
-            BranchSummary("branch1", ReportId("reportId"), timestamp.minus(1, HOURS), 1, 0, 0)
-          ))
+          RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, None),
+          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, None),
+          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, None)
         )
+      }
+
+      "include all repos with active branches when excludeNonIssues is false" in {
+        when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
+        when(leaksService.getLeaks(any, any, any)).thenReturn(Future.successful(Seq.empty))
+        givenSomeActiveBranches(timestamp)
+
+        val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
+
+        results.map(_.repository).distinct should contain theSameElementsAs
+          Seq("repo1", "repo2", "repo3")
       }
 
       "only include details associated to the team if teamName is provided" in {
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
+        givenSomeActiveBranches(timestamp)
 
         when(teamsAndRepositoriesConnector.team(mockEq("team1")))
           .thenReturn(Future.successful(Option(Team("team1", None, None, None, Some(Map("Service" -> Seq("repo1")))))))
 
         when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
-        val results = service.getRepositorySummaries(None, None, Some("team1")).futureValue
+        val results = service.getRepositorySummaries(None, None, Some("team1"), false, false).futureValue
+
+        results.map(_.repository) shouldBe Seq("repo1")
+      }
+
+      "include branch summaries when includeBranches is true" in {
+        givenSomeLeaks(timestamp)
+        givenSomeWarnings(timestamp)
+        givenSomeActiveBranches(timestamp)
+
+        val results = service.getRepositorySummaries(None, None, None, false, true).futureValue
 
         results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, Seq(
-            BranchSummary("branch", ReportId("reportId"), timestamp, 0, 2, 1),
-            BranchSummary("other", ReportId("reportId"), timestamp, 2, 0, 0)
-          ))
+          RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, Some(Seq(
+            BranchSummary("noIssues", "reportId", timestamp, 0, 0, 0),
+            BranchSummary("branch", "reportId", timestamp, 0, 2, 1),
+            BranchSummary("other", "reportId", timestamp, 2, 0, 0),
+          ))),
+          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, Some(Seq(
+            BranchSummary("branch1", "reportId", timestamp.minus(3, HOURS), 1, 1, 0),
+            BranchSummary("branch2", "reportId", timestamp.minus(1, HOURS), 0, 1, 0)
+          ))),
+          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, Some(Seq(
+            BranchSummary("branch", "reportId", timestamp, 1, 0, 0),
+            BranchSummary("branch1", "reportId", timestamp.minus(1, HOURS), 1, 0, 0)
+          )))
         )
       }
     }
@@ -230,6 +245,8 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     ReportId("reportId"),
     "message"
   )
+
+  def anActiveBranch = ActiveBranch("repoName", "branch", "reportId", Instant.now(), Instant.now())
 
   when(ruleService.getAllRules()).thenReturn(Seq(
     aRule.copy(id = "rule-1"),

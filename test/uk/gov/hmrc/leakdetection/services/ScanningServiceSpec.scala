@@ -436,6 +436,7 @@ class ScanningServiceSpec
     val reportsService  = mock[ReportsService]
     val leaksService    = mock[LeaksService]
     val warningsService = mock[WarningsService]
+    val activeBranchesService = mock[ActiveBranchesService]
     val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
 
     val queue = new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
@@ -475,6 +476,7 @@ class ScanningServiceSpec
     when(leaksService.saveLeaks(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
     when(warningsService.saveWarnings(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
     when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq.empty)
+    when(activeBranchesService.markAsActive(any[Repository], any[Branch], any[ReportId])).thenReturn(Future.successful(()))
     when(teamsAndRepositoriesConnector.repo(any)).thenReturn(Future.successful(Some(RepositoryInfo("", true, "main"))))
 
     when(
@@ -502,6 +504,7 @@ class ScanningServiceSpec
         queue,
         rescanQueue,
         warningsService,
+        activeBranchesService,
         teamsAndRepositoriesConnector)
   }
 

@@ -33,13 +33,13 @@ class ApiController @Inject()(reportsService: ReportsService,
                               ruleService: RuleService,
                               cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
 
-  def leaks(): Action[AnyContent] = Action.async { implicit request =>
+  def leaks(repository: Option[String], branch: Option[String], ruleId: Option[String]): Action[AnyContent] = Action.async { implicit request =>
     implicit val lf: OFormat[Leak] = Leak.apiFormat
     leaksService
       .getLeaks(
-        repoName = request.getQueryString("repository"),
-        branch = request.getQueryString("branch"),
-        ruleId = request.getQueryString("rule"))
+        repoName = repository,
+        branch = branch,
+        ruleId = ruleId)
       .map(r => Ok(Json.toJson(r)))
   }
 
@@ -47,23 +47,25 @@ class ApiController @Inject()(reportsService: ReportsService,
     Ok(Json.toJson(ruleService.getAllRules()))
   }
 
-  def ruleSummary(): Action[AnyContent] = Action.async { implicit request =>
+  def ruleSummary(ruleId: Option[String], repository: Option[String], team: Option[String]): Action[AnyContent] = Action.async { implicit request =>
     implicit val sf: OFormat[Summary] = Summary.apiFormat
     summaryService
       .getRuleSummaries(
-        ruleId = request.getQueryString("rule"),
-        repoName = request.getQueryString("repository"),
-        teamName = request.getQueryString("team"))
+        ruleId = ruleId,
+        repoName = repository,
+        teamName = team)
       .map(r => Ok(Json.toJson(r)))
   }
 
-  def repositorySummary(): Action[AnyContent] = Action.async { implicit request =>
+  def repositorySummary(ruleId: Option[String], repository: Option[String], team: Option[String], excludeNonIssues: Boolean, includeBranches: Boolean): Action[AnyContent] = Action.async { implicit request =>
     implicit val rsf: OFormat[RepositorySummary] = RepositorySummary.format
     summaryService
       .getRepositorySummaries(
-        ruleId = request.getQueryString("rule"),
-        repoName = request.getQueryString("repository"),
-        teamName = request.getQueryString("team"))
+        ruleId = ruleId,
+        repoName = repository,
+        teamName = team,
+        excludeNonIssues = excludeNonIssues,
+        includeBranches = includeBranches)
       .map(rs => Ok(Json.toJson(rs)))
   }
 
