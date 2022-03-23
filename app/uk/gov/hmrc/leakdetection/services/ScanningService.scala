@@ -82,8 +82,8 @@ class ScanningService @Inject()(
             for {
               matched           <- Future { regexMatchingEngine.run(dir) }
               (drafts, results)  = matched.partition(_.draft)
-              report             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
-              draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts)
+              report             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, Seq.empty)
+              draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts, Seq.empty)
               leaks              = Leak.createFromMatchedResults(report, results)
               warnings           = warningsService.checkForWarnings(report, dir, isPrivate)
               _                 <- if(draftReport.totalLeaks > 0) draftReportsService.saveReport(draftReport.copy(totalWarnings = warnings.length)) else Future.unit

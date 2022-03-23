@@ -4,6 +4,7 @@ import ammonite.ops.{tmp, write}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.Rule.Priority
+import uk.gov.hmrc.leakdetection.model.UnusedExemption
 
 import java.io.File
 

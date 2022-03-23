@@ -58,6 +58,16 @@ object ResolvedLeak {
   implicit val format: OFormat[ResolvedLeak] = Json.format[ResolvedLeak]
 }
 
+final case class UnusedExemption(
+                                  ruleId: String,
+                                  filePath: String,
+                                  text: Option[String]
+                                )
+
+object UnusedExemption {
+  implicit val format = Json.format[UnusedExemption]
+}
+
 final case class Report(
                          id               : ReportId,
                          repoName         : String,
@@ -69,18 +79,20 @@ final case class Report(
                          totalLeaks       : Int,
                          totalWarnings    : Int = 0,
                          rulesViolated    : Map[RuleId, Int],
-                         exclusions       : Map[RuleId, Int]
+                         exclusions       : Map[RuleId, Int],
+                         unusedExemptions : Seq[UnusedExemption],
 )
 
 object Report {
 
   def createFromMatchedResults(
-              repositoryName: String,
-              repositoryUrl : String,
-              commitId      : String,
-              authorName    : String,
-              branch        : String,
-              results       : Seq[MatchedResult]
+              repositoryName   : String,
+              repositoryUrl    : String,
+              commitId         : String,
+              authorName       : String,
+              branch           : String,
+              results          : Seq[MatchedResult],
+              unusedExemptions : Seq[UnusedExemption]
   ): Report =
     Report(
       id            = ReportId.random,
@@ -92,7 +104,8 @@ object Report {
       author        = authorName,
       totalLeaks    = results.length,
       rulesViolated = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
-      exclusions    = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length)
+      exclusions    = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
+      unusedExemptions = unusedExemptions
     )
 
   private val ruleIdMapFormat: Format[Map[RuleId, Int]] =
@@ -127,7 +140,7 @@ object Report {
     ~ (__ \ "totalWarnings"    ).formatWithDefault[Int](0)
     ~ (__ \ "rulesViolated"    ).format[Map[RuleId, Int]](ruleIdMapFormat)
     ~ (__ \ "exclusions"       ).formatWithDefault[Map[RuleId, Int]](Map.empty)(ruleIdMapFormat)
+    ~ (__ \ "unusedExemption"  ).formatWithDefault[Seq[UnusedExemption]](Seq.empty)
     )(Report.apply, unlift(Report.unapply))
   }
 }
-

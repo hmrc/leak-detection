@@ -17,8 +17,8 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import com.google.inject.Inject
-import play.api.libs.json.Json
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
+import uk.gov.hmrc.leakdetection.model.UnusedExemption
 import uk.gov.hmrc.leakdetection.services.RulesExemptionParser
 
 import java.io.File
@@ -39,14 +39,4 @@ class ExemptionChecker @Inject()() {
                 exemption.filePath == exclusion.filePath &&
                 exemption.text.fold(true)(exclusion.lineText.contains)))
   }
-}
-
-final case class UnusedExemption(
-                                  ruleId: String,
-                                  filePath: String,
-                                  text: Option[String]
-                                )
-
-object UnusedExemption {
-  implicit val format = Json.format[UnusedExemption]
 }

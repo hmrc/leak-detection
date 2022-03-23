@@ -46,6 +46,7 @@ class ReportsService @Inject()(
       authorName     = deleteBranchEvent.authorName,
       branch         = deleteBranchEvent.branchRef,
       results        = Nil,
+      unusedExemptions = Nil
     )
     for {
       _  <- reportsRepository.saveReport(reportSolvingProblems)
