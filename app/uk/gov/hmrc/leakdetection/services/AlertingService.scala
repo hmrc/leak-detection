@@ -70,7 +70,7 @@ class AlertingService @Inject()(configuration: Configuration,
         text = exemptionWarningText.replace("{repo}", repository.asString),
         username = username,
         iconEmoji = iconEmoji,
-        attachments = Seq()
+        attachments = Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${repository.asString}/${branch.asString}/exemptions".toString))
       )
 
     val commitInfo = CommitInfo(author, branch, repository)

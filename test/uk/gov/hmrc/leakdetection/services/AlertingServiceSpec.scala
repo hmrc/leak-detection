@@ -272,7 +272,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         text        = "Exemption Warnings",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq()
+        attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo/main/exemptions"))
       )
 
       val expectedMessageToTeamChannel = SlackNotificationRequest(
