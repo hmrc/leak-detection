@@ -23,7 +23,7 @@ import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
-import uk.gov.hmrc.leakdetection.scanner.RegexMatchingEngine
+import uk.gov.hmrc.leakdetection.scanner.{ExemptionChecker, RegexMatchingEngine}
 import uk.gov.hmrc.leakdetection.services.ArtifactService.BranchNotFound
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
 
@@ -43,6 +43,7 @@ class ScanningService @Inject()(
                                  rescanRequestsQueue:   RescanRequestsQueueRepository,
                                  warningsService:       WarningsService,
                                  activeBranchesService: ActiveBranchesService,
+                                 exemptionChecker:      ExemptionChecker,
                                  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
 )(implicit ec: ExecutionContext) {
 
@@ -81,9 +82,10 @@ class ScanningService @Inject()(
           val processingResult =
             for {
               matched           <- Future { regexMatchingEngine.run(dir) }
+              unusedExemptions   = exemptionChecker.run(matched, dir)
               (drafts, results)  = matched.partition(_.draft)
-              report             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results)
-              draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts)
+              report             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
+              draftReport        = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, drafts, unusedExemptions)
               leaks              = Leak.createFromMatchedResults(report, results)
               warnings           = warningsService.checkForWarnings(report, dir, isPrivate)
               _                 <- if(draftReport.totalLeaks > 0) draftReportsService.saveReport(draftReport.copy(totalWarnings = warnings.length)) else Future.unit

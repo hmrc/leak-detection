@@ -90,7 +90,8 @@ object ModelFactory {
       commitId       = aString("commitId"),
       authorName     = aString("author"),
       branch         = aString("ref"),
-      results        = results
+      results        = results,
+      unusedExemptions = Nil
     )
   }
 
