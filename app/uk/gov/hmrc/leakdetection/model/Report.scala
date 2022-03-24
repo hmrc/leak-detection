@@ -140,7 +140,7 @@ object Report {
     ~ (__ \ "totalWarnings"    ).formatWithDefault[Int](0)
     ~ (__ \ "rulesViolated"    ).format[Map[RuleId, Int]](ruleIdMapFormat)
     ~ (__ \ "exclusions"       ).formatWithDefault[Map[RuleId, Int]](Map.empty)(ruleIdMapFormat)
-    ~ (__ \ "unusedExemption"  ).formatWithDefault[Seq[UnusedExemption]](Seq.empty)
+    ~ (__ \ "unusedExemptions" ).formatWithDefault[Seq[UnusedExemption]](Seq.empty)
     )(Report.apply, unlift(Report.unapply))
   }
 }

@@ -99,6 +99,14 @@ class WarningServiceSpec
 
       results shouldBe Seq.empty
     }
+
+    "return unused exemptions warning if report has unused exemptions" in new TestSetup {
+      val report = aReport.copy(unusedExemptions = Seq(UnusedExemption("rule-1", "/dir/file1", Some("some text"))))
+
+      val results = warningsService.checkForWarnings(report, dir, true)
+
+      results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), UnusedExemptions.toString))
+    }
   }
 
   trait TestSetup {

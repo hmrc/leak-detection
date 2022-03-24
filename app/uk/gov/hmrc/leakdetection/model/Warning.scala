@@ -34,6 +34,8 @@ case object ParseFailure extends WarningMessageType
 
 case object FileLevelExemptions extends WarningMessageType
 
+case object UnusedExemptions extends WarningMessageType
+
 case class Warning(repoName: String,
                    branch: String,
                    timestamp: Instant,

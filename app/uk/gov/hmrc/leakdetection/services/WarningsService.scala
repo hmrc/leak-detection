@@ -49,7 +49,8 @@ warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessage
   def checkForWarnings(report: Report, dir: File, isPrivate: Boolean): Seq[Warning] = {
     Seq(
       repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, isPrivate),
-      checkFileLevelExemptions(dir, isPrivate)
+      checkFileLevelExemptions(dir, isPrivate),
+      checkUnusedExemptions(report)
     )
       .flatten
       .map(w => Warning(report.repoName, report.branch, report.timestamp, report.id, w.toString))
@@ -69,5 +70,8 @@ warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessage
       None
     }
   }
+
+  private def checkUnusedExemptions(report: Report): Option[WarningMessageType] =
+    if(report.unusedExemptions.isEmpty) None else Some(UnusedExemptions)
 
 }
