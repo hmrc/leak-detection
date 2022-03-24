@@ -32,6 +32,7 @@ import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
+import uk.gov.hmrc.leakdetection.scanner.ExemptionChecker
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus
 
@@ -131,7 +132,7 @@ class ScanningServiceSpec
 
     "scan the git repository and skip files that match the ignoredExtensions" in new TestSetup {
 
-      override val privateRules = List(rules.usesNullWithIgnoredExtensions, rules.checksInPrivateKeys)
+      override val privateRules = List(rules.checksInPrivateKeys)
 
       val report = generateReport
 
@@ -141,6 +142,28 @@ class ScanningServiceSpec
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.totalLeaks        shouldBe 1
       report.rulesViolated     shouldBe Map(RuleId("rule-2") -> 1)
+    }
+
+    "scan the git repository and return a report with unused exemptions" in new TestSetup {
+      override val privateRules = List(rules.usesNulls, rules.checksInPrivateKeys)
+
+      writeRepositoryYaml {
+        s"""
+           |leakDetectionExemptions:
+           |  - ruleId: 'rule-1'
+           |    filePath: "/dir/missing.file"
+        """.stripMargin
+      }
+
+      val report = generateReport
+
+      report.author            shouldBe "me"
+      report.repoName          shouldBe "repoName"
+      report.commitId          shouldBe "3d9c100"
+      report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
+      report.totalLeaks        shouldBe 2
+      report.rulesViolated     shouldBe Map(RuleId("rule-1") -> 1, RuleId("rule-2") -> 1)
+      report.unusedExemptions  shouldBe Seq(UnusedExemption("rule-1", "/dir/missing.file", None))
     }
 
     "trigger alerts" in new TestSetup {
@@ -505,6 +528,7 @@ class ScanningServiceSpec
         rescanQueue,
         warningsService,
         activeBranchesService,
+        new ExemptionChecker(),
         teamsAndRepositoriesConnector)
   }
 
