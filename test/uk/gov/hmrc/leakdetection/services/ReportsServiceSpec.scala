@@ -25,7 +25,6 @@ import org.scalatest.{BeforeAndAfterEach, GivenWhenThen}
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.IncreasingTimestamps
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, Report}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
@@ -58,9 +57,9 @@ class ReportsServiceSpec
     "leakResolutionUrl"                      -> "PLACEHOLDER",
     "maxLineLength"                          -> 2147483647,
     "clearingCollectionEnabled"              -> false,
-    "warningMessages"                           -> Map.empty
+    "warningMessages"                        -> Map.empty,
+    "alerts.slack"                           -> Map.empty
   )
-  val configLoader: ConfigLoader = new PlayConfigLoader(configuration)
   val reportsService = new ReportsService(repository, configuration)
 
 
