@@ -17,9 +17,9 @@
 package uk.gov.hmrc.leakdetection
 
 import play.api.libs.json.{Json, Writes}
-import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.config.Rule.{Priority, Scope}
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, Leak, PayloadDetails, Report, ReportId, RuleId}
+import uk.gov.hmrc.leakdetection.config.{Rule, SlackConfig}
+import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
 
 import java.time.Instant
@@ -104,6 +104,20 @@ object ModelFactory {
 
   def aReportWithoutLeaks(repoName: String = aString("repositoryName")): Report =
     aReport(repoName).copy(totalLeaks = 0, rulesViolated = Map.empty)
+
+  val aSlackConfig = SlackConfig(
+    enabled             = true,
+    adminChannel        = "#the-admin-channel",
+    defaultAlertChannel = "#the-channel",
+    username            = "leak-detection",
+    iconEmoji           = ":closed_lock_with_key:",
+    sendToAlertChannel  = true,
+    sendToTeamChannels  = true,
+    messageText         = "Do not panic, but there is a leak!",
+    leakDetectionUri    = "https://somewhere",
+    warningText         = "Warning for {repo} with message - {warningText}",
+    warningsToAlert     = Seq.empty
+  )
 
   implicit val payloadDetailsWrites: Writes[PayloadDetails] =
     Writes[PayloadDetails] { payloadDetails =>

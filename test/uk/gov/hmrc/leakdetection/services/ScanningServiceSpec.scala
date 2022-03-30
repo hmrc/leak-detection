@@ -28,6 +28,7 @@ import play.api.Configuration
 import play.api.mvc.Results
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
+import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
@@ -174,20 +175,12 @@ class ScanningServiceSpec
       verify(alertingService).alert(any[Report])(any)
     }
 
-    "send an alert if there were problems with repository.yaml" in new TestSetup {
+    "send a warning alert if there were problems" in new TestSetup {
       when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
 
       generateReport
 
-      verify(alertingService).alertAboutRepoVisibility(Repository(any), Branch(any), any)(any)
-    }
-
-    "not send alerts if repoVisibility correctly defined in repository.yaml" in new TestSetup {
-      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq.empty)
-
-      generateReport
-
-      verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), Branch(any), any)(any)
+      verify(alertingService).alertAboutWarnings(any, any)(any)
     }
 
     "not send alerts if the branch is not main" in new TestSetup {
@@ -202,38 +195,7 @@ class ScanningServiceSpec
 
       generateReport
 
-      verify(alertingService, times(0)).alertAboutRepoVisibility(Repository(any), Branch(any), any)(any)
-    }
-
-    "send exemption warnings alert if there are file level exemptions" in new TestSetup {
-      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), FileLevelExemptions.toString)))
-
-      generateReport
-
-      verify(alertingService).alertAboutExemptionWarnings(Repository("repoName"), Branch("main"), "me")(hc)
-    }
-
-    "not send exemption warnings alert if there are no file level exemptions" in new TestSetup {
-      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq.empty)
-
-      generateReport
-
-      verify(alertingService, times(0)).alertAboutExemptionWarnings(Repository(any), Branch(any), any)(any)
-    }
-
-    "not alert on exemption warnings if not on default branch" in new TestSetup {
-      when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), FileLevelExemptions.toString)))
-
-      override val branch = "not-main"
-      when(
-        artifactService.getZip(
-          eqTo(githubSecrets.personalAccessToken),
-          eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
-
-      generateReport
-
-      verify(alertingService, times(0)).alertAboutExemptionWarnings(Repository(any), Branch(any), any)(any)
+      verify(alertingService, times(0)).alertAboutWarnings(any, any)(any)
     }
 
     "not save the report or trigger any alerts if a dry run" in new TestSetup {
@@ -448,7 +410,8 @@ class ScanningServiceSpec
         githubSecrets             = githubSecrets,
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
-        warningMessages = Map.empty
+        warningMessages           = Map.empty,
+        alerts                    = Alerts(aSlackConfig)
       )
 
     lazy val configLoader = new ConfigLoader {
@@ -510,7 +473,7 @@ class ScanningServiceSpec
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))
-    when(alertingService.alertAboutRepoVisibility(Repository(any), Branch(any), any)(any)).thenReturn(Future.successful(()))
+    when(alertingService.alertAboutWarnings(any, any)(any)).thenReturn(Future.successful(()))
 
     val configuration = Configuration()
 

@@ -21,6 +21,7 @@ import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.WarningRepository
@@ -149,7 +150,8 @@ class WarningServiceSpec
         githubSecrets = GithubSecrets("", ""),
         maxLineLength = Int.MaxValue,
         clearingCollectionEnabled = false,
-        warningMessages = Map.empty
+        warningMessages = Map.empty,
+        alerts = Alerts(aSlackConfig)
       )
 
     lazy val configLoader = new ConfigLoader {
