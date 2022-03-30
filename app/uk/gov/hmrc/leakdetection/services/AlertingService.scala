@@ -47,7 +47,7 @@ class AlertingService @Inject()(configLoader: ConfigLoader,
           MessageDetails(
             text = warningText
               .replace("{repo}", warning.repoName)
-              .replace("{warningText}", warningMessage),
+              .replace("{warningMessage}", warningMessage),
             username = username,
             iconEmoji = iconEmoji,
             attachments = attachments

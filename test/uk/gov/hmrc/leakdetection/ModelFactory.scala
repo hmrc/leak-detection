@@ -115,7 +115,7 @@ object ModelFactory {
     sendToTeamChannels  = true,
     messageText         = "Do not panic, but there is a leak!",
     leakDetectionUri    = "https://somewhere",
-    warningText         = "Warning for {repo} with message - {warningText}",
+    warningText         = "Warning for {repo} with message - {warningMessage}",
     warningsToAlert     = Seq.empty
   )
 
