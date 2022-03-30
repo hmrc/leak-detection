@@ -20,12 +20,12 @@ import org.mockito.{ArgumentCaptor, ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.ModelFactory
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, PlayConfigLoader}
+import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
+import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository, RuleId}
+import uk.gov.hmrc.leakdetection.model._
 
 import java.time.Instant
 import scala.collection.JavaConverters._
@@ -108,7 +108,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
     "not send leak alerts to slack if not enabled" in new Fixtures {
 
-      override val configuration =  Configuration("alerts.slack.enabled" -> false).withFallback(defaultConfiguration)
+      override val slackConfig =  aSlackConfig.copy(enabled = false)
 
       val report = Report(
         id        = ReportId.random,
@@ -228,15 +228,14 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
     }
 
-    "send an alert if repoVisibility is not correctly set in repository.yaml" in new Fixtures {
-      override val configuration =
-        Configuration("alerts.slack.enabledForRepoVisibility" -> true).withFallback(defaultConfiguration)
+    "send a warning alert if warning in warnings alert list" in new Fixtures {
+      override val slackConfig =  aSlackConfig.copy(warningsToAlert = Seq(InvalidEntry.toString))
 
       val author = "me"
-      service.alertAboutRepoVisibility(repository = Repository("a-repo"), Branch("a-branch"), author = author).futureValue
+      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), InvalidEntry.toString))).futureValue
 
       val messageDetails = MessageDetails(
-        text        = "Repo visiblity problem detected",
+        text        = "Warning for a-repo with message - invalid entry message",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
         attachments = Seq()
@@ -256,20 +255,19 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
 
-    "not send repo visibility alerts if not enabled" in new Fixtures {
-      service.alertAboutRepoVisibility(Repository("repo-doesnt-matter"), Branch("branch-doesnt-matter"), "author-doesnt-matter").futureValue
+    "not send warning alerts if not in warning alert list" in new Fixtures {
+      service.alertAboutWarnings("author-doesnt-matter", Seq(Warning("repo-doesnt-matter", "branch-doesnt-matter", Instant.now(), ReportId("reportId"), UnusedExemptions.toString))).futureValue
 
       verifyZeroInteractions(slackConnector)
     }
 
-    "send an alert about exemption warnings" in new Fixtures {
-      override val configuration =
-        Configuration("alerts.slack.enabledForExemptionWarnings" -> true).withFallback(defaultConfiguration)
+    "send an alert with attachments if file level exemption warnings" in new Fixtures {
+      override val slackConfig =  aSlackConfig.copy(warningsToAlert = Seq(FileLevelExemptions.toString))
 
-      service.alertAboutExemptionWarnings(repository = Repository("repo"), Branch("main"), "author").futureValue
+      service.alertAboutWarnings("author", Seq(Warning("repo", "main", Instant.now, ReportId("reportId"), FileLevelExemptions.toString))).futureValue
 
       val messageDetails = MessageDetails(
-        text        = "Exemption Warnings",
+        text        = "Warning for repo with message - file level exemptions",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
         attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo/main/exemptions"))
@@ -289,10 +287,31 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
 
-    "do not send exemption warnings alert if not enabled" in new Fixtures {
-      service.alertAboutExemptionWarnings(Repository("repo"), Branch("main"), "author").futureValue
+    "handle missing warning text with generic message" in new Fixtures {
+      override val slackConfig =  aSlackConfig.copy(warningsToAlert = Seq(MissingEntry.toString))
 
-      verifyZeroInteractions(slackConnector)
+      val author = "me"
+      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), MissingEntry.toString))).futureValue
+
+      val messageDetails = MessageDetails(
+        text        = "Warning for a-repo with message - MissingEntry",
+        username    = "leak-detection",
+        iconEmoji   = ":closed_lock_with_key:",
+        attachments = Seq()
+      )
+
+      val expectedMessageToTeamChannel = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.TeamsOfGithubUser(author),
+        messageDetails = messageDetails
+      )
+
+      val expectedMessageToAlertChannel = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+        messageDetails = messageDetails
+      )
+
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
   }
 
@@ -301,34 +320,23 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     val slackConnector = mock[SlackNotificationsConnector]
     when(slackConnector.sendMessage(any)(any)).thenReturn(Future.successful(SlackNotificationResponse(Nil)))
 
-    val defaultConfiguration = Configuration(
-      "alerts.slack.leakDetectionUri"             -> "https://somewhere",
-      "alerts.slack.enabled"                      -> true,
-      "alerts.slack.defaultAlertChannel"          -> "#the-channel",
-      "alerts.slack.adminChannel"                 -> "#the-admin-channel",
-      "alerts.slack.messageText"                  -> "Do not panic, but there is a leak!",
-      "alerts.slack.username"                     -> "leak-detection",
-      "alerts.slack.iconEmoji"                    -> ":closed_lock_with_key:",
-      "alerts.slack.sendToTeamChannels"           -> true,
-      "alerts.slack.sendToAlertChannel"           -> true,
-      "alerts.slack.repoVisibilityMessageText"    -> "Repo visiblity problem detected",
-      "alerts.slack.enabledForRepoVisibility"     -> false,
-      "alerts.slack.exemptionWarningText"         -> "Exemption Warnings",
-      "alerts.slack.enabledForExemptionWarnings"  -> false,
-      "githubSecrets.personalAccessToken"         -> "PLACEHOLDER",
-      "githubSecrets.webhookSecretKey"            -> "PLACEHOLDER",
-      "allRules.privateRules"                     -> List(),
-      "allRules.publicRules"                      -> List(),
-      "leakResolutionUrl"                         -> "PLACEHOLDER",
-      "maxLineLength"                             -> 2147483647,
-      "clearingCollectionEnabled"                 -> false,
-      "warningMessages"                           -> Map.empty
-    )
+    val slackConfig = aSlackConfig
 
-    val configuration = defaultConfiguration
-    val configLoader: ConfigLoader = new PlayConfigLoader(defaultConfiguration)
+    lazy val config =
+      Cfg(
+        allRules                  = AllRules(Nil, Nil),
+        githubSecrets             = GithubSecrets("token", "webhook-key"),
+        maxLineLength             = Int.MaxValue,
+        clearingCollectionEnabled = false,
+        warningMessages           = Map("InvalidEntry" -> "invalid entry message", "FileLevelExemptions" -> "file level exemptions"),
+        alerts                    = Alerts(slackConfig)
+      )
 
-    lazy val service = new AlertingService(configuration, slackConnector)(ExecutionContext.global)
+    lazy val configLoader = new ConfigLoader {
+      val cfg = config
+    }
+
+    lazy val service = new AlertingService(configLoader, slackConnector)(ExecutionContext.global)
 
   }
 }

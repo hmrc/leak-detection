@@ -16,68 +16,50 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import play.api.{Configuration, Logger}
-import pureconfig.syntax._
-import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
+import play.api.Logger
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
+import uk.gov.hmrc.leakdetection.config.ConfigLoader
 import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
+import uk.gov.hmrc.leakdetection.model._
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class AlertingService @Inject()(configuration: Configuration,
+class AlertingService @Inject()(configLoader: ConfigLoader,
                                 slackConnector: SlackNotificationsConnector)(
   implicit ec: ExecutionContext) {
 
   private val logger = Logger(this.getClass.getName)
 
-  private val slackConfig: SlackConfig = {
-    implicit def hint[T]: ProductHint[T] =
-      ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+  import configLoader.cfg.alerts.slack._
+  import configLoader.cfg.warningMessages
 
-    configuration.underlying
-      .getConfig("alerts.slack")
-      .toOrThrow[SlackConfig]
-  }
 
-  import slackConfig._
+  def alertAboutWarnings(author: String, warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] = {
+    warnings.map(warning =>
+      if (warningsToAlert.contains(warning.warningMessageType)) {
+        val warningMessage = warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType)
+        val attachments = if (warning.warningMessageType != FileLevelExemptions.toString) Seq.empty else
+          Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions".toString))
 
-  def alertAboutRepoVisibility(repository: Repository, branch: Branch, author: String)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (!enabledForRepoVisibility) {
-      Future.successful(())
-    } else {
-      val messageDetails =
-        MessageDetails(
-          text        = repoVisibilityMessageText.replace("{repo}", repository.asString),
-          username    = username,
-          iconEmoji   = iconEmoji,
-          attachments = Seq()
-        )
+        val messageDetails =
+          MessageDetails(
+            text = warningText
+              .replace("{repo}", warning.repoName)
+              .replace("{warningText}", warningMessage),
+            username = username,
+            iconEmoji = iconEmoji,
+            attachments = attachments
+          )
 
-        val commitInfo = CommitInfo(author, branch, repository)
+        val commitInfo = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
+
         Future
           .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
-          .map(_ => ())
-    }
-
-  def alertAboutExemptionWarnings(repository: Repository, branch: Branch, author: String)(implicit hc: HeaderCarrier): Future[Unit] = {
-    if (!enabledForExemptionWarnings) return Future.successful(())
-
-    val messageDetails =
-      MessageDetails(
-        text = exemptionWarningText.replace("{repo}", repository.asString),
-        username = username,
-        iconEmoji = iconEmoji,
-        attachments = Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${repository.asString}/${branch.asString}/exemptions".toString))
-      )
-
-    val commitInfo = CommitInfo(author, branch, repository)
-
-    Future
-      .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
-      .map(_ => ())
+      }
+    )
+    Future.successful(Unit)
   }
 
   def alert(report: Report)(implicit hc: HeaderCarrier): Future[Unit] =
@@ -207,19 +189,3 @@ object CommitInfo {
       repository = Repository(report.repoName)
     )
 }
-
-final case class SlackConfig(
-  enabled: Boolean,
-  adminChannel: String,
-  defaultAlertChannel: String,
-  username: String,
-  iconEmoji: String,
-  sendToAlertChannel: Boolean,
-  sendToTeamChannels: Boolean,
-  messageText: String,
-  leakDetectionUri: String,
-  repoVisibilityMessageText: String,
-  enabledForRepoVisibility: Boolean,
-  exemptionWarningText: String,
-  enabledForExemptionWarnings: Boolean
-)

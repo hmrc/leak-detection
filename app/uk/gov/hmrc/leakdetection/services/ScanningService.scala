@@ -94,7 +94,7 @@ class ScanningService @Inject()(
               _                 <- executeIfNotDryRun(warningsService.saveWarnings(repository, branch, warnings))
               _                 <- executeIfNotDryRun(activeBranchesService.markAsActive(repository, branch, report.id))
               _                 <- executeIfNotDryRun(alertingService.alert(report))
-              _                 <- executeIfNotDryRun(alertAboutWarnings(repository, branch, authorName, dir.getAbsolutePath, warnings))
+              _                 <- executeIfNotDryRun(alertAboutWarnings(repository, branch, authorName, warnings))
             } yield report.copy(totalWarnings = warnings.length)
 
           processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
@@ -108,17 +108,10 @@ class ScanningService @Inject()(
                                   repository: Repository,
                                   branch: Branch,
                                   author: String,
-                                  absolutePath: String,
                                   warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] =
     teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
       if (branch.asString == repo.defaultBranch) {
-        if (warnings.map(_.warningMessageType).intersect(Seq(MissingRepositoryYamlFile.toString, InvalidEntry.toString, MissingEntry.toString, ParseFailure.toString)).nonEmpty) {
-          logger.warn(s"Incorrect configuration for repo ${repository.asString} on ${branch.asString} branch! File path: $absolutePath. Sending alert")
-          alertingService.alertAboutRepoVisibility(repository, branch, author)
-        }
-        if (warnings.map(_.warningMessageType).contains(FileLevelExemptions.toString)) {
-          alertingService.alertAboutExemptionWarnings(repository, branch, author)
-        }
+        alertingService.alertAboutWarnings(author, warnings)
       }
     ))
 
