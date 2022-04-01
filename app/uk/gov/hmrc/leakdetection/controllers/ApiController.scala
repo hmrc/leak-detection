@@ -33,7 +33,7 @@ class ApiController @Inject()(reportsService: ReportsService,
                               ruleService: RuleService,
                               cc: ControllerComponents)(implicit val ec: ExecutionContext) extends BackendController(cc) {
 
-  def leaks(repository: Option[String], branch: Option[String], ruleId: Option[String]): Action[AnyContent] = Action.async { implicit request =>
+  def leaks(repository: Option[String], branch: Option[String], ruleId: Option[String]): Action[AnyContent] = Action.async {
     implicit val lf: OFormat[Leak] = Leak.apiFormat
     leaksService
       .getLeaks(
@@ -47,7 +47,7 @@ class ApiController @Inject()(reportsService: ReportsService,
     Ok(Json.toJson(ruleService.getAllRules()))
   }
 
-  def ruleSummary(ruleId: Option[String], repository: Option[String], team: Option[String]): Action[AnyContent] = Action.async { implicit request =>
+  def ruleSummary(ruleId: Option[String], repository: Option[String], team: Option[String]): Action[AnyContent] = Action.async {
     implicit val sf: OFormat[Summary] = Summary.apiFormat
     summaryService
       .getRuleSummaries(
@@ -57,7 +57,7 @@ class ApiController @Inject()(reportsService: ReportsService,
       .map(r => Ok(Json.toJson(r)))
   }
 
-  def repositorySummary(ruleId: Option[String], repository: Option[String], team: Option[String], excludeNonIssues: Boolean, includeBranches: Boolean): Action[AnyContent] = Action.async { implicit request =>
+  def repositorySummary(ruleId: Option[String], repository: Option[String], team: Option[String], excludeNonIssues: Boolean, includeBranches: Boolean): Action[AnyContent] = Action.async {
     implicit val rsf: OFormat[RepositorySummary] = RepositorySummary.format
     summaryService
       .getRepositorySummaries(
