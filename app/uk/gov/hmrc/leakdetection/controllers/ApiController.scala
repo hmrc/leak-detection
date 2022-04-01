@@ -92,7 +92,7 @@ class ApiController @Inject()(reportsService: ReportsService,
 
   def repositories(): Action[AnyContent] = Action.async {
     leaksService
-      .getRepositories
+      .getRepositoriesWithUnresolvedLeaks
       .map(r => Ok(Json.toJson(r)))
   }
 

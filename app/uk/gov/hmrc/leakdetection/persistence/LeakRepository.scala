@@ -78,8 +78,11 @@ class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: Exec
         Filters.eq("branch", branch))
     ).toFuture()
 
-  def findDistinctRepoNames(): Future[Seq[String]] =
-    collection.distinct[String]("repoName").toFuture()
+  def findDistinctRepoNamesWithUnresolvedLeaks(): Future[Seq[String]] =
+    collection.distinct[String](
+      fieldName = "repoName",
+      filter    = Filters.eq("isExcluded", false)
+    ).toFuture()
 
   def countAll(): Future[Int] = collection.countDocuments().toFuture().map(_.toInt)
 

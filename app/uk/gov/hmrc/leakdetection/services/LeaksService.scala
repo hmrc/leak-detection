@@ -30,7 +30,7 @@ class LeaksService @Inject()(leakRepository: LeakRepository,
                              ignoreListConfig: IgnoreListConfig)
                             (implicit ec: ExecutionContext) extends MetricSource {
 
-  def getRepositories: Future[Seq[String]] = leakRepository.findDistinctRepoNames()
+  def getRepositoriesWithUnresolvedLeaks: Future[Seq[String]] = leakRepository.findDistinctRepoNamesWithUnresolvedLeaks()
 
   def getLeaks(repoName: Option[String], branch: Option[String], ruleId: Option[String]): Future[Seq[Leak]] =
     leakRepository.findLeaksBy(ruleId = ruleId, repoName = repoName, branch = branch)
