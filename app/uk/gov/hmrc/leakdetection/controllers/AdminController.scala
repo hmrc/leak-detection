@@ -51,10 +51,10 @@ class AdminController @Inject()(
       }
   }
 
-  def rescan() = Action.async(parse.json) { implicit request =>
+  def rescan(dryRun: Option[Boolean]) = Action.async(parse.json) { implicit request =>
     request.body.validate[List[String]].fold(
       _     => Future.successful(BadRequest("Invalid list of repos")),
-      repos => rescanService.triggerRescan(repos).map(_ => Accepted(""))
+      repos => rescanService.triggerRescan(repos, dryRun).map(_ => Accepted(""))
     )
   }
 

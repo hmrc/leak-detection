@@ -35,7 +35,7 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
   def rescan(repository: Repository, branch: Branch, dryRun: Option[Boolean])(implicit headerCarrier: HeaderCarrier): Future[Option[Future[Report]]] = {
     teamsAndRepos.repo(repository.asString)
       .map(f =>
-        f.map(repoToPayload(_))
+        f.map(repoToPayload(_, dryRun))
           .map(p =>
             scanningService
               .scanRepository(
@@ -52,15 +52,15 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
       )
   }
 
-  def triggerRescan(repos: List[String]): Future[Unit] = {
+  def triggerRescan(repos: List[String], dryRun: Option[Boolean]): Future[Unit] = {
     for {
-      payloads <- repos.foldLeftM(Seq.empty[PayloadDetails])((acc, repoName) => teamsAndRepos.repo(repoName).map(r => acc ++ r.map(repoToPayload).toSeq))
+      payloads <- repos.foldLeftM(Seq.empty[PayloadDetails])((acc, repoName) => teamsAndRepos.repo(repoName).map(r => acc ++ r.map(r => repoToPayload(r, dryRun)).toSeq))
       inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
       _         = logger.info(s"Re-triggered $inserts rescans")
     } yield ()
   }
 
-  private def repoToPayload(repoInfo: RepositoryInfo): PayloadDetails = {
+  private def repoToPayload(repoInfo: RepositoryInfo, dryRun: Option[Boolean]): PayloadDetails = {
     PayloadDetails(
       repositoryName = repoInfo.name,
       isPrivate      = repoInfo.isPrivate,
@@ -69,7 +69,8 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
       repositoryUrl  = s"https://github.com/hmrc/${repoInfo.name}",
       commitId       = NOT_APPLICABLE,
       archiveUrl     = s"https://api.github.com/repos/hmrc/${repoInfo.name}/{archive_format}{/ref}",
-      deleted        = false
+      deleted        = false,
+      dryRun         = dryRun
     )
   }
 

@@ -125,7 +125,7 @@ class ScanningService @Inject()(
     def processNext(acc: Int): Future[Int] =
       githubRequestsQueue.pullOutstanding.flatMap {
         case None     => Future.successful(acc)
-        case Some(wi) => scanOneItemAndMarkAsComplete(githubRequestsQueue)(wi, dryRun = false).flatMap(res => processNext(acc + res.size))
+        case Some(wi) => scanOneItemAndMarkAsComplete(githubRequestsQueue)(wi).flatMap(res => processNext(acc + res.size))
       }
 
     for {
@@ -137,11 +137,11 @@ class ScanningService @Inject()(
   def rescanOne(implicit ec: ExecutionContext): Future[Int] = {
     rescanRequestsQueue.pullOutstanding.flatMap {
       case None     => Future.successful(0)
-      case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi, dryRun = true).map(_.size)
+      case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi).map(_.size)
     }
   }
 
-  def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails], dryRun: Boolean): Future[Option[Report]] = {
+  def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
     val request     = workItem.item
     implicit val hc = HeaderCarrier()
     scanRepository(
@@ -152,7 +152,7 @@ class ScanningService @Inject()(
       commitId      = request.commitId,
       authorName    = request.authorName,
       archiveUrl    = request.archiveUrl,
-      dryRun        = dryRun
+      dryRun        = request.dryRun.getOrElse(false)
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
       .recoverWith {
         case NonFatal(e) =>

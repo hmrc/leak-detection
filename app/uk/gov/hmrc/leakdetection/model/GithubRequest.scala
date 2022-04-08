@@ -30,7 +30,8 @@ final case class PayloadDetails(
   repositoryUrl : String,
   commitId      : String,
   archiveUrl    : String,
-  deleted       : Boolean
+  deleted       : Boolean,
+  dryRun        : Option[Boolean]
 ) extends GithubRequest
 
 object PayloadDetails {
@@ -43,6 +44,7 @@ object PayloadDetails {
     ~ (__ \ "after"                     ).read[String]
     ~ (__ \ "repository" \ "archive_url").read[String]
     ~ (__ \ "deleted"                   ).read[Boolean]
+    ~ (__ \ "dryRun"                    ).readNullable[Boolean]
     )(PayloadDetails.apply _)
       .filter(JsonValidationError("Delete event is not valid"))(!_.deleted)
 }

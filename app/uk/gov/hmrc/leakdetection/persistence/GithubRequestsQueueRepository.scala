@@ -38,6 +38,7 @@ object MongoPayloadDetailsFormats {
     ~ (__ \ "commitId"      ).format[String]
     ~ (__ \ "archiveUrl"    ).format[String]
     ~ (__ \ "deleted"       ).format[Boolean]
+    ~ (__ \ "dryRun"       ).formatNullable[Boolean]
     )(PayloadDetails.apply, unlift(PayloadDetails.unapply))
 }
 
