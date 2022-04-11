@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import play.api.libs.json.Json
 import play.api.mvc.ControllerComponents
-import uk.gov.hmrc.leakdetection.model.Report
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.leakdetection.services.{DraftReportsService, RuleService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -42,5 +42,11 @@ class DraftReportController @Inject()(draftReportsService: DraftReportsService,
     }
   }
 
-  def clearAllDrafts() = Action.async { draftReportsService.clearDrafts().map(_ => Ok("all drafts delete"))}
+  def draftReport(reportId: ReportId) = Action.async {
+    draftReportsService
+      .getDraftReport(reportId)
+      .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
+  }
+
+  def clearAllDrafts() = Action.async { draftReportsService.clearDrafts().map(_ => Ok("all drafts deleted"))}
 }

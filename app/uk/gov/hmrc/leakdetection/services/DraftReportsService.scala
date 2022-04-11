@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import play.api.Configuration
 import uk.gov.hmrc.leakdetection.config.Rule
-import uk.gov.hmrc.leakdetection.model.Report
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.leakdetection.persistence.DraftReportsRepository
 
 import javax.inject.{Inject, Singleton}
@@ -35,6 +35,9 @@ class DraftReportsService @Inject() (draftRepository: DraftReportsRepository, co
 
   def clearDrafts(): Future[Long] =
     draftRepository.removeAll()
+
+  def getDraftReport(reportId: ReportId): Future[Option[Report]] =
+    draftRepository.findByReportId(reportId)
 
   def findDraftReportsForRule(rule: Rule): Future[Seq[Report]] =
     draftRepository.findAllWithRuleViolation(rule.id)
