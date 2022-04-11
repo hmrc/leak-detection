@@ -51,7 +51,8 @@ object ModelFactory {
       repositoryUrl  = aString("repo-url"),
       commitId       = aString("commitId"),
       archiveUrl     = aString("archiveUrl"),
-      deleted        = false
+      deleted        = false,
+      runMode        = None
     )
 
   def aDeleteBranchEvent =

@@ -21,7 +21,7 @@ import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.controllers.AdminController.NOT_APPLICABLE
-import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, Repository}
+import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, Repository, RunMode}
 import uk.gov.hmrc.leakdetection.persistence.RescanRequestsQueueRepository
 
 import javax.inject.{Inject, Singleton}
@@ -32,10 +32,10 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
 
   private val logger = Logger(getClass)
 
-  def rescan(repository: Repository, branch: Branch, dryRun: Option[Boolean])(implicit headerCarrier: HeaderCarrier): Future[Option[Future[Report]]] = {
+  def rescan(repository: Repository, branch: Branch, runMode: RunMode)(implicit headerCarrier: HeaderCarrier): Future[Option[Future[Report]]] = {
     teamsAndRepos.repo(repository.asString)
       .map(f =>
-        f.map(repoToPayload(_, dryRun))
+        f.map(repoToPayload(_, runMode))
           .map(p =>
             scanningService
               .scanRepository(
@@ -46,21 +46,21 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
                 commitId      = p.commitId,
                 authorName    = p.authorName,
                 archiveUrl    = p.archiveUrl,
-                dryRun        = dryRun.getOrElse(false)
+                runMode       = runMode
               )
           )
       )
   }
 
-  def triggerRescan(repos: List[String], dryRun: Option[Boolean]): Future[Unit] = {
+  def triggerRescan(repos: List[String], runMode: RunMode): Future[Unit] = {
     for {
-      payloads <- repos.foldLeftM(Seq.empty[PayloadDetails])((acc, repoName) => teamsAndRepos.repo(repoName).map(r => acc ++ r.map(r => repoToPayload(r, dryRun)).toSeq))
+      payloads <- repos.foldLeftM(Seq.empty[PayloadDetails])((acc, repoName) => teamsAndRepos.repo(repoName).map(r => acc ++ r.map(r => repoToPayload(r, runMode)).toSeq))
       inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
       _         = logger.info(s"Re-triggered $inserts rescans")
     } yield ()
   }
 
-  private def repoToPayload(repoInfo: RepositoryInfo, dryRun: Option[Boolean]): PayloadDetails = {
+  private def repoToPayload(repoInfo: RepositoryInfo, runMode: RunMode): PayloadDetails = {
     PayloadDetails(
       repositoryName = repoInfo.name,
       isPrivate      = repoInfo.isPrivate,
@@ -70,7 +70,7 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
       commitId       = NOT_APPLICABLE,
       archiveUrl     = s"https://api.github.com/repos/hmrc/${repoInfo.name}/{archive_format}{/ref}",
       deleted        = false,
-      dryRun         = dryRun
+      runMode        = Some(runMode)
     )
   }
 
