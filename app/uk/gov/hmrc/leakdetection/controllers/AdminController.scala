@@ -22,6 +22,7 @@ import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.model.RunMode.Draft
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository}
 import uk.gov.hmrc.leakdetection.services.{LeaksService, RescanService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -42,19 +43,19 @@ class AdminController @Inject()(
 
   import configLoader.cfg
 
-  def rescanRepo(repository: Repository, branch: Branch, dryRun: Option[Boolean]) = Action.async { implicit request =>
+  def rescanRepo(repository: Repository, branch: Branch) = Action.async { implicit request =>
     implicit val rf: Format[Report] = Report.apiFormat
-    rescanService.rescan(repository, branch, dryRun)
+    rescanService.rescan(repository, branch, Draft)
       .flatMap {
         case Some(f) => f.map(r => Ok(Json.toJson(r)))
         case _ => Future.successful(NotFound(s"rescan could not be performed as '${repository.asString}' is not a known HMRC repository"))
       }
   }
 
-  def rescan(dryRun: Option[Boolean]) = Action.async(parse.json) { implicit request =>
+  def rescan() = Action.async(parse.json) { implicit request =>
     request.body.validate[List[String]].fold(
       _     => Future.successful(BadRequest("Invalid list of repos")),
-      repos => rescanService.triggerRescan(repos, dryRun).map(_ => Accepted(""))
+      repos => rescanService.triggerRescan(repos, Draft).map(_ => Accepted(""))
     )
   }
 
