@@ -39,6 +39,9 @@ class DraftReportsService @Inject() (draftRepository: DraftReportsRepository, co
   def findDraftReportsForRule(rule: Rule): Future[Seq[Report]] =
     draftRepository.findAllWithRuleViolation(rule.id)
 
-  def findAllDraftReports(): Future[Seq[Report]] =
+  def findDraftReportsWithViolations(): Future[Seq[Report]] =
     draftRepository.findAllWithAnyRuleViolation()
+
+  def findAllDraftReports(): Future[Seq[Report]] =
+    draftRepository.findAll()
 }

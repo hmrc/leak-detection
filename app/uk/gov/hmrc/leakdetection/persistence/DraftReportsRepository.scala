@@ -47,6 +47,13 @@ class DraftReportsRepository @Inject()(
 
   private val hasLeaks =  Filters.gt("totalLeaks",  0)
 
+
+  def findAll(): Future[Seq[Report]] =
+    collection
+      .find()
+      .sort(Sorts.descending("timestamp"))
+      .toFuture
+
   def findAllWithAnyRuleViolation(): Future[Seq[Report]] =
     collection
       .find(hasLeaks)
