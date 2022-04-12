@@ -31,6 +31,7 @@ import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.ExemptionChecker
@@ -198,28 +199,69 @@ class ScanningServiceSpec
       verify(alertingService, times(0)).alertAboutWarnings(any, any)(any)
     }
 
-    "not save the report or trigger any alerts if a dry run" in new TestSetup {
-      performScan(true)
+    "scan in draft mode" should {
+      "report on active rule leaks without storing in the leaks collection" in new TestSetup {
+        override val privateRules = List(rules.usesNulls)
+        val argCap = ArgCaptor[Report]
 
-      verifyZeroInteractions(reportsService, alertingService)
+        when(draftService.saveReport(any)).thenReturn(Future.unit)
+
+        val report = performScan(Draft)
+
+        report.totalLeaks shouldBe 1
+
+        verify(leaksService, times(0)).saveLeaks(any[Repository], any[Branch], any)
+        verify(draftService, times(1)).saveReport(argCap.capture)
+        val draftReport = argCap.value
+        draftReport.totalLeaks shouldBe 1
+        draftReport.rulesViolated.get(RuleId(rules.usesNulls.id)) should contain(1)
+      }
+
+      "report on warnings without storing them in the warnings collection" in new TestSetup {
+        val argCap = ArgCaptor[Report]
+
+        when(warningsService.checkForWarnings(any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
+        when(draftService.saveReport(any)).thenReturn(Future.unit)
+
+        val report = performScan(Draft)
+
+        report.totalWarnings shouldBe 1
+
+        verify(warningsService, times(0)).saveWarnings(any[Repository], any[Branch], any)
+        verify(draftService, times(1)).saveReport(argCap.capture)
+
+        val draftReport = argCap.value
+        draftReport.totalWarnings shouldBe 1
+      }
+
+      "Include draft rule violations on the report" in new TestSetup {
+        override val privateRules = List(rules.draftRule)
+        val argCap = ArgCaptor[Report]
+
+        when(draftService.saveReport(any)).thenReturn(Future.unit)
+
+        val report = performScan(Draft)
+
+        report.totalLeaks shouldBe 1
+
+        verify(draftService, times(1)).saveReport(argCap.capture)
+        val draftReport = argCap.value
+        draftReport.totalLeaks shouldBe 1
+        draftReport.rulesViolated.get(RuleId(rules.draftRule.id)) should contain(1)
+      }
+
+      "not trigger any alerts or store a report in the reports collection" in new TestSetup {
+        override val privateRules = List(rules.draftRule)
+
+        when(draftService.saveReport(any)).thenReturn(Future.unit)
+
+        val report = performScan(Draft)
+
+        report.totalLeaks shouldBe 1
+
+        verifyZeroInteractions(reportsService, alertingService)
+      }
     }
-
-    "write draft rules to the draft service, not trigger any alerts" in new TestSetup {
-      override val privateRules = List(rules.draftRule)
-      val argCap = ArgCaptor[Report]
-
-      when(draftService.saveReport(any)).thenReturn(Future.unit)
-
-      val report = generateReport
-
-      report.totalLeaks shouldBe 0
-
-      verify(draftService, times(1)).saveReport(argCap.capture)
-      val draftReport = argCap.value
-      draftReport.totalLeaks shouldBe 1
-      draftReport.rulesViolated.get(RuleId(rules.draftRule.id)) should contain (1)
-    }
-
   }
 
   "The service" should {
@@ -291,11 +333,11 @@ class ScanningServiceSpec
     val id          = ReportId.random
     implicit val hc = HeaderCarrier()
 
-    def generateReport = performScan(false)
+    def generateReport = performScan(Normal)
 
     def branch = "main"
 
-    def performScan(dryRun: Boolean) =
+    def performScan(runMode: RunMode) =
       scanningService
         .scanRepository(
           repository    = Repository("repoName"),
@@ -305,7 +347,7 @@ class ScanningServiceSpec
           commitId      = "3d9c100",
           authorName    = "me",
           archiveUrl    = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}",
-          dryRun        = dryRun
+          runMode       = runMode
         )
         .futureValue
 
@@ -317,7 +359,8 @@ class ScanningServiceSpec
       repositoryUrl  = "https://github.com/hmrc/repoName",
       commitId       = "some commit id",
       archiveUrl     = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}",
-      deleted        = false
+      deleted        = false,
+      runMode        = None
     )
 
     val githubSecrets =

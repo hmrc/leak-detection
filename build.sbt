@@ -33,4 +33,6 @@ lazy val microservice = Project("leak-detection", file("."))
 RoutesKeys.routesImport ++= Seq(
   "uk.gov.hmrc.leakdetection.model.Branch",
   "uk.gov.hmrc.leakdetection.model.Repository",
-  "uk.gov.hmrc.leakdetection.model.ReportId")
+  "uk.gov.hmrc.leakdetection.model.ReportId",
+  "uk.gov.hmrc.leakdetection.model.RunMode",
+  "uk.gov.hmrc.leakdetection.model.RunMode._")

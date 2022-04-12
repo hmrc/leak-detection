@@ -30,10 +30,12 @@ final case class PayloadDetails(
   repositoryUrl : String,
   commitId      : String,
   archiveUrl    : String,
-  deleted       : Boolean
+  deleted       : Boolean,
+  runMode       : Option[RunMode]
 ) extends GithubRequest
 
 object PayloadDetails {
+  implicit val rmr = RunMode.format
   val githubReads: Reads[PayloadDetails] =
     ( (__ \ "repository" \ "name"       ).read[String]
     ~ (__ \ "repository" \ "private"    ).read[Boolean]
@@ -43,6 +45,7 @@ object PayloadDetails {
     ~ (__ \ "after"                     ).read[String]
     ~ (__ \ "repository" \ "archive_url").read[String]
     ~ (__ \ "deleted"                   ).read[Boolean]
+    ~ (__ \ "runMode"                   ).readNullable[RunMode]
     )(PayloadDetails.apply _)
       .filter(JsonValidationError("Delete event is not valid"))(!_.deleted)
 }

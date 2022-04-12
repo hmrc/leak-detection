@@ -18,8 +18,8 @@ POST       /validate                                    @uk.gov.hmrc.leakdetecti
 # Admin endpoints
 GET        /admin/github-rate-limits                    @uk.gov.hmrc.leakdetection.controllers.AdminController.checkGithubRateLimits
 GET        /admin/stats                                 @uk.gov.hmrc.leakdetection.controllers.AdminController.stats
-GET        /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findAllDraftViolations()
+GET        /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findDraftReports(rule: Option[String])
+GET        /admin/draft/:id                             @uk.gov.hmrc.leakdetection.controllers.DraftReportController.draftReport(id: ReportId)
 DELETE     /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.clearAllDrafts()
-GET        /admin/draft/:ruleId                         @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findAllDraftViolationsForRule(ruleId)
-POST       /admin/rescan                                @uk.gov.hmrc.leakdetection.controllers.AdminController.rescan
-POST       /admin/rescan/:repository/:branch            @uk.gov.hmrc.leakdetection.controllers.AdminController.rescanRepo(repository: Repository, branch: Branch, dryRun: Option[Boolean])
+POST       /admin/rescan                                @uk.gov.hmrc.leakdetection.controllers.AdminController.rescan(mode: RunMode ?= Draft)
+POST       /admin/rescan/:repository/:branch            @uk.gov.hmrc.leakdetection.controllers.AdminController.rescanRepo(repository: Repository, branch: Branch, mode: RunMode ?= Draft)

@@ -18,10 +18,9 @@ package uk.gov.hmrc.leakdetection.persistence
 
 import java.time.{Duration, Instant}
 import javax.inject.{Inject, Singleton}
-
 import play.api.Configuration
 import play.api.libs.json.__
-import uk.gov.hmrc.leakdetection.model.PayloadDetails
+import uk.gov.hmrc.leakdetection.model.{PayloadDetails, RunMode}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
 
@@ -29,6 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object MongoPayloadDetailsFormats {
   import play.api.libs.functional.syntax._
+  implicit val rmf = RunMode.format
   val formats =
     ( (__ \ "repositoryName").format[String]
     ~ (__ \ "isPrivate"     ).format[Boolean]
@@ -38,6 +38,7 @@ object MongoPayloadDetailsFormats {
     ~ (__ \ "commitId"      ).format[String]
     ~ (__ \ "archiveUrl"    ).format[String]
     ~ (__ \ "deleted"       ).format[Boolean]
+    ~ (__ \ "runMode"       ).formatNullable[RunMode]
     )(PayloadDetails.apply, unlift(PayloadDetails.unapply))
 }
 

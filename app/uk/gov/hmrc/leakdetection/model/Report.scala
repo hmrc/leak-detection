@@ -80,7 +80,7 @@ final case class Report(
                          totalWarnings    : Int = 0,
                          rulesViolated    : Map[RuleId, Int],
                          exclusions       : Map[RuleId, Int],
-                         unusedExemptions : Seq[UnusedExemption],
+                         unusedExemptions : Seq[UnusedExemption]
 )
 
 object Report {

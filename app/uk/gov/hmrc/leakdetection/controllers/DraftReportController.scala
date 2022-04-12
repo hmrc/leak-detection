@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import play.api.libs.json.Json
 import play.api.mvc.ControllerComponents
-import uk.gov.hmrc.leakdetection.model.Report
+import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.leakdetection.services.{DraftReportsService, RuleService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -30,18 +30,23 @@ class DraftReportController @Inject()(draftReportsService: DraftReportsService,
                                       cc: ControllerComponents)(implicit ec: ExecutionContext) extends BackendController(cc) {
   implicit val rf = Report.apiFormat
 
-  def findAllDraftViolationsForRule(ruleId: String) = Action.async {
-    ruleService
-      .getAllRules()
-      .find(_.id == ruleId)
-      .fold(ifEmpty = Future.successful(BadRequest("Unknown ruleId")))(
-            rule    => draftReportsService.findDraftReportsForRule(rule).map(d => Ok(Json.toJson(d)))
-    )
+  def findDraftReports(rule: Option[String]) = Action.async {
+    rule match {
+      case None => draftReportsService.findAllDraftReports().map(d => Ok(Json.toJson(d)))
+      case Some("any") => draftReportsService.findDraftReportsWithViolations().map(d => Ok(Json.toJson(d)))
+      case Some(r) => ruleService
+        .getAllRules()
+        .find(_.id == r)
+        .fold(ifEmpty = Future.successful(BadRequest("Unknown ruleId")))(
+          rule => draftReportsService.findDraftReportsForRule(rule).map(d => Ok(Json.toJson(d))))
+    }
   }
 
-  def findAllDraftViolations() = Action.async {
-    draftReportsService.findAllDraftReports().map(d => Ok(Json.toJson(d)))
+  def draftReport(reportId: ReportId) = Action.async {
+    draftReportsService
+      .getDraftReport(reportId)
+      .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
   }
 
-  def clearAllDrafts() = Action.async { draftReportsService.clearDrafts().map(_ => Ok("all drafts delete"))}
+  def clearAllDrafts() = Action.async { draftReportsService.clearDrafts().map(_ => Ok("all drafts deleted"))}
 }
