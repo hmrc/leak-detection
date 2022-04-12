@@ -18,6 +18,7 @@ package uk.gov.hmrc.leakdetection.model
 
 import play.api.libs.json._
 import play.api.mvc.QueryStringBindable
+import uk.gov.hmrc.play.binders.SimpleQueryBinder
 
 sealed trait RunMode extends Product with Serializable {
   def asString: String
@@ -34,30 +35,16 @@ object RunMode {
       case rm       => Left(s"Invalid run mode: $rm - should be one of: normal, draft")
     }
 
-  val format: Format[RunMode] =
-    new Format[RunMode] {
+  val format: Format[RunMode] = new Format[RunMode] {
       override def reads(json: JsValue): JsResult[RunMode] =
-        json match {
-          case JsString(s) => parse(s).fold(msg => JsError(msg), rm => JsSuccess(rm))
-          case _           => JsError("String value expected")
-        }
+        json.validate[String].flatMap(s => parse(s).fold(msg => JsError(msg), rm => JsSuccess(rm)))
 
       override def writes(rm: RunMode): JsValue =
         JsString(rm.asString.toLowerCase())
     }
 
-  implicit def queryStringBindable(implicit stringBinder: QueryStringBindable[String]): QueryStringBindable[RunMode] =
-    new QueryStringBindable[RunMode] {
-      override def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, RunMode]] =
-        for {
-          value <- stringBinder.bind(key, params)
-        } yield {
-          value match {
-            case Right(rm) => parse(rm)
-            case _         => Left(s"Unable to bind runMode")
-          }
-        }
+  implicit val binder: QueryStringBindable[RunMode] =
+    new SimpleQueryBinder[RunMode](parse, _.asString)
 
-      override def unbind(key: String, value: RunMode): String = value.asString
-    }
 }
+
