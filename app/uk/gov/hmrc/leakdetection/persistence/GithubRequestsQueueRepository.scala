@@ -28,7 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object MongoPayloadDetailsFormats {
   import play.api.libs.functional.syntax._
-  implicit val rmr = RunMode.format
+  implicit val rmf = RunMode.format
   val formats =
     ( (__ \ "repositoryName").format[String]
     ~ (__ \ "isPrivate"     ).format[Boolean]
