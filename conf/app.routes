@@ -21,5 +21,5 @@ GET        /admin/stats                                 @uk.gov.hmrc.leakdetecti
 GET        /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.findDraftReports(rule: Option[String])
 GET        /admin/draft/:id                             @uk.gov.hmrc.leakdetection.controllers.DraftReportController.draftReport(id: ReportId)
 DELETE     /admin/draft                                 @uk.gov.hmrc.leakdetection.controllers.DraftReportController.clearAllDrafts()
-POST       /admin/rescan                                @uk.gov.hmrc.leakdetection.controllers.AdminController.rescan
-POST       /admin/rescan/:repository/:branch            @uk.gov.hmrc.leakdetection.controllers.AdminController.rescanRepo(repository: Repository, branch: Branch)
+POST       /admin/rescan                                @uk.gov.hmrc.leakdetection.controllers.AdminController.rescan(runMode: RunMode ?= Draft)
+POST       /admin/rescan/:repository/:branch            @uk.gov.hmrc.leakdetection.controllers.AdminController.rescanRepo(repository: Repository, branch: Branch, runMode: RunMode ?= Draft)
