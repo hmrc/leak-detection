@@ -127,7 +127,7 @@ class ScanningServiceSpec
       report.repoName          shouldBe "repoName"
       report.commitId          shouldBe "3d9c100"
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
-      report.totalLeaks        shouldBe 1
+      report.totalLeaks        shouldBe 0
       report.rulesViolated     shouldBe empty
       report.exclusions        should not be empty
     }

@@ -102,7 +102,7 @@ object Report {
       branch        = branch,
       timestamp     = Instant.now,
       author        = authorName,
-      totalLeaks    = results.length,
+      totalLeaks    = results.filterNot(_.isExcluded).length,
       rulesViolated = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
       exclusions    = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
       unusedExemptions = unusedExemptions
