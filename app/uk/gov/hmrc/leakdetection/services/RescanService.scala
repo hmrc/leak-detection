@@ -21,7 +21,7 @@ import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.controllers.AdminController.NOT_APPLICABLE
-import uk.gov.hmrc.leakdetection.model.{Branch, PayloadDetails, Report, Repository, RunMode}
+import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.RescanRequestsQueueRepository
 
 import javax.inject.{Inject, Singleton}
@@ -50,6 +50,15 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
               )
           )
       )
+  }
+
+  def rescanAllRepos(runMode: RunMode): Future[Unit] = {
+    for {
+      repos    <- teamsAndRepos.repos()
+      payloads  = repos.map(r => repoToPayload(r, runMode))
+      inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
+      _         = logger.info(s"Re-triggered $inserts rescans")
+    } yield ()
   }
 
   def triggerRescan(repos: List[String], runMode: RunMode): Future[Unit] = {

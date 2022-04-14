@@ -59,6 +59,10 @@ class AdminController @Inject()(
     )
   }
 
+  def rescanAllRepos(runMode: RunMode) = Action.async(parse.json) { implicit request =>
+    rescanService.rescanAllRepos(runMode).map(_ => Accepted(""))
+  }
+
   def checkGithubRateLimits = Action.async { implicit request =>
     val authorizationHeader =
       hc.withExtraHeaders("Authorization" -> s"token ${cfg.githubSecrets.personalAccessToken}")
