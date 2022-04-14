@@ -228,6 +228,15 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
     }
 
+    "not send warning alert if not enabled" in new Fixtures {
+      override val slackConfig =  aSlackConfig.copy(enabled = false, warningsToAlert = Seq(InvalidEntry.toString))
+
+      val author = "me"
+      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), InvalidEntry.toString))).futureValue
+
+      verifyZeroInteractions(slackConnector)
+    }
+
     "send a warning alert if warning in warnings alert list" in new Fixtures {
       override val slackConfig =  aSlackConfig.copy(warningsToAlert = Seq(InvalidEntry.toString))
 
