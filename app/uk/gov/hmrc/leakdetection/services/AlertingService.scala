@@ -37,28 +37,30 @@ class AlertingService @Inject()(configLoader: ConfigLoader,
 
 
   def alertAboutWarnings(author: String, warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] = {
-    warnings.map(warning =>
-      if (warningsToAlert.contains(warning.warningMessageType)) {
-        val warningMessage = warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType)
-        val attachments = if (warning.warningMessageType != FileLevelExemptions.toString) Seq.empty else
-          Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions".toString))
+    if (enabled) {
+      warnings.map(warning =>
+        if (warningsToAlert.contains(warning.warningMessageType)) {
+          val warningMessage = warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType)
+          val attachments = if (warning.warningMessageType != FileLevelExemptions.toString) Seq.empty else
+            Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions".toString))
 
-        val messageDetails =
-          MessageDetails(
-            text = warningText
-              .replace("{repo}", warning.repoName)
-              .replace("{warningMessage}", warningMessage),
-            username = username,
-            iconEmoji = iconEmoji,
-            attachments = attachments
-          )
+          val messageDetails =
+            MessageDetails(
+              text = warningText
+                .replace("{repo}", warning.repoName)
+                .replace("{warningMessage}", warningMessage),
+              username = username,
+              iconEmoji = iconEmoji,
+              attachments = attachments
+            )
 
-        val commitInfo = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
+          val commitInfo = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
 
-        Future
-          .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
-      }
-    )
+          Future
+            .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
+        }
+      )
+    }
     Future.successful(Unit)
   }
 
