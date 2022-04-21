@@ -79,4 +79,10 @@ class ActiveBranchesRepository @Inject()(mongoComponent: MongoComponent)(implici
     ).toFuture().map(_ => ())
   }
 
+  def delete(repoName: String): Future[Unit] = {
+    collection.deleteOne(filter = Filters.and(
+      Filters.eq("repoName", repoName))
+    ).toFuture().map(_ => ())
+  }
+
 }

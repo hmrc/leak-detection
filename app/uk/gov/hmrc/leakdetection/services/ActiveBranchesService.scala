@@ -37,4 +37,7 @@ class ActiveBranchesService @Inject()(activeBranchesRepository: ActiveBranchesRe
 
   def clearAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Unit] =
     activeBranchesRepository.delete(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+
+  def clearAfterRepoDeleted(repositoryName: String): Future[Unit] =
+    activeBranchesRepository.delete(repositoryName)
 }

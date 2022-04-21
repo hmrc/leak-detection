@@ -47,6 +47,9 @@ class WarningRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: E
   def removeWarnings(repo: String, branch: String): Future[Long] =
     collection.deleteMany(filter = and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
 
+  def removeWarnings(repo: String): Future[Long] =
+    collection.deleteMany(filter = Filters.eq("repoName", repo)).toFuture().map(_.getDeletedCount)
+
   def findForReport(reportId: String): Future[Seq[Warning]] =
     collection.find(filter = Filters.eq("reportId", reportId)).toFuture()
 

@@ -21,7 +21,7 @@ import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, PayloadDetails, DeletedRepositoryEvent}
 
 import scala.concurrent.ExecutionContext
 
@@ -48,6 +48,26 @@ class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
 
       res           shouldBe expectedDeleteBranchEvent
       res.branchRef should not startWith "refs/heads/"
+    }
+  }
+
+  s"Parsing ${DeletedRepositoryEvent.getClass.getName}" should {
+    "succeed if all required fields are present and action is 'deleted'" in {
+      val expectedDeleteRepoEvent = aDeleteRepositoryEvent
+      val validJson               = asJson(expectedDeleteRepoEvent)
+
+      val res = Json.parse(validJson).as[DeletedRepositoryEvent](DeletedRepositoryEvent.githubReads)
+
+      res           shouldBe expectedDeleteRepoEvent
+    }
+
+    "fail if all required fields are present and action is 'archived'" in {
+      val expectedArchiveRepoEvent = anArchivedRepositoryEvent
+      val validJson                = asJson(expectedArchiveRepoEvent)
+
+      val res = Json.parse(validJson).validate[DeleteBranchEvent](DeleteBranchEvent.githubReads)
+
+      res.isError           shouldBe true
     }
   }
 
