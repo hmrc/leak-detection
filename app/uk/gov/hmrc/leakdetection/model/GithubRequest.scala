@@ -69,6 +69,19 @@ object DeleteBranchEvent {
       .filter(JsonValidationError("Not a delete event"))(_.deleted)
 }
 
+final case class DeletedRepositoryEvent(
+  repositoryName: String,
+  action        : String
+) extends GithubRequest
+
+object DeletedRepositoryEvent {
+  val githubReads: Reads[DeletedRepositoryEvent] =
+    ( (__ \ "repository" \ "name").read[String]
+    ~ (__ \ "action"             ).read[String]
+    )(DeletedRepositoryEvent.apply _)
+      .filter(JsonValidationError("Not a delete or archive event"))(e => e.action == "deleted")
+}
+
 /**
   * Test message sent by Github when webhook is created.
   * Should be ignored with 200 OK.

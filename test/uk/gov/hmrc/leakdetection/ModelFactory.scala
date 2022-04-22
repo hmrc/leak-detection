@@ -64,6 +64,18 @@ object ModelFactory {
       deleted        = true
     )
 
+  def aDeleteRepositoryEvent =
+    DeletedRepositoryEvent(
+      repositoryName = aString("repositoryName"),
+      action         = "deleted"
+    )
+
+  def anArchivedRepositoryEvent =
+    DeletedRepositoryEvent(
+      repositoryName = aString("repositoryName"),
+      action         = "archived"
+    )
+
   def aScope: String =
     if (aBoolean) {
       Rule.Scope.FILE_CONTENT
@@ -141,6 +153,15 @@ object ModelFactory {
         "pusher"     -> Json.obj("name" -> authorName),
         "deleted"    -> deleted,
         "repository" -> Json.obj("name" -> repositoryName, "url" -> repositoryUrl)
+      )
+    }
+
+  implicit val repositoryEventWrites: Writes[DeletedRepositoryEvent] =
+    Writes[DeletedRepositoryEvent] { repositoryEvent =>
+      import repositoryEvent._
+      Json.obj(
+        "repository" -> Json.obj("name" -> repositoryName),
+        "action" -> action
       )
     }
 
