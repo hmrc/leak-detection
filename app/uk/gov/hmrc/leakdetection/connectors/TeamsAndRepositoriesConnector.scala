@@ -65,7 +65,7 @@ object RepositoryInfo {
 
   def repos(): Future[Seq[RepositoryInfo]] = {
       implicit val hc = HeaderCarrier()
-      http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories?archived=false")
+      http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories")
   }
 
   def repo(repoName: String): Future[Option[RepositoryInfo]] = {
