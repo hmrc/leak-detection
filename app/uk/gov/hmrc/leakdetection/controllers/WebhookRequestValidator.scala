@@ -27,7 +27,7 @@ import play.api.libs.json.{JsValue, Json, Reads}
 import play.api.libs.streams.Accumulator
 import play.api.mvc.Results._
 import play.api.mvc.{BodyParser, Headers, Result}
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, DeletedRepositoryEvent, GithubRequest, PayloadDetails, ZenMessage}
 
 import scala.concurrent.ExecutionContext
 
@@ -43,6 +43,7 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
             case ExtractPayloadDetails(p)    => p
             case ExtractDeleteBranchEvent(d) => d
             case ExtractZenMessage(z)        => z
+            case ExtractDeletedRepositoryEvent(dre) => dre
           }
         }
       }
@@ -87,5 +88,6 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
   val ExtractPayloadDetails    = new Extract[PayloadDetails   ](PayloadDetails.githubReads)
   val ExtractZenMessage        = new Extract[ZenMessage       ](ZenMessage.githubReads)
   val ExtractDeleteBranchEvent = new Extract[DeleteBranchEvent](DeleteBranchEvent.githubReads)
+  val ExtractDeletedRepositoryEvent = new Extract[DeletedRepositoryEvent](DeletedRepositoryEvent.githubReads)
 
 }
