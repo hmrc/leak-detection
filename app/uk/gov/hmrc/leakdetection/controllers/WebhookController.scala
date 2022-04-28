@@ -20,7 +20,7 @@ import play.api.libs.json.Json
 import play.api.libs.json.Json.toJson
 import play.api.mvc.{BodyParser, ControllerComponents}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.{DeletedRepositoryEvent, DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
+import uk.gov.hmrc.leakdetection.model.{RepositoryEvent, DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
 import uk.gov.hmrc.leakdetection.services.{ActiveBranchesService, LeaksService, ReportsService, ScanningService, WarningsService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -63,12 +63,17 @@ class WebhookController @Inject()(
             _ <- warningsService.clearWarningsAfterBranchDeleted(deleteBranchEvent)
           } yield Ok (toJson (WebhookResponse ("report(s) successfully cleared")))
 
-        case deletedRepositoryEvent: DeletedRepositoryEvent =>
+        case repositoryEvent: RepositoryEvent if !repositoryEvent.action.equalsIgnoreCase("deleted") =>
+          Future.successful(
+            Ok(toJson(WebhookResponse(s"Repository events with ${repositoryEvent.action} actions are ignored")))
+          )
+
+        case repositoryEvent: RepositoryEvent =>
           for {
-            _ <- activeBranchesService.clearAfterRepoDeleted(deletedRepositoryEvent.repositoryName)
-            _ <- leakService.clearAllLeaksAfterRepoDeleted(deletedRepositoryEvent.repositoryName)
-            _ <- warningsService.clearWarningsAfterRepoDeleted(deletedRepositoryEvent.repositoryName)
-          } yield Ok( toJson(WebhookResponse(s"reports(s) for ${deletedRepositoryEvent.repositoryName} successfully cleared")))
+            _ <- activeBranchesService.clearAfterRepoDeleted(repositoryEvent.repositoryName)
+            _ <- leakService.clearAllLeaksAfterRepoDeleted(repositoryEvent.repositoryName)
+            _ <- warningsService.clearWarningsAfterRepoDeleted(repositoryEvent.repositoryName)
+          } yield Ok( toJson(WebhookResponse(s"reports(s) for ${repositoryEvent.repositoryName} successfully cleared")))
 
         case ZenMessage(_) =>
           Future.successful(
