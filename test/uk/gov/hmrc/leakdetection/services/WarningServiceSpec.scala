@@ -43,17 +43,17 @@ class WarningServiceSpec
 
   "warning service" should {
     "return warning if visibility check identified an issue" in new TestSetup {
-      when(repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, true)).thenReturn(Some(MissingRepositoryYamlFile))
+      when(repoVisibilityChecker.checkVisibility(dir, true, false)).thenReturn(Some(MissingRepositoryYamlFile))
 
-      val results = warningsService.checkForWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), MissingRepositoryYamlFile.toString))
     }
 
     "return no warnings if visibility checks passed" in new TestSetup {
-      when(repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, true)).thenReturn(None)
+      when(repoVisibilityChecker.checkVisibility(dir, true, false)).thenReturn(None)
 
-      val results = warningsService.checkForWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false)
 
       results shouldBe Seq.empty
     }
@@ -67,7 +67,21 @@ class WarningServiceSpec
         """.stripMargin
       }
 
-      val results = warningsService.checkForWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false)
+
+      results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), FileLevelExemptions.toString))
+    }
+
+    "include file level exemption warnings if repository is archived" in new TestSetup {
+      writeRepositoryYaml {
+        s"""
+           |leakDetectionExemptions:
+           |  - ruleId: 'rule-1'
+           |    filePath: 'file'
+        """.stripMargin
+      }
+
+      val results = warningsService.checkForWarnings(aReport, dir, true, true)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), FileLevelExemptions.toString))
     }
@@ -81,7 +95,7 @@ class WarningServiceSpec
         """.stripMargin
       }
 
-      val results = warningsService.checkForWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false)
 
       results shouldBe Seq.empty
     }
@@ -96,7 +110,7 @@ class WarningServiceSpec
         """.stripMargin
       }
 
-      val results = warningsService.checkForWarnings(aReport, dir, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false)
 
       results shouldBe Seq.empty
     }
@@ -104,9 +118,17 @@ class WarningServiceSpec
     "return unused exemptions warning if report has unused exemptions" in new TestSetup {
       val report = aReport.copy(unusedExemptions = Seq(UnusedExemption("rule-1", "/dir/file1", Some("some text"))))
 
-      val results = warningsService.checkForWarnings(report, dir, true)
+      val results = warningsService.checkForWarnings(report, dir, true, false)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), UnusedExemptions.toString))
+    }
+
+    "ignore unused exemptions warning if repository is archived" in new TestSetup {
+      val report = aReport.copy(unusedExemptions = Seq(UnusedExemption("rule-1", "/dir/file1", Some("some text"))))
+
+      val results = warningsService.checkForWarnings(report, dir, true, true)
+
+      results shouldBe Seq.empty
     }
   }
 
@@ -159,7 +181,7 @@ class WarningServiceSpec
     }
 
     val repoVisibilityChecker = mock[RepoVisibilityChecker]
-    when(repoVisibilityChecker.checkVisibilityDefinedCorrectly(any, any)).thenReturn(None)
+    when(repoVisibilityChecker.checkVisibility(any, any, any)).thenReturn(None)
 
     val warningRepository = mock[WarningRepository]
 
