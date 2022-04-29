@@ -32,6 +32,7 @@ object MongoPayloadDetailsFormats {
   val formats =
     ( (__ \ "repositoryName").format[String]
     ~ (__ \ "isPrivate"     ).format[Boolean]
+    ~ (__ \ "isArchived"    ).format[Boolean]
     ~ (__ \ "authorName"    ).format[String]
     ~ (__ \ "branchRef"     ).format[String]
     ~ (__ \ "repositoryUrl" ).format[String]

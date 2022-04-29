@@ -42,6 +42,7 @@ object Team {
 case class RepositoryInfo(
   name: String,
   isPrivate: Boolean,
+  isArchived: Boolean,
   defaultBranch: String
 )
 
