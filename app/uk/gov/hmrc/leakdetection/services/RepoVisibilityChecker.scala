@@ -34,54 +34,63 @@ class RepoVisibilityChecker {
   val publicVisibilityIdentifier = "public_0C3F0CE3E6E6448FAD341E7BFA50FCD333E06A20CFF05FCACE61154DDBBADF71"
   val privateVisibilityIdentifier = "private_12E5349CFB8BBA30AF464C24760B70343C0EAE9E9BD99156345DD0852C2E0F6F"
 
-  def checkVisibilityDefinedCorrectly(dir: File, isPrivate: Boolean): Option[WarningMessageType] =
-    try {
-      val projectRoot = FileAndDirectoryUtils.getSubdirName(dir)
-
-      val repositoryYaml: File = new File(projectRoot.getAbsolutePath.concat("/repository.yaml"))
-
-      if (!repositoryYaml.exists()) {
-        logger.warn(s"$repositoryYaml file not found")
-        Some(MissingRepositoryYamlFile)
-      } else {
-
-        val fileSource = Source.fromFile(repositoryYaml)
-        val fileContents = try {
-          fileSource.mkString
-        } catch {
-          case ex: Exception =>
-            logger.error("failed to read repository.yaml", ex)
-            throw ex
-        } finally {
-          fileSource.close()
-        }
-
-        type ExpectedConfigFormat = ju.Map[String, String]
-
-        val repoVisibility = new Yaml()
-          .load(fileContents)
-          .asInstanceOf[ExpectedConfigFormat]
-          .asScala
-          .get("repoVisibility")
-
-        repoVisibility match {
-          case Some(value) =>
-            if (isPrivate && value == privateVisibilityIdentifier) {
-              None
-            } else if (!isPrivate && value == publicVisibilityIdentifier) {
-              None
-            } else {
-              logger.warn(s"Invalid value of repoVisibility entry: [$value], repo privacy [$isPrivate]")
-              Some(InvalidEntry)
-            }
-          case None =>
-            logger.warn("Missing repoVisibility entry")
-            Some(MissingEntry)
-        }
-      }
-    } catch {
-      case NonFatal(ex) =>
-        logger.warn("Failed to parse repository.yaml to assert repoVisibility", ex)
-        Some(ParseFailure)
+  def checkVisibility(dir: File, isPrivate: Boolean, isArchived: Boolean): Option[WarningMessageType] = {
+    if (isArchived) {
+      None
+    } else {
+      checkVisibilityDefinedCorrectly(dir, isPrivate)
     }
+  }
+
+  def checkVisibilityDefinedCorrectly(dir: File, isPrivate: Boolean): Option[WarningMessageType] = {
+      try {
+        val projectRoot = FileAndDirectoryUtils.getSubdirName(dir)
+
+        val repositoryYaml: File = new File(projectRoot.getAbsolutePath.concat("/repository.yaml"))
+
+        if (!repositoryYaml.exists()) {
+          logger.warn(s"$repositoryYaml file not found")
+          Some(MissingRepositoryYamlFile)
+        } else {
+
+          val fileSource = Source.fromFile(repositoryYaml)
+          val fileContents = try {
+            fileSource.mkString
+          } catch {
+            case ex: Exception =>
+              logger.error("failed to read repository.yaml", ex)
+              throw ex
+          } finally {
+            fileSource.close()
+          }
+
+          type ExpectedConfigFormat = ju.Map[String, String]
+
+          val repoVisibility = new Yaml()
+            .load(fileContents)
+            .asInstanceOf[ExpectedConfigFormat]
+            .asScala
+            .get("repoVisibility")
+
+          repoVisibility match {
+            case Some(value) =>
+              if (isPrivate && value == privateVisibilityIdentifier) {
+                None
+              } else if (!isPrivate && value == publicVisibilityIdentifier) {
+                None
+              } else {
+                logger.warn(s"Invalid value of repoVisibility entry: [$value], repo privacy [$isPrivate]")
+                Some(InvalidEntry)
+              }
+            case None =>
+              logger.warn("Missing repoVisibility entry")
+              Some(MissingEntry)
+          }
+        }
+      } catch {
+        case NonFatal(ex) =>
+          logger.warn("Failed to parse repository.yaml to assert repoVisibility", ex)
+          Some(ParseFailure)
+      }
+  }
 }
