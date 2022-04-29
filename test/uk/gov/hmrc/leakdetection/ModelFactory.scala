@@ -65,13 +65,13 @@ object ModelFactory {
     )
 
   def aDeleteRepositoryEvent =
-    DeletedRepositoryEvent(
+    RepositoryEvent(
       repositoryName = aString("repositoryName"),
       action         = "deleted"
     )
 
   def anArchivedRepositoryEvent =
-    DeletedRepositoryEvent(
+    RepositoryEvent(
       repositoryName = aString("repositoryName"),
       action         = "archived"
     )
@@ -156,8 +156,8 @@ object ModelFactory {
       )
     }
 
-  implicit val repositoryEventWrites: Writes[DeletedRepositoryEvent] =
-    Writes[DeletedRepositoryEvent] { repositoryEvent =>
+  implicit val repositoryEventWrites: Writes[RepositoryEvent] =
+    Writes[RepositoryEvent] { repositoryEvent =>
       import repositoryEvent._
       Json.obj(
         "repository" -> Json.obj("name" -> repositoryName),
