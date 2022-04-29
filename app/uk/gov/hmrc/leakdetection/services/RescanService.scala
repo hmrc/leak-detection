@@ -42,6 +42,7 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
                 repository    = repository,
                 branch        = branch,
                 isPrivate     = p.isPrivate,
+                isArchived    = p.isArchived,
                 repositoryUrl = p.repositoryUrl,
                 commitId      = p.commitId,
                 authorName    = p.authorName,
@@ -73,6 +74,7 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
     PayloadDetails(
       repositoryName = repoInfo.name,
       isPrivate      = repoInfo.isPrivate,
+      isArchived     = repoInfo.isArchived,
       authorName     = NOT_APPLICABLE,
       branchRef      = repoInfo.defaultBranch,
       repositoryUrl  = s"https://github.com/hmrc/${repoInfo.name}",
