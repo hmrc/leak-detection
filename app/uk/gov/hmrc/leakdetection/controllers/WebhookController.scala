@@ -20,8 +20,9 @@ import play.api.libs.json.Json
 import play.api.libs.json.Json.toJson
 import play.api.mvc.{BodyParser, ControllerComponents}
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.model.{RepositoryEvent, DeleteBranchEvent, GithubRequest, PayloadDetails, ZenMessage}
-import uk.gov.hmrc.leakdetection.services.{ActiveBranchesService, LeaksService, ReportsService, ScanningService, WarningsService}
+import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, Repository, RepositoryEvent, RunMode, ZenMessage}
+import uk.gov.hmrc.leakdetection.services.{ActiveBranchesService, LeaksService, ReportsService, RescanService, ScanningService, WarningsService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
@@ -36,6 +37,8 @@ class WebhookController @Inject()(
   warningsService: WarningsService,
   activeBranchesService: ActiveBranchesService,
   webhookRequestValidator: WebhookRequestValidator,
+  rescanService: RescanService,
+  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
   cc: ControllerComponents)(implicit ec: ExecutionContext)
     extends BackendController(cc) {
 
@@ -57,23 +60,32 @@ class WebhookController @Inject()(
 
         case deleteBranchEvent: DeleteBranchEvent =>
           for {
-            _ <- activeBranchesService.clearAfterBranchDeleted(deleteBranchEvent)
+            _ <- activeBranchesService.clearBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
             _ <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
-            _ <- leakService.clearLeaksAfterBranchDeleted(deleteBranchEvent)
-            _ <- warningsService.clearWarningsAfterBranchDeleted(deleteBranchEvent)
-          } yield Ok (toJson (WebhookResponse ("report(s) successfully cleared")))
+            _ <- leakService.clearBranchLeaks(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+            _ <- warningsService.clearBranchWarnings(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+          } yield Ok (toJson (WebhookResponse (s"${deleteBranchEvent.repositoryName}/${deleteBranchEvent.branchRef} deleted")))
 
-        case repositoryEvent: RepositoryEvent if !repositoryEvent.action.equalsIgnoreCase("deleted") =>
+        case repositoryEvent: RepositoryEvent if repositoryEvent.action.equalsIgnoreCase("archived") =>
+          for {
+            _             <- leakService.clearRepoLeaks(repositoryEvent.repositoryName)
+            _             <- warningsService.clearRepoWarnings(repositoryEvent.repositoryName)
+            _             <- rescanService.rescanArchivedBranches(Repository(repositoryEvent.repositoryName), RunMode.Normal)
+            defaultBranch <- teamsAndRepositoriesConnector.repo(repositoryEvent.repositoryName).map(_.map(_.defaultBranch).getOrElse("main"))
+            _             <- activeBranchesService.clearRepoExceptDefault(repositoryEvent.repositoryName, defaultBranch)
+          } yield Ok( toJson(WebhookResponse(s"${repositoryEvent.repositoryName} archived")))
+
+        case repositoryEvent: RepositoryEvent if repositoryEvent.action.equalsIgnoreCase("deleted") =>
+          for {
+            _ <- activeBranchesService.clearRepo(repositoryEvent.repositoryName)
+            _ <- leakService.clearRepoLeaks(repositoryEvent.repositoryName)
+            _ <- warningsService.clearRepoWarnings(repositoryEvent.repositoryName)
+          } yield Ok( toJson(WebhookResponse(s"${repositoryEvent.repositoryName} deleted")))
+
+        case repositoryEvent: RepositoryEvent =>
           Future.successful(
             Ok(toJson(WebhookResponse(s"Repository events with ${repositoryEvent.action} actions are ignored")))
           )
-
-        case repositoryEvent: RepositoryEvent =>
-          for {
-            _ <- activeBranchesService.clearAfterRepoDeleted(repositoryEvent.repositoryName)
-            _ <- leakService.clearAllLeaksAfterRepoDeleted(repositoryEvent.repositoryName)
-            _ <- warningsService.clearWarningsAfterRepoDeleted(repositoryEvent.repositoryName)
-          } yield Ok( toJson(WebhookResponse(s"reports(s) for ${repositoryEvent.repositoryName} successfully cleared")))
 
         case ZenMessage(_) =>
           Future.successful(

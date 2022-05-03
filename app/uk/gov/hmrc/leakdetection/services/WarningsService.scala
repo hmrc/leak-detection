@@ -35,11 +35,11 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
   def saveWarnings(repository: Repository, branch: Branch, warnings: Seq[Warning]): Future[Unit] =
     warningRepository.update(repository.asString, branch.asString, warnings).map(_ => ())
 
-  def clearWarningsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Long] =
-    warningRepository.removeWarnings(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+  def clearBranchWarnings(repoName: String, branchName: String): Future[Long] =
+    warningRepository.removeWarnings(repoName, branchName)
 
-  def clearWarningsAfterRepoDeleted(repositoryName: String): Future[Long] =
-    warningRepository.removeWarnings(repositoryName)
+  def clearRepoWarnings(repoName: String): Future[Long] =
+    warningRepository.removeWarnings(repoName)
 
   def getWarnings(repoName: Option[String], branch: Option[String]): Future[Seq[Warning]] =
     warningRepository.findBy(repoName, branch)
@@ -49,11 +49,11 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
 warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessageType).getOrElse(warning.warningMessageType)
     )))
 
-  def checkForWarnings(report: Report, dir: File, isPrivate: Boolean): Seq[Warning] = {
+  def checkForWarnings(report: Report, dir: File, isPrivate: Boolean, isArchived: Boolean): Seq[Warning] = {
     Seq(
-      repoVisibilityChecker.checkVisibilityDefinedCorrectly(dir, isPrivate),
+      repoVisibilityChecker.checkVisibility(dir, isPrivate, isArchived),
       checkFileLevelExemptions(dir, isPrivate),
-      checkUnusedExemptions(report)
+      checkUnusedExemptions(report, isArchived)
     )
       .flatten
       .map(w => Warning(report.repoName, report.branch, report.timestamp, report.id, w.toString))
@@ -74,7 +74,7 @@ warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessage
     }
   }
 
-  private def checkUnusedExemptions(report: Report): Option[WarningMessageType] =
-    if(report.unusedExemptions.isEmpty) None else Some(UnusedExemptions)
+  private def checkUnusedExemptions(report: Report, isArchived: Boolean): Option[WarningMessageType] =
+    if(isArchived || report.unusedExemptions.isEmpty) None else Some(UnusedExemptions)
 
 }

@@ -35,9 +35,16 @@ class ActiveBranchesService @Inject()(activeBranchesRepository: ActiveBranchesRe
       .map(_.map(a => activeBranchesRepository.update(a.copy(updated = Instant.now(), reportId = reportId.value)))
         .getOrElse(activeBranchesRepository.create(ActiveBranch(repository.asString, branch.asString, reportId.value))))
 
-  def clearAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Unit] =
-    activeBranchesRepository.delete(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+  def clearBranch(repoName: String, branchName: String): Future[Unit] =
+    activeBranchesRepository.delete(repoName, branchName)
 
-  def clearAfterRepoDeleted(repositoryName: String): Future[Unit] =
-    activeBranchesRepository.delete(repositoryName)
+  def clearRepo(repoName: String): Future[Unit] =
+    activeBranchesRepository.delete(repoName)
+
+  def clearRepoExceptDefault(repositoryName: String, defaultBranch: String): Future[Unit] =
+    activeBranchesRepository.findForRepo(repositoryName)
+      .map(_
+        .filterNot(_.branch == defaultBranch)
+        .map(b => activeBranchesRepository.delete(repositoryName, b.branch))
+      )
 }

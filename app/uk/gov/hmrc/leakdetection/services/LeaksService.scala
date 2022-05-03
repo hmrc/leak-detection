@@ -39,11 +39,11 @@ class LeaksService @Inject()(leakRepository: LeakRepository,
     leakRepository.findLeaksForReport(reportId.value)
   }
 
-  def clearLeaksAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Long] =
-    leakRepository.removeBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+  def clearBranchLeaks(repoName: String, branchName: String): Future[Long] =
+    leakRepository.removeBranch(repoName, branchName)
 
-  def clearAllLeaksAfterRepoDeleted(repositoryName:String): Future[Long] =
-    leakRepository.removeRepository(repositoryName)
+  def clearRepoLeaks(repoName:String): Future[Long] =
+    leakRepository.removeRepository(repoName)
 
   def saveLeaks(repo: Repository, branch: Branch, leaks: Seq[Leak]): Future[Unit] =
     leakRepository.update(repo.asString, branch.asString, leaks).map(_ => ())

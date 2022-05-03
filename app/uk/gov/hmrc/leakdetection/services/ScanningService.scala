@@ -59,6 +59,7 @@ class ScanningService @Inject()(
     repository:    Repository,
     branch:        Branch,
     isPrivate:     Boolean,
+    isArchived:    Boolean,
     repositoryUrl: String,
     commitId:      String,
     authorName:    String,
@@ -70,9 +71,9 @@ class ScanningService @Inject()(
         case Left(BranchNotFound(_)) =>
           val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, deleted = true, repositoryUrl = repositoryUrl)
           for {
-            _      <- activeBranchesService.clearAfterBranchDeleted(deleteBranchEvent)
-            _      <- leaksService.clearLeaksAfterBranchDeleted(deleteBranchEvent)
-            _      <- warningsService.clearWarningsAfterBranchDeleted(deleteBranchEvent)
+            _      <- activeBranchesService.clearBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+            _      <- leaksService.clearBranchLeaks(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+            _      <- warningsService.clearBranchWarnings(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
             report <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
           } yield report
 
@@ -89,7 +90,7 @@ class ScanningService @Inject()(
               report                  = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
               draftReport             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
               leaks                   = Leak.createFromMatchedResults(report, results)
-              warnings                = warningsService.checkForWarnings(report, dir, isPrivate)
+              warnings                = warningsService.checkForWarnings(report, dir, isPrivate, isArchived)
               reportWithWarnings      = report.copy(totalWarnings = warnings.length)
               draftReportWithWarnings = draftReport.copy(totalWarnings = warnings.length)
               _                      <- executeIfDraftMode(draftReportsService.saveReport(draftReportWithWarnings))
@@ -152,6 +153,7 @@ class ScanningService @Inject()(
       repository    = Repository(request.repositoryName),
       branch        = Branch(request.branchRef),
       isPrivate     = request.isPrivate,
+      isArchived    = request.isArchived,
       repositoryUrl = request.repositoryUrl,
       commitId      = request.commitId,
       authorName    = request.authorName,

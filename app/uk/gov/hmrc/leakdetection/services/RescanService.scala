@@ -28,7 +28,7 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, rescanQueue: RescanRequestsQueueRepository, scanningService: ScanningService)(implicit ec: ExecutionContext) {
+class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, rescanQueue: RescanRequestsQueueRepository, scanningService: ScanningService, activeBranchesService: ActiveBranchesService)(implicit ec: ExecutionContext) {
 
   private val logger = Logger(getClass)
 
@@ -42,6 +42,7 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
                 repository    = repository,
                 branch        = branch,
                 isPrivate     = p.isPrivate,
+                isArchived    = p.isArchived,
                 repositoryUrl = p.repositoryUrl,
                 commitId      = p.commitId,
                 authorName    = p.authorName,
@@ -69,10 +70,22 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
     } yield ()
   }
 
+  def rescanArchivedBranches(repository: Repository, runMode: RunMode) = {
+    for {
+      branches      <- activeBranchesService.getActiveBranches(Some(repository.asString)).map(_.map(_.branch))
+      repoDetails   <- teamsAndRepos.repo(repository.asString)
+      payloadDetails = repoDetails.map(r => repoToPayload(r, runMode))
+      payloads       = branches.map(b => payloadDetails.map(p => p.copy(branchRef = b, isArchived = true))).flatten //we need to ensure it's marked as archived as it's unlikely teamsAndRepos knows this yet
+      inserts       <- rescanQueue.pushNewBatch(payloads).map(_.length)
+      _              = logger.info(s"Re-triggered $inserts rescans")
+    } yield ()
+  }
+
   private def repoToPayload(repoInfo: RepositoryInfo, runMode: RunMode): PayloadDetails = {
     PayloadDetails(
       repositoryName = repoInfo.name,
       isPrivate      = repoInfo.isPrivate,
+      isArchived     = repoInfo.isArchived,
       authorName     = NOT_APPLICABLE,
       branchRef      = repoInfo.defaultBranch,
       repositoryUrl  = s"https://github.com/hmrc/${repoInfo.name}",

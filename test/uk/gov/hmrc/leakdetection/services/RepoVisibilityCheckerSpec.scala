@@ -95,5 +95,22 @@ class RepoVisibilityCheckerSpec extends AnyWordSpec with Matchers {
       checker.checkVisibilityDefinedCorrectly(dir.toIO, isPrivate = Random.nextBoolean()) shouldBe Some(ParseFailure)
     }
 
+    "check visibility" should {
+      "ignore if repository is archived" in {
+        val dir: Path = tmp.dir()
+        mkdir(dir / "test")
+        val checker = new RepoVisibilityChecker()
+
+        checker.checkVisibility(dir.toIO, Random.nextBoolean(), true) shouldBe None
+      }
+
+      "return warnings if repository is not archived" in {
+        val dir: Path = tmp.dir()
+        mkdir(dir / "test")
+        val checker = new RepoVisibilityChecker()
+
+        checker.checkVisibility(dir.toIO, Random.nextBoolean(), false) shouldBe Some(MissingRepositoryYamlFile)
+      }
+    }
   }
 }

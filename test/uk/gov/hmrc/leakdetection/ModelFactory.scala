@@ -46,6 +46,7 @@ object ModelFactory {
     PayloadDetails(
       repositoryName = aString("repositoryName"),
       isPrivate      = aBoolean,
+      isArchived     = false,
       authorName     = aString("author"),
       branchRef      = aString("ref"),
       repositoryUrl  = aString("repo-url"),
@@ -140,7 +141,7 @@ object ModelFactory {
         "after"   -> commitId,
         "deleted" -> deleted,
         "repository" -> Json
-          .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate),
+          .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate, "archived" -> isArchived),
         "pusher" -> Json.obj("name" -> authorName)
       )
     }

@@ -25,6 +25,7 @@ sealed trait GithubRequest extends Product with Serializable
 final case class PayloadDetails(
   repositoryName: String,
   isPrivate     : Boolean,
+  isArchived    : Boolean,
   authorName    : String,
   branchRef     : String,
   repositoryUrl : String,
@@ -39,6 +40,7 @@ object PayloadDetails {
   val githubReads: Reads[PayloadDetails] =
     ( (__ \ "repository" \ "name"       ).read[String]
     ~ (__ \ "repository" \ "private"    ).read[Boolean]
+    ~ (__ \ "repository" \ "archived"   ).read[Boolean]
     ~ (__ \ "pusher"     \ "name"       ).read[String]
     ~ (__ \ "ref"                       ).read[String].map(_.stripPrefix("refs/heads/"))
     ~ (__ \ "repository" \ "url"        ).read[String]

@@ -63,7 +63,7 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
       repository.collection.insertOne(anActiveBranch).toFuture().futureValue
       repository.collection.countDocuments().toFuture().futureValue shouldBe 1
 
-      service.clearAfterBranchDeleted(DeleteBranchEvent("repo", "author", "branch", true, "url")).futureValue
+      service.clearBranch("repo", "branch").futureValue
 
       repository.collection.countDocuments().toFuture().futureValue shouldBe 0
     }

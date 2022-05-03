@@ -142,7 +142,7 @@ class E2eTests
 
       And("response should inform which problem where cleared as a result of deleting a branch")
       val response = Json.parse(Helpers.contentAsString(res)).as[WebhookResponse]
-      response.details shouldBe "report(s) successfully cleared"
+      response.details shouldBe s"${requestPayload.repositoryName}/${requestPayload.branchRef} deleted"
     }
 
     Scenario("Processing a branch that no longer exists") {
