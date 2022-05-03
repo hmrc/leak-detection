@@ -71,9 +71,9 @@ class ScanningService @Inject()(
         case Left(BranchNotFound(_)) =>
           val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, deleted = true, repositoryUrl = repositoryUrl)
           for {
-            _      <- activeBranchesService.clearAfterBranchDeleted(deleteBranchEvent)
-            _      <- leaksService.clearLeaksAfterBranchDeleted(deleteBranchEvent)
-            _      <- warningsService.clearWarningsAfterBranchDeleted(deleteBranchEvent)
+            _      <- activeBranchesService.clearBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+            _      <- leaksService.clearBranchLeaks(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
+            _      <- warningsService.clearBranchWarnings(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
             report <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
           } yield report
 
