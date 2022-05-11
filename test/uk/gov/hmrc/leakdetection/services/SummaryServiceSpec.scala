@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.Rule.Scope
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, Team, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.scanner.Match
 
@@ -38,7 +38,6 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
   val leaksService = mock[LeaksService]
   val warningsService = mock[WarningsService]
   val activeBranchesService = mock[ActiveBranchesService]
-
   lazy val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
   lazy val ruleService = mock[RuleService]
   lazy val ignoreListConfig = mock[IgnoreListConfig]
@@ -75,6 +74,9 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     val timestamp = Instant.now.minus(2, HOURS)
 
     "generate rule summaries by rule, repository and branch" should {
+      val repositoryInfo = RepositoryInfo("repo1", true, false, "main")
+      when(teamsAndRepositoriesConnector.archivedRepos()).thenReturn(Future(Seq(repositoryInfo)))
+
       when(ruleService.getAllRules()).thenReturn(Seq(
         aRule.copy(id = "rule-1"),
         aRule.copy(id = "rule-2"),
@@ -88,11 +90,11 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         results shouldBe Seq(
           Summary(aRule.copy(id = "rule-1"), Seq(
-            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 1, None),
-            RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, None)
+            RepositorySummary("repo1", true, timestamp, timestamp, 2, 1, 1, None),
+            RepositorySummary("repo2", false, timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, None)
           )),
           Summary(aRule.copy(id = "rule-2"), Seq(
-            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 0, None)
+            RepositorySummary("repo1", true, timestamp, timestamp, 2, 1, 0, None)
           )),
           Summary(aRule.copy(id = "rule-3"), Seq())
         )
@@ -102,8 +104,8 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
 
-        when(teamsAndRepositoriesConnector.team(mockEq("team1")))
-          .thenReturn(Future.successful(Option(Team("team1", None, None, None, Some(Map("Service" -> Seq("repo1")))))))
+        when(teamsAndRepositoriesConnector.reposWithTeams(mockEq("team1")))
+          .thenReturn(Future.successful(Seq(repositoryInfo)))
 
         when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
@@ -111,10 +113,10 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
         results shouldBe Seq(
           Summary(aRule.copy(id = "rule-1"), Seq(
-            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 1, None)
+            RepositorySummary("repo1", true, timestamp, timestamp, 2, 1, 1, None)
           )),
           Summary(aRule.copy(id = "rule-2"), Seq(
-            RepositorySummary("repo1", timestamp, timestamp, 2, 1, 0, None)
+            RepositorySummary("repo1", true, timestamp, timestamp, 2, 1, 0, None)
           )),
           Summary(aRule.copy(id = "rule-3"), Seq())
           )
@@ -122,6 +124,10 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     }
 
     "generate repository summaries by repository, branch and rule" should {
+
+      val repositoryInfo = RepositoryInfo("repo1",true,false,"main")
+      when(teamsAndRepositoriesConnector.archivedRepos()).thenReturn(Future(Seq(repositoryInfo)))
+
       "include details when just leaks exist" in {
         when(warningsService.getWarnings(any, any)).thenReturn(Future.successful(Seq.empty))
         when(activeBranchesService.getActiveBranches(any)).thenReturn(Future.successful(Seq.empty))
@@ -130,8 +136,8 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 0, 2, 1, None),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 0, 2, 0, None)
+          RepositorySummary("repo1", true, timestamp, timestamp, 0, 2, 1, None),
+          RepositorySummary("repo2", false, timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 0, 2, 0, None)
         )
       }
 
@@ -143,9 +149,9 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 0, 0, None),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(3, HOURS), 1, 0, 0, None),
-          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, None)
+          RepositorySummary("repo1", true, timestamp, timestamp, 2, 0, 0, None),
+          RepositorySummary("repo2", false, timestamp.minus(3, HOURS), timestamp.minus(3, HOURS), 1, 0, 0, None),
+          RepositorySummary("repo3", false, timestamp.minus(1, HOURS), timestamp, 2, 0, 0, None)
         )
       }
 
@@ -157,9 +163,9 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         val results = service.getRepositorySummaries(None, None, None, false, false).futureValue
 
         results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, None),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, None),
-          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, None)
+          RepositorySummary("repo1", true, timestamp, timestamp, 2, 2, 1, None),
+          RepositorySummary("repo2", false, timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, None),
+          RepositorySummary("repo3", false, timestamp.minus(1, HOURS), timestamp, 2, 0, 0, None)
         )
       }
 
@@ -197,16 +203,16 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         val results = service.getRepositorySummaries(None, None, None, false, true).futureValue
 
         results shouldBe Seq(
-          RepositorySummary("repo1", timestamp, timestamp, 2, 2, 1, Some(Seq(
+          RepositorySummary("repo1", true, timestamp, timestamp, 2, 2, 1, Some(Seq(
             BranchSummary("noIssues", "reportId", timestamp, 0, 0, 0),
             BranchSummary("branch", "reportId", timestamp, 0, 2, 1),
             BranchSummary("other", "reportId", timestamp, 2, 0, 0),
           ))),
-          RepositorySummary("repo2", timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, Some(Seq(
+          RepositorySummary("repo2", false,  timestamp.minus(3, HOURS), timestamp.minus(1, HOURS), 1, 2, 0, Some(Seq(
             BranchSummary("branch1", "reportId", timestamp.minus(3, HOURS), 1, 1, 0),
             BranchSummary("branch2", "reportId", timestamp.minus(1, HOURS), 0, 1, 0)
           ))),
-          RepositorySummary("repo3", timestamp.minus(1, HOURS), timestamp, 2, 0, 0, Some(Seq(
+          RepositorySummary("repo3", false, timestamp.minus(1, HOURS), timestamp, 2, 0, 0, Some(Seq(
             BranchSummary("branch", "reportId", timestamp, 1, 0, 0),
             BranchSummary("branch1", "reportId", timestamp.minus(1, HOURS), 1, 0, 0)
           )))

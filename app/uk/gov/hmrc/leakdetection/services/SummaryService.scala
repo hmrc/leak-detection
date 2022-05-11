@@ -35,7 +35,7 @@ class SummaryService @Inject()(ruleService: RuleService,
       warnings         <- warningsService.getWarnings(repoName, None)
       teamRepos        <- getTeamRepos(teamName)
       allArchivedRepos <- teamsAndRepositoriesConnector.archivedRepos().map(_.map(repo => repo.name))
-      teamRepoNames    = teamRepos.map(_.map(repo => repo.name))
+      teamRepoNames    = teamRepos.map(repo => repo.name)
       filteredLeaks    = teamRepoNames.foldLeft(leaks)((acc, l) => acc.filter(a => l.contains(a.repoName)))
       rules            = ruleService.getAllRules()
       leaksByRule      = groupLeaksByRule(allArchivedRepos.toSet ,filteredLeaks, warnings)
@@ -50,7 +50,7 @@ class SummaryService @Inject()(ruleService: RuleService,
       warnings                   <- warningsService.getWarnings(repoName, None)
       teamRepos                  <- getTeamRepos(teamName)
       allArchivedRepos           <- teamsAndRepositoriesConnector.archivedRepos().map(_.map(repo => repo.name))
-      teamRepoNames              = teamRepos.map(_.map(repo => repo.name))
+      teamRepoNames              = teamRepos.map(repo => repo.name)
 
       filteredBranches           = teamRepoNames.foldLeft(activeBranches)((acc, r) => acc.filter(a => r.contains(a.repoName)))
       filteredLeaks              = teamRepoNames.foldLeft(leaks)((acc, l) => acc.filter(a => l.contains(a.repoName)))
@@ -111,9 +111,9 @@ class SummaryService @Inject()(ruleService: RuleService,
 
   private def getExcludedLeakCount(leaks: Seq[Leak]): Int   = leaks.filter(_.isExcluded).length
 
-  private def getTeamRepos(teamName: Option[String]): Future[Option[Seq[RepositoryInfo]]] = teamName match {
-    case Some(t) => teamsAndRepositoriesConnector.reposWithTeams(t).map(_.map(repo => repo))
-    case None    => Future.successful(None)
+  private def getTeamRepos(teamName: Option[String]): Future[Seq[RepositoryInfo]] = teamName match {
+    case Some(t) => teamsAndRepositoriesConnector.reposWithTeams(t)
+    case None    => Future.successful(Seq())
   }
 
   private def groupLeaksByRule(allArchivedRepos: Set[String], leaks: Seq[Leak], warnings: Seq[Warning]): Map[String, Seq[RepositorySummary]] = leaks
