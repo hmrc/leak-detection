@@ -37,6 +37,7 @@ object Summary {
 
 case class RepositorySummary(
                               repository: String,
+                              isArchived: Boolean,
                               firstScannedAt: Instant,
                               lastScannedAt: Instant,
                               warningCount: Int,

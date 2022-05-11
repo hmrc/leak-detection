@@ -73,4 +73,14 @@ object RepositoryInfo {
       implicit val hc = HeaderCarrier()
       http.GET[Option[RepositoryInfo]](url"${baseUrl}/api/v2/repositories/$repoName")
   }
+
+  def reposWithTeams(teamName: String): Future[Option[Seq[RepositoryInfo]]] = {
+      implicit val hc = HeaderCarrier()
+      http.GET[Option[Seq[RepositoryInfo]]](url"${baseUrl}/api/v2/repositories?team=$teamName")
+  }
+
+  def archivedRepos(): Future[Seq[RepositoryInfo]] = {
+      implicit val hc = HeaderCarrier()
+      http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories?archived=true")
+  }
 }
