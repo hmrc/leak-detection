@@ -66,7 +66,7 @@ class SummaryService @Inject()(ruleService: RuleService,
             filteredLeaks.filter(l => l.repoName == r),
             filteredWarnings.filter(w => w.repoName == r),
             filteredBranches.filter(a => a.repoName == r),
-            if(archivedRepos.contains(r)) true else false)
+            archivedRepos.contains(r))
           )
 
       repositoryDetails.map {
@@ -128,7 +128,7 @@ class SummaryService @Inject()(ruleService: RuleService,
               case (repoName, ruleLeaksByRepo) =>
                 RepositorySummary(
                   repoName,
-                  isArchived = {if (allArchivedRepos.contains(repoName)) true else false},
+                  isArchived = allArchivedRepos.contains(repoName),
                   ruleLeaksByRepo.minBy(_.timestamp).timestamp,
                   ruleLeaksByRepo.maxBy(_.timestamp).timestamp,
                   warnings.count(_.repoName == repoName),
