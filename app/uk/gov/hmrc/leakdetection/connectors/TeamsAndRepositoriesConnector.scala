@@ -53,7 +53,7 @@ object RepositoryInfo {
 @Singleton class TeamsAndRepositoriesConnector @Inject()(http: HttpClient, servicesConfig: ServicesConfig)(implicit val ec: ExecutionContext) {
 
   lazy private val baseUrl = servicesConfig.baseUrl("teams-and-repositories")
-  implicit val hc = HeaderCarrier()
+  implicit private val hc = HeaderCarrier()
 
   def teamsWithRepositories(): Future[Seq[Team]] = {
       http.GET[Seq[Team]](url"${baseUrl}/api/teams_with_repositories")

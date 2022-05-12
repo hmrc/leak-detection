@@ -60,13 +60,13 @@ class SummaryService @Inject()(ruleService: RuleService,
       val archivedRepos = allArchivedRepos.toSet
       allRepositories
         .distinct
-        .map { repo =>
-          val repoLeaks          = filteredLeaks.filter(l => l.repoName == repo)
-          val repoWarnings       = filteredWarnings.filter(w => w.repoName == repo)
-          val repoActiveBranches = filteredBranches.filter(a => a.repoName == repo)
+        .map { repoName =>
+          val repoLeaks          = filteredLeaks.filter(_.repoName == repoName)
+          val repoWarnings       = filteredWarnings.filter(_.repoName == repoName)
+          val repoActiveBranches = filteredBranches.filter(_.repoName == repoName)
           RepositorySummary(
-            repository      = repo,
-            isArchived      = archivedRepos.contains(repo),
+            repository      = repoName,
+            isArchived      = archivedRepos.contains(repoName),
             firstScannedAt  = (repoLeaks.map(_.timestamp) ++ repoWarnings.map(_.timestamp) ++ repoActiveBranches.map(_.created)).min,
             lastScannedAt   = (repoLeaks.map(_.timestamp) ++ repoWarnings.map(_.timestamp) ++ repoActiveBranches.map(_.updated)).max,
             warningCount    = repoWarnings.length,
