@@ -53,34 +53,29 @@ object RepositoryInfo {
 @Singleton class TeamsAndRepositoriesConnector @Inject()(http: HttpClient, servicesConfig: ServicesConfig)(implicit val ec: ExecutionContext) {
 
   lazy private val baseUrl = servicesConfig.baseUrl("teams-and-repositories")
+  implicit val hc = HeaderCarrier()
 
   def teamsWithRepositories(): Future[Seq[Team]] = {
-    implicit val hc = HeaderCarrier()
-    http.GET[Seq[Team]](url"${baseUrl}/api/teams_with_repositories")
+      http.GET[Seq[Team]](url"${baseUrl}/api/teams_with_repositories")
   }
 
   def team(teamName: String): Future[Option[Team]] = {
-    implicit val hc = HeaderCarrier()
-    http.GET[Option[Team]](url"${baseUrl}/api/teams/${teamName}?includeRepos=true")
+      http.GET[Option[Team]](url"${baseUrl}/api/teams/${teamName}?includeRepos=true")
   }
 
   def repos(): Future[Seq[RepositoryInfo]] = {
-      implicit val hc = HeaderCarrier()
       http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories")
   }
 
   def repo(repoName: String): Future[Option[RepositoryInfo]] = {
-      implicit val hc = HeaderCarrier()
       http.GET[Option[RepositoryInfo]](url"${baseUrl}/api/v2/repositories/$repoName")
   }
 
   def reposWithTeams(teamName: String): Future[Seq[RepositoryInfo]] = {
-      implicit val hc = HeaderCarrier()
       http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories?team=$teamName")
   }
 
   def archivedRepos(): Future[Seq[RepositoryInfo]] = {
-      implicit val hc = HeaderCarrier()
       http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories?archived=true")
   }
 }

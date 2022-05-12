@@ -58,28 +58,21 @@ class SummaryService @Inject()(ruleService: RuleService,
       allRepositories            = filteredLeaks.map(_.repoName) ++ filteredWarnings.map(_.repoName) ++ filteredBranches.map(_.repoName)
     } yield {
       val archivedRepos = allArchivedRepos.toSet
-      val repositoryDetails =
-        allRepositories
-          .distinct
-          .map(r => (
-            r,
-            filteredLeaks.filter(l => l.repoName == r),
-            filteredWarnings.filter(w => w.repoName == r),
-            filteredBranches.filter(a => a.repoName == r),
-            archivedRepos.contains(r))
-          )
-
-      repositoryDetails.map {
-        case (repoName, repoLeaks, repoWarnings, repoActiveBranches, isArchived) =>
+      allRepositories
+        .distinct
+        .map { repo =>
+          val repoLeaks          = filteredLeaks.filter(l => l.repoName == repo)
+          val repoWarnings       = filteredWarnings.filter(w => w.repoName == repo)
+          val repoActiveBranches = filteredBranches.filter(a => a.repoName == repo)
           RepositorySummary(
-            repoName,
-            isArchived,
-            (repoLeaks.map(_.timestamp) ++ repoWarnings.map(_.timestamp) ++ repoActiveBranches.map(_.created)).min,
-            (repoLeaks.map(_.timestamp) ++ repoWarnings.map(_.timestamp) ++ repoActiveBranches.map(_.updated)).max,
-            repoWarnings.length,
-            getUnresolvedLeakCount(repoLeaks),
-            getExcludedLeakCount(repoLeaks),
-            if(includeBranches) Some(buildBranchSummaries(repoActiveBranches, repoLeaks, repoWarnings)) else None
+            repository      = repo,
+            isArchived      = archivedRepos.contains(repo),
+            firstScannedAt  = (repoLeaks.map(_.timestamp) ++ repoWarnings.map(_.timestamp) ++ repoActiveBranches.map(_.created)).min,
+            lastScannedAt   = (repoLeaks.map(_.timestamp) ++ repoWarnings.map(_.timestamp) ++ repoActiveBranches.map(_.updated)).max,
+            warningCount    = repoWarnings.length,
+            unresolvedCount = getUnresolvedLeakCount(repoLeaks),
+            excludedCount   = getExcludedLeakCount(repoLeaks),
+            branchSummary   = if(includeBranches) Some(buildBranchSummaries(repoActiveBranches, repoLeaks, repoWarnings)) else None
           )
       }
     }
@@ -127,14 +120,14 @@ class SummaryService @Inject()(ruleService: RuleService,
             .map {
               case (repoName, ruleLeaksByRepo) =>
                 RepositorySummary(
-                  repoName,
-                  isArchived = allArchivedRepos.contains(repoName),
-                  ruleLeaksByRepo.minBy(_.timestamp).timestamp,
-                  ruleLeaksByRepo.maxBy(_.timestamp).timestamp,
-                  warnings.count(_.repoName == repoName),
-                  getUnresolvedLeakCount(ruleLeaksByRepo),
-                  getExcludedLeakCount(ruleLeaksByRepo),
-                  branchSummary = None
+                  repository      = repoName,
+                  isArchived      = allArchivedRepos.contains(repoName),
+                  firstScannedAt  = ruleLeaksByRepo.minBy(_.timestamp).timestamp,
+                  lastScannedAt   = ruleLeaksByRepo.maxBy(_.timestamp).timestamp,
+                  warningCount    = warnings.count(_.repoName == repoName),
+                  unresolvedCount = getUnresolvedLeakCount(ruleLeaksByRepo),
+                  excludedCount   = getExcludedLeakCount(ruleLeaksByRepo),
+                  branchSummary   = None
                 )
             }
             .toSeq)
