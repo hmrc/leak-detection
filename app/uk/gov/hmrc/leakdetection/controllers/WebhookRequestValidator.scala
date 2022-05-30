@@ -19,6 +19,8 @@ package uk.gov.hmrc.leakdetection.controllers
 import akka.stream.scaladsl.Sink
 import akka.util.ByteString
 import cats.implicits._
+import org.apache.commons.codec.digest.HmacAlgorithms
+
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
@@ -27,7 +29,7 @@ import play.api.libs.json.{JsValue, Json, Reads}
 import play.api.libs.streams.Accumulator
 import play.api.mvc.Results._
 import play.api.mvc.{BodyParser, Headers, Result}
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, RepositoryEvent, GithubRequest, PayloadDetails, ZenMessage}
+import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, RepositoryEvent, ZenMessage}
 
 import scala.concurrent.ExecutionContext
 
@@ -52,7 +54,7 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
   def withValidSignature(payload: ByteString, headers: Headers, webhookSecret: String)(
     f: String => GithubRequest): Either[Result, GithubRequest] =
     headers
-      .get("X-Hub-Signature")
+      .get("X-Hub-Signature-256")
       .map { signature =>
         val payloadAsString = payload.utf8String
         if (isValidSignature(payloadAsString, signature, webhookSecret))
@@ -65,14 +67,14 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
       )
 
   def isValidSignature(payload: String, ghSignature: String, secret: String): Boolean = {
-    val algorithm  = "HmacSHA1"
+    val algorithm  = HmacAlgorithms.HMAC_SHA_256.toString
     val secretSpec = new SecretKeySpec(secret.getBytes(), algorithm)
     val hmac       = Mac.getInstance(algorithm)
 
     hmac.init(secretSpec)
 
     val sig           = hmac.doFinal(payload.getBytes("UTF-8"))
-    val hashOfPayload = s"sha1=${DatatypeConverter.printHexBinary(sig)}"
+    val hashOfPayload = s"sha256=${DatatypeConverter.printHexBinary(sig)}"
 
     ghSignature.equalsIgnoreCase(hashOfPayload)
   }

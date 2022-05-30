@@ -89,7 +89,7 @@ class WebhookRequestValidatorSpec extends AnyWordSpec with Matchers {
     "succeed if valid" in {
       val secret         = aString()
       val payload        = aString()
-      val validSignature = "sha1=" + new HmacUtils(HmacAlgorithms.HMAC_SHA_1, secret).hmacHex(payload)
+      val validSignature = "sha256=" + new HmacUtils(HmacAlgorithms.HMAC_SHA_256, secret).hmacHex(payload)
 
       val res = webhookRequestValidator.isValidSignature(payload, validSignature, secret)
 
