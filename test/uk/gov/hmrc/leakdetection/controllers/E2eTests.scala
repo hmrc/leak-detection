@@ -71,7 +71,7 @@ class E2eTests
           .withBody(githubRequestPayload)
           .withHeaders(
             CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + generateHmac(githubRequestPayload))
+            "X-Hub-Signature-256" -> ("sha256=" + generateHmac(githubRequestPayload))
           )
 
       When("Leak Detection service receives a request")
@@ -103,7 +103,7 @@ class E2eTests
           .withBody(githubRequestPayload)
           .withHeaders(
             CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + generateHmac(githubRequestPayload))
+            "X-Hub-Signature-256" -> ("sha256=" + generateHmac(githubRequestPayload))
           )
 
       When("Leak Detection service receives a request")
@@ -128,7 +128,7 @@ class E2eTests
           .withBody(githubRequestPayload)
           .withHeaders(
             CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + generateHmac(githubRequestPayload))
+            "X-Hub-Signature-256" -> ("sha256=" + generateHmac(githubRequestPayload))
           )
 
       And("there is already a report with problems for a given repo/branch")
@@ -163,7 +163,7 @@ class E2eTests
           .withBody(githubRequestPayload)
           .withHeaders(
             CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature" -> ("sha1=" + generateHmac(githubRequestPayload))
+            "X-Hub-Signature-256" -> ("sha256=" + generateHmac(githubRequestPayload))
           )
 
       val res = Helpers.route(app, signedRequest).get
@@ -198,7 +198,7 @@ class E2eTests
     PatienceConfig(timeout = 5.seconds)
 
   val secret: String = aString()
-  private def generateHmac(payload: String) = new HmacUtils(HmacAlgorithms.HMAC_SHA_1, secret).hmacHex(payload)
+  private def generateHmac(payload: String) = new HmacUtils(HmacAlgorithms.HMAC_SHA_256, secret).hmacHex(payload)
 
   override def newAppForTest(testData: TestData): Application =
     new GuiceApplicationBuilder()
