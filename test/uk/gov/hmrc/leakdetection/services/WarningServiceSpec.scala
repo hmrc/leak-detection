@@ -30,6 +30,7 @@ import uk.gov.hmrc.mongo.test.MongoSupport
 import java.io.PrintWriter
 import java.nio.file.Files
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class WarningServiceSpec
@@ -146,7 +147,7 @@ class WarningServiceSpec
       }
     }
 
-    val timestamp = Instant.now()
+    val timestamp = Instant.now().truncatedTo(ChronoUnit.MILLIS)
 
     def aReport = Report(ReportId("report"), "repoName", "url", "commit", "branch", timestamp, "author", 0, 0, Map.empty, Map.empty, Seq.empty)
 

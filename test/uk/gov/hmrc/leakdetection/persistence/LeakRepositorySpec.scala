@@ -20,7 +20,6 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory.aLeak
 import uk.gov.hmrc.leakdetection.model.{Leak, LeakUpdateResult}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
@@ -34,8 +33,7 @@ class LeakRepositorySpec
     with CleanMongoCollectionSupport
     with ScalaFutures
     with IntegrationPatience
-    with BeforeAndAfterEach
-    with IncreasingTimestamps {
+    with BeforeAndAfterEach {
 
   override val repository = new LeakRepository(mongoComponent)
 

@@ -24,7 +24,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, GivenWhenThen}
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, Report}
 import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
@@ -42,8 +41,7 @@ class ReportsServiceSpec
     with PlayMongoRepositorySupport[Report]
     with CleanMongoCollectionSupport
     with BeforeAndAfterEach
-    with GivenWhenThen
-    with IncreasingTimestamps {
+    with GivenWhenThen {
 
   override val repository = new ReportsRepository(mongoComponent)
 

@@ -21,6 +21,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.model.ActiveBranch
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ActiveBranchesRepositorySpec
@@ -33,7 +35,7 @@ class ActiveBranchesRepositorySpec
   "Active branches repository" when {
     "creating" should {
       "add a new entry" in {
-        val activeBranch = anActiveBranch
+        val activeBranch = anActiveBranch()
 
         repository.create(activeBranch).futureValue
 
@@ -45,7 +47,7 @@ class ActiveBranchesRepositorySpec
       "replace an existing entry" in {
         repository.collection.insertOne(anActiveBranch).toFuture().futureValue
 
-        val activeBranch = anActiveBranch.copy(reportId = "new report id")
+        val activeBranch = anActiveBranch().copy(reportId = "new report id")
 
         repository.update(activeBranch).futureValue
 
@@ -55,7 +57,7 @@ class ActiveBranchesRepositorySpec
 
     "deleting" should {
       "remove an existing entry" in {
-        repository.collection.insertOne(anActiveBranch).toFuture().futureValue
+        repository.collection.insertOne(anActiveBranch()).toFuture().futureValue
         repository.collection.countDocuments().toFuture().futureValue shouldBe 1
 
         repository.delete("repo", "branch").futureValue
@@ -67,7 +69,7 @@ class ActiveBranchesRepositorySpec
     "finding" should {
       "find by repository and branch" when {
         "document exists" in {
-          val activeBranch = anActiveBranch
+          val activeBranch = anActiveBranch()
           repository.collection.insertOne(activeBranch).toFuture().futureValue
 
           val result = repository.find("repo", "branch").futureValue
@@ -83,9 +85,9 @@ class ActiveBranchesRepositorySpec
       "find by repository" when {
         "multiple documents exist" in {
           val activeBranches = Seq(
-            anActiveBranch,
-            anActiveBranch.copy(branch   = "other branch"),
-            anActiveBranch.copy(repoName = "other repo", branch = "main")
+            anActiveBranch(),
+            anActiveBranch().copy(branch   = "other branch"),
+            anActiveBranch().copy(repoName = "other repo", branch = "main")
           )
           repository.collection.insertMany(activeBranches).toFuture().futureValue
 
@@ -102,9 +104,9 @@ class ActiveBranchesRepositorySpec
       }
       "find all" in {
         val activeBranches = Seq(
-          anActiveBranch,
-          anActiveBranch.copy(branch   = "other branch"),
-          anActiveBranch.copy(repoName = "other repo", branch = "main")
+          anActiveBranch(),
+          anActiveBranch().copy(branch   = "other branch"),
+          anActiveBranch().copy(repoName = "other repo", branch = "main")
         )
         repository.collection.insertMany(activeBranches).toFuture().futureValue
 
@@ -117,6 +119,7 @@ class ActiveBranchesRepositorySpec
     }
   }
 
-  def anActiveBranch = ActiveBranch("repo", "branch", "reportId")
+  private def now() = Instant.now().truncatedTo(ChronoUnit.MILLIS)
+  private def anActiveBranch() = ActiveBranch("repo", "branch", "reportId", created = now(), updated = now())
 
 }

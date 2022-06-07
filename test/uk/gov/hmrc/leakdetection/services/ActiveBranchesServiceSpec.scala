@@ -23,7 +23,7 @@ import uk.gov.hmrc.leakdetection.persistence.ActiveBranchesRepository
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
 import java.time.Instant
-import java.time.temporal.ChronoUnit.HOURS
+import java.time.temporal.ChronoUnit.{HOURS, MILLIS}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRepositorySupport[ActiveBranch] {
@@ -44,7 +44,7 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
 
       result.length                   shouldBe 3
       result.map(_.repoName).distinct should contain theSameElementsAs Seq("repo", "other repo")
-      result.map(_.branch)            shouldBe Seq("branch", "other branch", "main")
+      result.map(_.branch)            should contain theSameElementsAs Seq("branch", "other branch", "main")
     }
     "get all active branches for a given repository" in {
       val activeBranches = Seq(
@@ -57,7 +57,7 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
       val result = service.getActiveBranches(Some("repo")).futureValue
 
       result.length        shouldBe 2
-      result.map(_.branch) shouldBe Seq("branch", "other branch")
+      result.map(_.branch) should contain theSameElementsAs Seq("branch", "other branch")
     }
     "remove active branches" in {
       repository.collection.insertOne(anActiveBranch).toFuture().futureValue
@@ -80,7 +80,7 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
         activeBranch.created  shouldBe activeBranch.updated
       }
       "active branch already exists" in {
-        val originalInstant = Instant.now().minus(5, HOURS)
+        val originalInstant = Instant.now().truncatedTo(MILLIS).minus(5, HOURS)
         repository.collection
           .insertOne(anActiveBranch.copy(created = originalInstant, updated = originalInstant))
           .toFuture()

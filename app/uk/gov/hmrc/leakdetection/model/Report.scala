@@ -92,7 +92,8 @@ object Report {
               authorName       : String,
               branch           : String,
               results          : Seq[MatchedResult],
-              unusedExemptions : Seq[UnusedExemption]
+              unusedExemptions : Seq[UnusedExemption],
+              timestamp        : Instant = Instant.now()
   ): Report =
     Report(
       id            = ReportId.random,
@@ -100,7 +101,7 @@ object Report {
       repoUrl       = repositoryUrl,
       commitId      = commitId,
       branch        = branch,
-      timestamp     = Instant.now,
+      timestamp     = timestamp,
       author        = authorName,
       totalLeaks    = results.filterNot(_.isExcluded).length,
       rulesViolated = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),

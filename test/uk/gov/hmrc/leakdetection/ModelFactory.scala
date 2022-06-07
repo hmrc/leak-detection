@@ -23,6 +23,7 @@ import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
 
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import scala.util.Random
 
 object ModelFactory {
@@ -40,7 +41,7 @@ object ModelFactory {
 
   def aBoolean: Boolean = Random.nextBoolean()
 
-  def anInstant: Instant = Instant.now()
+  def anInstant: Instant = Instant.now().truncatedTo((ChronoUnit.MILLIS))
 
   def aPayloadDetails =
     PayloadDetails(
@@ -105,8 +106,9 @@ object ModelFactory {
       authorName     = aString("author"),
       branch         = aString("ref"),
       results        = results,
-      unusedExemptions = Nil
-    )
+      unusedExemptions = Nil,
+      timestamp      = anInstant
+      )
   }
 
   def aLeak(repoName: String = aString("repositoryName"), branch: String = aString("branch")): Leak =
