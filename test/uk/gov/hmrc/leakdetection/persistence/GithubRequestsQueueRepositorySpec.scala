@@ -27,6 +27,7 @@ import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
 
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class GithubRequestsQueueRepositorySpec
@@ -37,7 +38,7 @@ class GithubRequestsQueueRepositorySpec
      with Inspectors
      with IntegrationPatience {
 
-  val anInstant: Instant = Instant.now()
+  val anInstant: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS)
 
   override lazy val repository =
     new GithubRequestsQueueRepository(Configuration.load(Environment.simple()), mongoComponent) {

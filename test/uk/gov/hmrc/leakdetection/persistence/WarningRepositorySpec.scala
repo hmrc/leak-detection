@@ -25,6 +25,7 @@ import uk.gov.hmrc.leakdetection.model.{LeakUpdateResult, ReportId, Warning}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
@@ -99,7 +100,7 @@ class WarningRepositorySpec extends AnyWordSpec
     }
   }
 
-  def aWarning = Warning("repo", "branch", Instant.now(), ReportId("report"), "message")
+  def aWarning = Warning("repo", "branch", Instant.now().truncatedTo(ChronoUnit.MILLIS), ReportId("report"), "message")
 
   def givenSomeWarningsLike(warning: Warning): Seq[Warning] = {
     val warnings: Seq[Warning] = few(() => {

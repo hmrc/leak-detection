@@ -20,11 +20,12 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import uk.gov.hmrc.leakdetection.IncreasingTimestamps
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.{Report, Repository}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
 
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
@@ -36,16 +37,16 @@ class ReportsRepositorySpec
     with CleanMongoCollectionSupport
     with ScalaFutures
     with IntegrationPatience
-    with BeforeAndAfterEach
-    with IncreasingTimestamps {
+    with BeforeAndAfterEach {
 
   "Reports repository" should {
 
     "return reports by repository in inverse chronological order" in {
       val repoName = "repo"
-      val reports: Seq[Report] = few(() => {
-        aReportWithLeaks(repoName).copy(timestamp = increasingTimestamp())
-      })
+      val reports: Seq[Report] =
+        few(() => aReportWithLeaks(repoName))
+          .zipWithIndex
+          .map { case (r, idx) => r.copy(timestamp = Instant.now().truncatedTo(ChronoUnit.MILLIS).plus(idx, ChronoUnit.SECONDS)) }
 
       repository.collection.insertMany(Random.shuffle(reports)).toFuture.futureValue
 

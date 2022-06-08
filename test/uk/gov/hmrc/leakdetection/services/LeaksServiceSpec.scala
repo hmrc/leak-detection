@@ -28,7 +28,7 @@ import uk.gov.hmrc.leakdetection.persistence.LeakRepository
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
-import java.time.temporal.ChronoUnit.HOURS
+import java.time.temporal.ChronoUnit.{HOURS, MILLIS}
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -43,7 +43,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
   val leaksService = new LeaksService(repository, teamsAndRepositoriesConnector, ignoreListConfig)
 
   "Leaks service" should {
-    val timestamp = Instant.now.minus(2, HOURS)
+    val timestamp = Instant.now().truncatedTo(MILLIS).minus(2, HOURS)
 
     "get leaks for a report" in {
       repository.collection.insertMany(
