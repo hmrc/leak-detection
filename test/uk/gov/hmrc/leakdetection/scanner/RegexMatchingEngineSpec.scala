@@ -191,6 +191,42 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
       )
     }
 
+    "flag as excluded if results match rule exemptions" in {
+      val wd = tmp.dir()
+      write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: AA000000A")
+      write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "matching on: AA111111A")
+
+      val rules = List(
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", exemptions = List("000"))
+      )
+
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
+
+      results should contain theSameElementsAs Seq(
+        MatchedResult(
+          filePath    = "/dir1/fileA",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "matching on: AA000000A",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "descr 1",
+          matches     = List(Match(start = 13, end = 22)),
+          priority    = Rule.Priority.Low,
+          isExcluded  = true
+        ),
+        MatchedResult(
+          filePath = "/dir2/fileB",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "matching on: AA111111A",
+          lineNumber  = 1,
+          ruleId      = "rule-1",
+          description = "descr 1",
+          matches     = List(Match(start = 13, end = 22)),
+          priority    = Rule.Priority.Low
+        )
+      )
+    }
+
     "flag as excluded if filename matches file level exemption in repository.yaml" in {
       val repositoryYamlContent =
         """

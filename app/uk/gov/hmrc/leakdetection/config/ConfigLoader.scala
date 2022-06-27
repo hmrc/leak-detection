@@ -59,7 +59,8 @@ final case class Rule(
   ignoredFiles:      List[String] = Nil,
   ignoredExtensions: List[String] = Nil,
   priority:          String       = Rule.Priority.Low,
-  draft:             Boolean      = false
+  draft:             Boolean      = false,
+  exemptions:        List[String] = Nil
 )
 
 object Rule {

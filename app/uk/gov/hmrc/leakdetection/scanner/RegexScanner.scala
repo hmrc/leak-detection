@@ -33,7 +33,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
       }
   }
 
-  def scanFileName(text: String, filePath: String, ruleExemptions: Seq[RuleExemption]): Option[MatchedResult] =
+  def scanFileName(text: String, filePath: String, serviceDefinedExemptions: Seq[RuleExemption]): Option[MatchedResult] =
     text match {
       case Extractor(_, matches) =>
         Some(
@@ -47,13 +47,13 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
             matches     = matches,
             priority    = rule.priority,
             draft       = rule.draft,
-            isExcluded  = isFileExempt(rule.id, filePath, ruleExemptions)
+            isExcluded  = isFileExempt(rule.id, filePath, serviceDefinedExemptions)
           )
         )
       case _ => None
     }
 
-  def scanLine(line: String, lineNumber: Int, filePath: String, inlineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Option[MatchedResult] =
+  def scanLine(line: String, lineNumber: Int, filePath: String, inlineExemption: Boolean, serviceDefinedExemptions: Seq[RuleExemption]): Option[MatchedResult] =
     line match {
       case Extractor(lineText, matches) =>
         Some(
@@ -68,7 +68,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
               matches     = matches,
               priority    = rule.priority,
               draft       = rule.draft,
-              isExcluded  = isLineExempt(rule.id, filePath, line, inlineExemption, ruleExemptions) || isFileExempt(rule.id, filePath, ruleExemptions)
+              isExcluded  = isLineExempt(rule.id, filePath, line, matches, inlineExemption, serviceDefinedExemptions, rule.exemptions) || isFileExempt(rule.id, filePath, serviceDefinedExemptions)
             ),
             lineLengthLimit
           )
@@ -76,20 +76,22 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
       case _ => None
     }
 
-  private def isLineExempt(ruleId: String, filePath: String, line: String, inlineExemption: Boolean, ruleExemptions: Seq[RuleExemption]): Boolean = {
-      inlineExemption ||
-      ruleExemptions
+  private def isLineExempt(ruleId: String, filePath: String, line: String, matches: Seq[Match], inlineExemption: Boolean, serviceDefinedExemptions: Seq[RuleExemption], ruleExemptions: List[String]): Boolean = {
+    inlineExemption ||
+      matches.map(m => line.substring(m.start, m.end))
+        .exists(t => ruleExemptions.exists(pattern => pattern.r.findAllIn(t).toList.nonEmpty)) ||
+     serviceDefinedExemptions
         .filter(_.ruleId == ruleId)
         .filter(_.filePaths.contains(filePath))
         .flatMap(_.text)
         .exists(line.contains(_))
   }
 
-  private def isFileExempt(ruleId: String, filePath: String, ruleExemptions: Seq[RuleExemption]): Boolean = {
-    ruleExemptions
-      .filter(_.ruleId == ruleId)
-      .filter(_.filePaths.contains(filePath))
-      .exists(_.text == None)
+  private def isFileExempt(ruleId: String, filePath: String, serviceDefinedExemptions: Seq[RuleExemption]): Boolean = {
+      serviceDefinedExemptions
+        .filter(_.ruleId == ruleId)
+        .filter(_.filePaths.contains(filePath))
+        .exists(_.text == None)
   }
 
 }
