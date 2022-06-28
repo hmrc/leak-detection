@@ -78,8 +78,11 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
 
   private def isLineExempt(ruleId: String, filePath: String, line: String, matches: Seq[Match], inlineExemption: Boolean, serviceDefinedExemptions: Seq[RuleExemption], ruleExemptions: List[String]): Boolean = {
     inlineExemption ||
-      matches.map(m => line.substring(m.start, m.end))
-        .exists(t => ruleExemptions.exists(pattern => pattern.r.findAllIn(t).toList.nonEmpty)) ||
+      //all matching results musts be covered by the rule exemptions for the line to be considered exempt by ignored content
+      !matches
+        .map(m => line.substring(m.start, m.end))
+        .exists(t => ruleExemptions.exists(pattern => pattern.r.findAllIn(t).isEmpty)) ||
+     //exemptions defined by the service can match any part of the line, not just the matching results
      serviceDefinedExemptions
         .filter(_.ruleId == ruleId)
         .filter(_.filePaths.contains(filePath))
