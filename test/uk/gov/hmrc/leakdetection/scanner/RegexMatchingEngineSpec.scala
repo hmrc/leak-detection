@@ -191,75 +191,25 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
       )
     }
 
-    "flag as excluded if results match rules ignoredContent" in {
+    "flag as excluded if all results match with at least one rules ignoredContent" in {
       val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: AA000000A")
-      write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "matching on: AA111111A")
+      write(wd / 'zip_file_name_xyz / "fileA", "matching on: AA000000A")
+      write(wd / 'zip_file_name_xyz / "fileB", "matching on: AA111111A")
+      write(wd / 'zip_file_name_xyz / "fileC", "matching on: AA000000A and AA111111A")
+      write(wd / 'zip_file_name_xyz / "fileD", "matching on: AA000000A and AA000111A")
 
       val rules = List(
-        Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", ignoredContent = List("000"))
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", ignoredContent = List("000", "222"))
       )
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
+      val aMatchedResult = MatchedResult("", Rule.Scope.FILE_CONTENT, "", 1, "rule-1", "descr 1", List(Match(start = 13, end = 22)), Priority.Low)
       results should contain theSameElementsAs Seq(
-        MatchedResult(
-          filePath    = "/dir1/fileA",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineText    = "matching on: AA000000A",
-          lineNumber  = 1,
-          ruleId      = "rule-1",
-          description = "descr 1",
-          matches     = List(Match(start = 13, end = 22)),
-          priority    = Rule.Priority.Low,
-          isExcluded  = true
-        ),
-        MatchedResult(
-          filePath = "/dir2/fileB",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineText    = "matching on: AA111111A",
-          lineNumber  = 1,
-          ruleId      = "rule-1",
-          description = "descr 1",
-          matches     = List(Match(start = 13, end = 22)),
-          priority    = Rule.Priority.Low
-        )
-      )
-    }
-
-    "only flag as excluded if all results match rules ignoredContent" in {
-      val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: AA000000A and AA111111A")
-      write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "matching on: AA000000A and AA000111A")
-
-      val rules = List(
-        Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", ignoredContent = List("000"))
-      )
-
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
-
-      results should contain theSameElementsAs Seq(
-        MatchedResult(
-          filePath    = "/dir1/fileA",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineText    = "matching on: AA000000A and AA111111A",
-          lineNumber  = 1,
-          ruleId      = "rule-1",
-          description = "descr 1",
-          matches     = List(Match(start = 13, end = 22), Match(start = 27, end = 36)),
-          priority    = Rule.Priority.Low
-        ),
-        MatchedResult(
-          filePath    = "/dir2/fileB",
-          scope       = Rule.Scope.FILE_CONTENT,
-          lineText    = "matching on: AA000000A and AA000111A",
-          lineNumber  = 1,
-          ruleId      = "rule-1",
-          description = "descr 1",
-          matches     = List(Match(start = 13, end = 22), Match(start = 27, end = 36)),
-          priority    = Rule.Priority.Low,
-          isExcluded  = true
-        )
+        aMatchedResult.copy(filePath="/fileA", lineText = "matching on: AA000000A", isExcluded = true),
+        aMatchedResult.copy(filePath="/fileB", lineText = "matching on: AA111111A"),
+        aMatchedResult.copy(filePath="/fileC", lineText = "matching on: AA000000A and AA111111A", matches = List(Match(start = 13, end = 22), Match(start = 27, end = 36))),
+        aMatchedResult.copy(filePath="/fileD", lineText = "matching on: AA000000A and AA000111A", matches = List(Match(start = 13, end = 22), Match(start = 27, end = 36)), isExcluded = true),
       )
     }
 
@@ -432,7 +382,7 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
 
-      val aMatchedResult = MatchedResult("/dir/file", "fileContent", "", 0, "rule", "leaked secret", List(), Priority.Low, false)
+      val aMatchedResult = MatchedResult("/dir/file", "fileContent", "", 0, "rule", "leaked secret", List(), Priority.Low)
       results shouldBe Seq(
         aMatchedResult.copy(lineText = "first match on: secret", lineNumber = 1, matches = List(Match(16, 22))),
         aMatchedResult.copy(lineText = "ignore match on: secret", lineNumber = 3, matches = List(Match(17, 23)), isExcluded = true),

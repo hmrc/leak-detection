@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
-import MatchedResult.ensureLengthIsBelowLimit
+import uk.gov.hmrc.leakdetection.scanner.MatchedResult.ensureLengthIsBelowLimit
 
 case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
 
@@ -77,17 +77,22 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
     }
 
   private def isLineExempt(ruleId: String, filePath: String, line: String, matches: Seq[Match], inlineExemption: Boolean, serviceDefinedExemptions: Seq[RuleExemption], ruleExemptions: List[String]): Boolean = {
-    inlineExemption ||
-      //all matching results musts be covered by the rule exemptions for the line to be considered exempt by ignored content
-      !matches
-        .map(m => line.substring(m.start, m.end))
-        .exists(t => ruleExemptions.exists(pattern => pattern.r.findAllIn(t).isEmpty)) ||
-     //exemptions defined by the service can match any part of the line, not just the matching results
-     serviceDefinedExemptions
-        .filter(_.ruleId == ruleId)
-        .filter(_.filePaths.contains(filePath))
-        .flatMap(_.text)
-        .exists(line.contains(_))
+    //all matching results musts be covered by the rule exemptions for the line to be considered exempt by the rules ignored content
+    def exemptByRule = if (ruleExemptions.isEmpty) false else matches
+      .map(m => line.substring(m.start, m.end))
+      .forall(t =>
+        ruleExemptions.exists(p =>
+          p.r.findAllIn(t).nonEmpty)
+      )
+
+    //exemptions defined by the service can match any part of the line, not just the matching results
+    def exemptByService = serviceDefinedExemptions
+      .filter(_.ruleId == ruleId)
+      .filter(_.filePaths.contains(filePath))
+      .flatMap(_.text)
+      .exists(line.contains(_))
+
+    inlineExemption || exemptByRule || exemptByService
   }
 
   private def isFileExempt(ruleId: String, filePath: String, serviceDefinedExemptions: Seq[RuleExemption]): Boolean = {
