@@ -191,13 +191,13 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
       )
     }
 
-    "flag as excluded if results match rule exemptions" in {
+    "flag as excluded if results match rules ignored content" in {
       val wd = tmp.dir()
       write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: AA000000A")
       write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "matching on: AA111111A")
 
       val rules = List(
-        Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", exemptions = List("000"))
+        Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", ignoredContent = List("000"))
       )
 
       val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile)
