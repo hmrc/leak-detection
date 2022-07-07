@@ -30,7 +30,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.{GithubConnector, RepositoryInfo, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
@@ -45,14 +45,14 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class ScanningServiceSpec
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with MockitoSugar 
-    with ArgumentMatchersSugar
-    with Results
-    with MongoSupport
-    with IntegrationPatience {
+  extends AnyWordSpec
+     with Matchers
+     with ScalaFutures
+     with MockitoSugar
+     with ArgumentMatchersSugar
+     with Results
+     with MongoSupport
+     with IntegrationPatience {
 
   "scanRepository" should {
 
@@ -189,8 +189,7 @@ class ScanningServiceSpec
 
       override val branch = "not-main"
       when(
-        artifactService.getZip(
-          eqTo(githubSecrets.personalAccessToken),
+        githubConnector.getZip(
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
           Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
 
@@ -293,8 +292,7 @@ class ScanningServiceSpec
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
       when(
-        artifactService.getZip(
-          eqTo(githubSecrets.personalAccessToken),
+        githubConnector.getZip(
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
           Branch(eqTo("main")))).thenThrow(new RuntimeException("Some error"))
 
@@ -463,11 +461,11 @@ class ScanningServiceSpec
       val cfg = config
     }
 
-    val artifactService = mock[ArtifactService]
-    val reportsService  = mock[ReportsService]
-    val leaksService    = mock[LeaksService]
-    val warningsService = mock[WarningsService]
-    val activeBranchesService = mock[ActiveBranchesService]
+    val githubConnector               = mock[GithubConnector]
+    val reportsService                = mock[ReportsService]
+    val leaksService                  = mock[LeaksService]
+    val warningsService               = mock[WarningsService]
+    val activeBranchesService         = mock[ActiveBranchesService]
     val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
 
     val queue = new GithubRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
@@ -511,8 +509,7 @@ class ScanningServiceSpec
     when(teamsAndRepositoriesConnector.repo(any)).thenReturn(Future.successful(Some(RepositoryInfo("", true, false, "main"))))
 
     when(
-      artifactService.getZip(
-        eqTo(githubSecrets.personalAccessToken),
+      githubConnector.getZip(
         eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
         Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
 
@@ -526,7 +523,7 @@ class ScanningServiceSpec
 
     lazy val scanningService =
       new ScanningService(
-        artifactService,
+        githubConnector,
         configLoader,
         reportsService,
         draftService,

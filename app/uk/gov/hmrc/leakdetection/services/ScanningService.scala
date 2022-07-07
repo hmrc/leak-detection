@@ -20,12 +20,11 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.config.ConfigLoader
-import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
+import uk.gov.hmrc.leakdetection.connectors.{BranchNotFound, GithubConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.{ExemptionChecker, RegexMatchingEngine}
-import uk.gov.hmrc.leakdetection.services.ArtifactService.BranchNotFound
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
 
 import javax.inject.{Inject, Singleton}
@@ -34,18 +33,18 @@ import scala.util.control.NonFatal
 
 @Singleton
 class ScanningService @Inject()(
-                                 artifactService:       ArtifactService,
-                                 configLoader:          ConfigLoader,
-                                 reportsService:        ReportsService,
-                                 draftReportsService:   DraftReportsService,
-                                 leaksService:          LeaksService,
-                                 alertingService:       AlertingService,
-                                 githubRequestsQueue:   GithubRequestsQueueRepository,
-                                 rescanRequestsQueue:   RescanRequestsQueueRepository,
-                                 warningsService:       WarningsService,
-                                 activeBranchesService: ActiveBranchesService,
-                                 exemptionChecker:      ExemptionChecker,
-                                 teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
+  githubConnector              : GithubConnector,
+  configLoader                 : ConfigLoader,
+  reportsService               : ReportsService,
+  draftReportsService          : DraftReportsService,
+  leaksService                 : LeaksService,
+  alertingService              : AlertingService,
+  githubRequestsQueue          : GithubRequestsQueueRepository,
+  rescanRequestsQueue          : RescanRequestsQueueRepository,
+  warningsService              : WarningsService,
+  activeBranchesService        : ActiveBranchesService,
+  exemptionChecker             : ExemptionChecker,
+  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
 )(implicit ec: ExecutionContext) {
 
   import configLoader.cfg
@@ -67,7 +66,7 @@ class ScanningService @Inject()(
     runMode:       RunMode
   )(implicit hc: HeaderCarrier): Future[Report] =
     try {
-      artifactService.getZip(cfg.githubSecrets.personalAccessToken, archiveUrl, branch).flatMap {
+      githubConnector.getZip(archiveUrl, branch).flatMap {
         case Left(BranchNotFound(_)) =>
           val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, deleted = true, repositoryUrl = repositoryUrl)
           for {
