@@ -3,8 +3,8 @@ import sbt._
 
 object AppDependencies {
 
-  val bootstrapVersion = "5.18.0"
-  val hmrcMongoVersion = "0.59.0"
+  val bootstrapVersion = "6.2.0"
+  val hmrcMongoVersion = "0.66.0"
 
   val compile = Seq(
     "uk.gov.hmrc"           %% "auth-client"                       % "5.7.0-play-28",
