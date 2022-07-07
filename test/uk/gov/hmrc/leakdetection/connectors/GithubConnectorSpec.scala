@@ -14,20 +14,23 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.leakdetection.services
+package uk.gov.hmrc.leakdetection.connectors
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.leakdetection.model.Branch
 
 
-class ArtifactServiceSpec extends AnyFlatSpec with Matchers {
-
+class GithubConnectorSpec extends AnyFlatSpec with Matchers {
   "Branch names" should "be url-encoded" in {
     val nonEscapedBranchName = "feature/#10_DeathToConcrete" // real life example
-    val result               = ArtifactService.getArtifactUrl("github-link{/ref}", Branch(nonEscapedBranchName))
 
-    result shouldBe "github-link/refs/heads/feature%2F%2310_DeathToConcrete"
+    val result =
+      GithubConnector.getArtifactUrl(
+        "https://api.github.com/repos/hmrc/github-link{/ref}",
+        Branch(nonEscapedBranchName)
+      )
+
+    result.toString shouldBe "https://api.github.com/repos/hmrc/github-link/refs/heads/feature%2F%2310_DeathToConcrete"
   }
-
 }

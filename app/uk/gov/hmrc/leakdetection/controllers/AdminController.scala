@@ -19,9 +19,7 @@ package uk.gov.hmrc.leakdetection.controllers
 import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc.ControllerComponents
-import uk.gov.hmrc.http.HttpClient
-import uk.gov.hmrc.http.HttpReads.Implicits._
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.connectors.GithubConnector
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository, RunMode}
 import uk.gov.hmrc.leakdetection.services.{LeaksService, RescanService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -31,16 +29,12 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class AdminController @Inject()(
-                                 configLoader:    ConfigLoader,
-                                 leaksService:    LeaksService,
-                                 rescanService:   RescanService,
-                                 httpClient:      HttpClient,
-                                 cc:              ControllerComponents
-                               )(implicit ec: ExecutionContext) extends BackendController(cc) {
-
+  leaksService   : LeaksService,
+  rescanService  : RescanService,
+  githubConnector: GithubConnector,
+  cc             : ControllerComponents
+)(implicit ec: ExecutionContext) extends BackendController(cc) {
   val logger = Logger(this.getClass.getName)
-
-  import configLoader.cfg
 
   def rescanRepo(repository: Repository, branch: Branch, runMode: RunMode) = Action.async { implicit request =>
     implicit val rf: Format[Report] = Report.apiFormat
@@ -59,16 +53,13 @@ class AdminController @Inject()(
     )
   }
 
-  def rescanAllRepos(runMode: RunMode) = Action.async(parse.json) { implicit request =>
+  def rescanAllRepos(runMode: RunMode) = Action.async(parse.json) { _ =>
     rescanService.rescanAllRepos(runMode).map(_ => Accepted(""))
   }
 
-  def checkGithubRateLimits = Action.async { implicit request =>
-    val authorizationHeader =
-      hc.withExtraHeaders("Authorization" -> s"token ${cfg.githubSecrets.personalAccessToken}")
-
-    httpClient
-      .GET[JsValue]("https://api.github.com/rate_limit")(implicitly, authorizationHeader, implicitly)
+  def checkGithubRateLimits = Action.async {
+    githubConnector
+      .getRateLimit()
       .map(Ok(_))
   }
 

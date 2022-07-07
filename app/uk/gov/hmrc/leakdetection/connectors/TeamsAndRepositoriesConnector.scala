@@ -17,8 +17,8 @@
 package uk.gov.hmrc.leakdetection.connectors
 
 import play.api.libs.json._
-import uk.gov.hmrc.http.HttpReads.Implicits._
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, StringContextOps}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpReads, StringContextOps}
+import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import java.time.LocalDateTime
@@ -50,32 +50,42 @@ object RepositoryInfo {
   implicit val format = Json.format[RepositoryInfo]
 }
 
-@Singleton class TeamsAndRepositoriesConnector @Inject()(http: HttpClient, servicesConfig: ServicesConfig)(implicit val ec: ExecutionContext) {
+@Singleton class TeamsAndRepositoriesConnector @Inject()(
+  httpClientV2  : HttpClientV2,
+  servicesConfig: ServicesConfig
+)(implicit val ec: ExecutionContext) {
+  import HttpReads.Implicits._
 
   lazy private val baseUrl = servicesConfig.baseUrl("teams-and-repositories")
   implicit private val hc = HeaderCarrier()
 
-  def teamsWithRepositories(): Future[Seq[Team]] = {
-      http.GET[Seq[Team]](url"${baseUrl}/api/teams_with_repositories")
-  }
+  def teamsWithRepositories(): Future[Seq[Team]] =
+    httpClientV2
+      .get(url"${baseUrl}/api/teams_with_repositories")
+      .execute[Seq[Team]]
 
-  def team(teamName: String): Future[Option[Team]] = {
-      http.GET[Option[Team]](url"${baseUrl}/api/teams/${teamName}?includeRepos=true")
-  }
+  def team(teamName: String): Future[Option[Team]] =
+    httpClientV2
+      .get(url"${baseUrl}/api/teams/${teamName}?includeRepos=true")
+      .execute[Option[Team]]
 
-  def repos(): Future[Seq[RepositoryInfo]] = {
-      http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories")
-  }
+  def repos(): Future[Seq[RepositoryInfo]] =
+    httpClientV2
+      .get(url"${baseUrl}/api/v2/repositories")
+      .execute[Seq[RepositoryInfo]]
 
-  def repo(repoName: String): Future[Option[RepositoryInfo]] = {
-      http.GET[Option[RepositoryInfo]](url"${baseUrl}/api/v2/repositories/$repoName")
-  }
+  def repo(repoName: String): Future[Option[RepositoryInfo]] =
+    httpClientV2
+      .get(url"${baseUrl}/api/v2/repositories/$repoName")
+      .execute[Option[RepositoryInfo]]
 
-  def reposWithTeams(teamName: String): Future[Seq[RepositoryInfo]] = {
-      http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories?team=$teamName")
-  }
+  def reposWithTeams(teamName: String): Future[Seq[RepositoryInfo]] =
+    httpClientV2
+      .get(url"${baseUrl}/api/v2/repositories?team=$teamName")
+      .execute[Seq[RepositoryInfo]]
 
-  def archivedRepos(): Future[Seq[RepositoryInfo]] = {
-      http.GET[Seq[RepositoryInfo]](url"${baseUrl}/api/v2/repositories?archived=true")
-  }
+  def archivedRepos(): Future[Seq[RepositoryInfo]] =
+    httpClientV2
+      .get(url"${baseUrl}/api/v2/repositories?archived=true")
+      .execute[Seq[RepositoryInfo]]
 }

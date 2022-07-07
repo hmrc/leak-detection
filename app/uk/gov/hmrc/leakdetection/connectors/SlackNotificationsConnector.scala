@@ -19,9 +19,9 @@ package uk.gov.hmrc.leakdetection.connectors
 import com.google.common.io.BaseEncoding
 import javax.inject.{Inject, Singleton}
 import play.api.libs.json._
-import play.api.{Configuration, ConfigLoader, Logger}
-import uk.gov.hmrc.http.{Authorization, HeaderCarrier, HttpClient, StringContextOps}
-import uk.gov.hmrc.http.HttpReads.Implicits._
+import play.api.{Configuration, Logger}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpReads, StringContextOps}
+import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.util.control.NonFatal
@@ -29,35 +29,29 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class SlackNotificationsConnector @Inject()(
-  http          : HttpClient,
+  httpClientV2  : HttpClientV2,
   configuration : Configuration,
   servicesConfig: ServicesConfig,
 )(implicit ec: ExecutionContext) {
+  import HttpReads.Implicits._
 
   private val logger = Logger(this.getClass.getName)
 
   val url: String = servicesConfig.baseUrl("slack-notifications")
 
   private val authorizationHeaderValue = {
-    def getConfig[T : ConfigLoader](key: String): T =
-      configuration
-        .getOptional[T](key)
-        .getOrElse(throw new RuntimeException(s"$key not found in configuration"))
-
-    val username = getConfig[String]("alerts.slack.basicAuth.username")
-    val password = getConfig[String]("alerts.slack.basicAuth.password")
+    val username = configuration.get[String]("alerts.slack.basicAuth.username")
+    val password = configuration.get[String]("alerts.slack.basicAuth.password")
 
     s"Basic ${BaseEncoding.base64().encode(s"$username:$password".getBytes("UTF-8"))}"
   }
 
   def sendMessage(message: SlackNotificationRequest)(implicit hc: HeaderCarrier): Future[SlackNotificationResponse] =
-    http
-      .POST[SlackNotificationRequest, SlackNotificationResponse](url"$url/slack-notifications/notification", message)(
-        implicitly,
-        implicitly,
-        hc.copy(authorization = Some(Authorization(authorizationHeaderValue))),
-        implicitly
-      )
+    httpClientV2
+      .post(url"$url/slack-notifications/notification")
+      .withBody(Json.toJson(message))
+      .replaceHeader("Authorization" -> authorizationHeaderValue)
+      .execute[SlackNotificationResponse]
       .recoverWith {
         case NonFatal(ex) =>
           logger.error(s"Unable to notify ${message.channelLookup} on Slack", ex)

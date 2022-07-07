@@ -15,45 +15,58 @@
  */
 
 package uk.gov.hmrc.leakdetection.connectors
-import org.mockito.ArgumentMatchers.any
-import org.mockito.{ArgumentCaptor, MockitoSugar}
-import org.scalatest.concurrent.ScalaFutures
+
+import com.github.tomakehurst.wiremock.client.WireMock._
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
-import uk.gov.hmrc.http.{Authorization, HeaderCarrier, HttpClient}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
-class SlackNotificationsConnectorSpec extends AnyWordSpec with Matchers with MockitoSugar with ScalaFutures {
+class SlackNotificationsConnectorSpec
+   extends AnyWordSpec
+      with Matchers
+      with ScalaFutures
+      with IntegrationPatience
+      with WireMockSupport
+      with HttpClientV2Support {
+
   "Connector" should {
     "use basic auth" in {
-      val httpClient       = mock[HttpClient]
-      val authorization    = Authorization("Basic bGVhay1kZXRlY3Rpb246ZGV2ZWxvcG1lbnQtb25seQ==") // leak-detection:development-only base64 encoded
       val hc               = HeaderCarrier(authorization = None)
       val expectedResponse = SlackNotificationResponse(errors = Nil)
 
-      val argumentCaptor:ArgumentCaptor[HeaderCarrier] = ArgumentCaptor.forClass(classOf[HeaderCarrier])
-      when(
-        httpClient
-          .POST[SlackNotificationRequest, SlackNotificationResponse](any(), any())(
-            any(),
-            any(),
-            argumentCaptor.capture(),
-            any()))
-        .thenReturn(Future(expectedResponse))
+      stubFor(
+        post(urlEqualTo("/slack-notifications/notification"))
+          .willReturn(
+            aResponse()
+              .withStatus(200)
+              .withBody("""
+                {
+                  "successfullySentTo": [],
+                  "errors": []
+                }"""
+              )
+          )
+      )
 
       val configuration =
         Configuration(
           "alerts.slack.basicAuth.username"                -> "leak-detection",
           "alerts.slack.basicAuth.password"                -> "development-only",
-          "microservice.services.slack-notifications.host" -> "localhost",
-          "microservice.services.slack-notifications.port" -> 80
+          "microservice.services.slack-notifications.host" -> wireMockHost,
+          "microservice.services.slack-notifications.port" -> wireMockPort
         )
 
-      val connector = new SlackNotificationsConnector(httpClient, configuration, new ServicesConfig(configuration))
+      val connector = new SlackNotificationsConnector(
+        httpClientV2,
+        configuration,
+        new ServicesConfig(configuration)
+      )
 
       val slackMessage =
         SlackNotificationRequest(
@@ -62,9 +75,27 @@ class SlackNotificationsConnectorSpec extends AnyWordSpec with Matchers with Moc
         )
 
       val response = connector.sendMessage(slackMessage)(hc).futureValue
-      response                              shouldBe expectedResponse
-      argumentCaptor.getValue.authorization shouldBe Some(authorization)
 
+      response shouldBe expectedResponse
+
+      verify(
+        postRequestedFor(urlEqualTo("/slack-notifications/notification"))
+          .withRequestBody(equalToJson(
+            """{
+              "channelLookup": {
+                "slackChannels": [],
+                "by"           : "slack-channel"
+              },
+              "messageDetails": {
+                "text"       : "text",
+                "username"   : "username",
+                "iconEmoji"  : "iconEmoji",
+                "attachments": []
+              }
+            }"""
+          ))
+          .withHeader("Authorization", equalTo("Basic bGVhay1kZXRlY3Rpb246ZGV2ZWxvcG1lbnQtb25seQ==")) // leak-detection:development-only base64 encoded
+      )
     }
   }
 }
