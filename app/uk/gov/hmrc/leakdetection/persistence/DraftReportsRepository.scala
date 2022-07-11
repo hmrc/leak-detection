@@ -62,7 +62,7 @@ class DraftReportsRepository @Inject()(
 
   def findAllWithRuleViolation(ruleId: String): Future[Seq[Report]] =
     collection
-      .find(Filters.exists(s"rulesViolated.$ruleId"))
+      .find(Filters.or(Filters.exists(s"rulesViolated.$ruleId"), Filters.exists(s"exclusions.$ruleId")))
       .sort(Sorts.descending("timestamp"))
       .toFuture
 
