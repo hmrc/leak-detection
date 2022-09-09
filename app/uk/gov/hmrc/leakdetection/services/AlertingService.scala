@@ -51,7 +51,8 @@ class AlertingService @Inject()(configLoader: ConfigLoader,
                 .replace("{warningMessage}", warningMessage),
               username = username,
               iconEmoji = iconEmoji,
-              attachments = attachments
+              attachments = attachments,
+              showAttachmentAuthor = false
             )
 
           val commitInfo = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
@@ -79,7 +80,8 @@ class AlertingService @Inject()(configLoader: ConfigLoader,
           text        = alertMessage,
           username    = username,
           iconEmoji   = iconEmoji,
-          attachments = Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${report.repoName}/${report.branch}".toString)))
+          attachments = Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${report.repoName}/${report.branch}".toString)),
+          showAttachmentAuthor = false)
 
       Future
         .traverse(prepareSlackNotifications(messageDetails, CommitInfo.fromReport(report)))(
@@ -147,7 +149,8 @@ class AlertingService @Inject()(configLoader: ConfigLoader,
               text        = "LDS failed to deliver slack message to intended channels. Errors are shown below:",
               username    = username,
               iconEmoji   = iconEmoji,
-              attachments = errorsToAlert.map(e => Attachment(e.message)) :+ commitInfo.toAttachment
+              attachments = errorsToAlert.map(e => Attachment(e.message)) :+ commitInfo.toAttachment,
+              showAttachmentAuthor = false
             )
           )
         )

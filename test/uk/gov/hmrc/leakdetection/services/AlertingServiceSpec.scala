@@ -58,7 +58,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         text        = "Do not panic, but there is a leak!",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(Attachment(s"https://somewhere/leak-detection/repositories/repo-name/main"))
+        attachments = Seq(Attachment(s"https://somewhere/leak-detection/repositories/repo-name/main")),
+        showAttachmentAuthor = false
       )
 
       val expectedMessageToAlertChannel = SlackNotificationRequest(
@@ -99,7 +100,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
           text        = "Do not panic, but there is a leak!",
           username    = "leak-detection",
           iconEmoji   = ":closed_lock_with_key:",
-          attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding"))
+          attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding")),
+          showAttachmentAuthor = false
         )
       )
 
@@ -247,7 +249,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         text        = "Warning for a-repo with message - invalid entry message",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq()
+        attachments = Seq(),
+        showAttachmentAuthor = false
       )
 
       val expectedMessageToTeamChannel = SlackNotificationRequest(
@@ -279,7 +282,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         text        = "Warning for repo with message - file level exemptions",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo/main/exemptions"))
+        attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo/main/exemptions")),
+        showAttachmentAuthor = false
       )
 
       val expectedMessageToTeamChannel = SlackNotificationRequest(
@@ -306,7 +310,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         text        = "Warning for a-repo with message - MissingEntry",
         username    = "leak-detection",
         iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq()
+        attachments = Seq(),
+        showAttachmentAuthor = false
       )
 
       val expectedMessageToTeamChannel = SlackNotificationRequest(

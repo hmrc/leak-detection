@@ -71,7 +71,7 @@ class SlackNotificationsConnectorSpec
       val slackMessage =
         SlackNotificationRequest(
           channelLookup  = ChannelLookup.SlackChannel(slackChannels = Nil),
-          messageDetails = MessageDetails("text", "username", "iconEmoji", Nil)
+          messageDetails = MessageDetails("text", "username", "iconEmoji", Nil, showAttachmentAuthor = false)
         )
 
       val response = connector.sendMessage(slackMessage)(hc).futureValue
@@ -90,7 +90,8 @@ class SlackNotificationsConnectorSpec
                 "text"       : "text",
                 "username"   : "username",
                 "iconEmoji"  : "iconEmoji",
-                "attachments": []
+                "attachments": [],
+                "showAttachmentAuthor": false
               }
             }"""
           ))

@@ -124,7 +124,8 @@ final case class MessageDetails(
   text: String,
   username: String,
   iconEmoji: String,
-  attachments: Seq[Attachment]
+  attachments: Seq[Attachment],
+  showAttachmentAuthor: Boolean
 )
 
 object MessageDetails {
