@@ -28,7 +28,7 @@ object FileAndDirectoryUtils {
     FileUtils
       .listFilesAndDirs(
         explodedZipDir,
-        FileFileFilter.FILE,
+        FileFileFilter.INSTANCE,
         TrueFileFilter.INSTANCE
       )
       .asScala
