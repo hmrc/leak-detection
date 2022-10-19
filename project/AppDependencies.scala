@@ -14,7 +14,7 @@ object AppDependencies {
     "com.github.pureconfig" %% "pureconfig"                        % "0.8.0",
     "org.zeroturnaround"    %  "zt-zip"                            % "1.14",
     "commons-lang"          %  "commons-lang"                      % "2.6",
-    "commons-io"            %  "commons-io"                        % "2.5",
+    "commons-io"            %  "commons-io"                        % "2.11.0",
     "org.typelevel"         %% "cats-core"                         % "2.6.1",
     "org.yaml"              %  "snakeyaml"                         % "1.17",
     "com.lihaoyi"           %% "pprint"                            % "0.5.3",
