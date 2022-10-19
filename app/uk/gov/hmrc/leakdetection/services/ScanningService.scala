@@ -30,6 +30,7 @@ import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepositor
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
+import scala.util.Try
 
 @Singleton
 class ScanningService @Inject()(
@@ -101,7 +102,10 @@ class ScanningService @Inject()(
               _                      <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings))
             } yield if (runMode == Normal) reportWithWarnings else draftReportWithWarnings
 
-          processingResult.onComplete(_ => FileUtils.deleteDirectory(dir))
+          processingResult.onComplete { _ =>
+            Try(FileUtils.deleteDirectory(dir))
+              .fold(ex => logger.error(s"Could not delete directory $dir", ex), result => result)
+          }
           processingResult
       }
     } catch {
