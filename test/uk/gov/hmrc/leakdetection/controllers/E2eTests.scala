@@ -210,6 +210,7 @@ class E2eTests
               alerts.slack.enabled = false
 
               scheduling.scanner {
+                enabled      = true
                 initialDelay = 5 millis
                 interval = 1 seconds
               }
