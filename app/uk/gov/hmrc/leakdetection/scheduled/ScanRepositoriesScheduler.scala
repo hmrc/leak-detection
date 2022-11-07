@@ -50,7 +50,7 @@ class ScanRepositoriesScheduler @Inject()(
 
   if (enabled) {
     val cancellable =
-      actorSystem.scheduler.scheduleAtFixedRate(initialDelay, interval)( () => {
+      actorSystem.scheduler.scheduleAtFixedRate(initialDelay, interval){ () =>
         logger.info("Scheduled scanning job triggered")
         execute.onComplete {
           case Success(Result(message)) =>
@@ -58,7 +58,7 @@ class ScanRepositoriesScheduler @Inject()(
           case Failure(throwable) =>
             logger.error(s"Exception running scanning job", throwable)
         }
-      })
+      }
     applicationLifecycle.addStopHook(() => Future(cancellable.cancel()))
   } else
     logger.warn(s"The ScanRepositoriesScheduler has been disabled.")

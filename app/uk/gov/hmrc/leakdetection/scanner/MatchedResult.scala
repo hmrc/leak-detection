@@ -20,21 +20,21 @@ import play.api.libs.json.{Format, Json}
 import scala.util.matching.Regex
 
 final case class MatchedResult(
-  filePath: String,
-  scope: String,
-  lineText: String,
-  lineNumber: Int,
-  ruleId: String,
+  filePath   : String,
+  scope      : String,
+  lineText   : String,
+  lineNumber : Int,
+  ruleId     : String,
   description: String,
-  matches: List[Match],
-  priority: String,
-  draft: Boolean = false,
-  isExcluded: Boolean = false
+  matches    : List[Match],
+  priority   : String,
+  draft      : Boolean = false,
+  isExcluded : Boolean = false
 )
 
 final case class Match(
   start: Int,
-  end: Int
+  end  : Int
 ) {
   def length: Int = end - start
 }
@@ -52,11 +52,10 @@ object MatchedResult {
   implicit val format: Format[MatchedResult] = Json.format[MatchedResult]
 
   def ensureLengthIsBelowLimit(matchedResult: MatchedResult, limit: Int): MatchedResult =
-    if (matchedResult.lineText.length > limit && matchedResult.matches.nonEmpty) {
+    if (matchedResult.lineText.length > limit && matchedResult.matches.nonEmpty)
       truncate(matchedResult, limit)
-    } else {
+    else
       matchedResult
-    }
 
   private def truncate(matchedResult: MatchedResult, limit: Int): MatchedResult = {
 
@@ -75,11 +74,10 @@ object MatchedResult {
       matchesUpToLimit
         .foldLeft(List.empty[Match]) {
           case (lastAddedElement :: others, m) =>
-            if (lastAddedElement.end == m.start) {
+            if (lastAddedElement.end == m.start)
               lastAddedElement.copy(end = m.end) :: others
-            } else {
+            else
               m :: lastAddedElement :: others
-            }
           case (Nil, m) =>
             List(m)
         }
@@ -99,21 +97,21 @@ object MatchedResult {
           }
       }
 
-    val values = joinedConsecutiveMatches.map { m =>
-      matchedResult.lineText.substring(m.start, m.end)
-    }
+    val values =
+      joinedConsecutiveMatches
+        .map { m =>
+          matchedResult.lineText.substring(m.start, m.end)
+        }
 
     val lineTextWithElipses =
-      if (values.nonEmpty) {
+      if (values.nonEmpty)
         values.mkString("[…] ", " […] ", " […]")
-      } else {
+      else
         ""
-      }
 
     matchedResult.copy(
       lineText    = lineTextWithElipses,
       matches     = matchesWithReadjustedIndexes
     )
   }
-
 }

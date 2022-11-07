@@ -25,19 +25,22 @@ import uk.gov.hmrc.mongo.metrix.MetricSource
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class LeaksService @Inject()(leakRepository: LeakRepository,
-                             teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
-                             ignoreListConfig: IgnoreListConfig)
-                            (implicit ec: ExecutionContext) extends MetricSource {
+class LeaksService @Inject()(
+  leakRepository               : LeakRepository,
+  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
+  ignoreListConfig             : IgnoreListConfig
+)(implicit
+  ec: ExecutionContext
+) extends MetricSource {
 
-  def getRepositoriesWithUnresolvedLeaks: Future[Seq[String]] = leakRepository.findDistinctRepoNamesWithUnresolvedLeaks()
+  def getRepositoriesWithUnresolvedLeaks: Future[Seq[String]] =
+    leakRepository.findDistinctRepoNamesWithUnresolvedLeaks()
 
   def getLeaks(repoName: Option[String], branch: Option[String], ruleId: Option[String]): Future[Seq[Leak]] =
     leakRepository.findLeaksBy(ruleId = ruleId, repoName = repoName, branch = branch)
 
-  def getLeaksForReport(reportId: ReportId): Future[Seq[Leak]] = {
+  def getLeaksForReport(reportId: ReportId): Future[Seq[Leak]] =
     leakRepository.findLeaksForReport(reportId.value)
-  }
 
   def clearBranchLeaks(repoName: String, branchName: String): Future[Long] =
     leakRepository.removeBranch(repoName, branchName)
@@ -50,12 +53,11 @@ class LeaksService @Inject()(leakRepository: LeakRepository,
 
   override def metrics(implicit ec: ExecutionContext): Future[Map[String, Int]] =
     for {
-      total <- leakRepository.countAll()
+      total      <- leakRepository.countAll()
       unresolved <- leakRepository.countAll()
-      byRepo <- leakRepository.countByRepo()
-      teams <- teamsAndRepositoriesConnector.teamsWithRepositories()
+      byRepo     <- leakRepository.countByRepo()
+      teams      <- teamsAndRepositoriesConnector.teamsWithRepositories()
     } yield {
-
       def ownedRepos(team: Team): Seq[String] =
         team.repos.fold(Seq.empty[String])(_.values.toSeq.flatten)
           .filterNot(ignoreListConfig.repositoriesToIgnore.contains)
@@ -65,7 +67,7 @@ class LeaksService @Inject()(leakRepository: LeakRepository,
         .toMap
 
       val globalStats = Map(
-        "reports.total" -> total,
+        "reports.total"      -> total,
         "reports.unresolved" -> unresolved
       )
 

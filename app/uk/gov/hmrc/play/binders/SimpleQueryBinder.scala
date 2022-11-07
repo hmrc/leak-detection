@@ -18,8 +18,12 @@ package uk.gov.hmrc.play.binders
 
 import play.api.mvc.QueryStringBindable
 
-class SimpleQueryBinder[T](bind: String => Either[String, T], unbind: T => String)(implicit stringBinder: QueryStringBindable[String])
-    extends QueryStringBindable[T] {
+class SimpleQueryBinder[T](
+  bind  : String => Either[String, T],
+  unbind: T => String
+)(implicit
+  stringBinder: QueryStringBindable[String]
+) extends QueryStringBindable[T] {
 
   override def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, T]] =
     for {
@@ -31,5 +35,6 @@ class SimpleQueryBinder[T](bind: String => Either[String, T], unbind: T => Strin
       }
     }
 
-  override def unbind(key: String, value: T): String = stringBinder.unbind(key, unbind(value))
+  override def unbind(key: String, value: T): String =
+    stringBinder.unbind(key, unbind(value))
 }

@@ -17,6 +17,7 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import org.bson.conversions.Bson
+import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.Filters.and
 import org.mongodb.scala.model._
 import play.api.Logging
@@ -28,42 +29,59 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class WarningRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: ExecutionContext) extends PlayMongoRepository[Warning](
+class WarningRepository @Inject()(
+  mongoComponent: MongoComponent
+)(implicit
+  ec: ExecutionContext
+) extends PlayMongoRepository[Warning](
   collectionName = "warnings",
   mongoComponent = mongoComponent,
   domainFormat = Warning.mongoFormat,
   indexes = Seq(
-    IndexModel(Indexes.descending("repoName", "branch"), IndexOptions().name("repoName-branch-idx").background(true)),
-    IndexModel(Indexes.descending("reportId"), IndexOptions().name("reportId-idx").background(true)),
-    IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true)))) with Logging {
+      IndexModel(Indexes.descending("repoName", "branch"), IndexOptions().name("repoName-branch-idx").background(true)),
+      IndexModel(Indexes.descending("reportId"), IndexOptions().name("reportId-idx").background(true)),
+      IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true))
+    )
+) with Logging {
 
   def update(repo: String, branch: String, warnings: Seq[Warning]): Future[LeakUpdateResult] =
     for {
-      deleted <- removeWarnings(repo, branch)
-      inserted <- if (warnings.nonEmpty) collection.insertMany(warnings).toFuture().map(_.getInsertedIds.size()) else Future(0)
-      _ = logger.info(s"removed $deleted warnings, added $inserted warnings for $repo/$branch")
+      deleted  <- removeWarnings(repo, branch)
+      inserted <- if (warnings.nonEmpty) collection.insertMany(warnings).toFuture().map(_.getInsertedIds.size())
+                  else Future(0)
+      _        =  logger.info(s"removed $deleted warnings, added $inserted warnings for $repo/$branch")
     } yield LeakUpdateResult(inserted, deleted)
 
   def removeWarnings(repo: String, branch: String): Future[Long] =
-    collection.deleteMany(filter = and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
+    collection
+      .deleteMany(filter = and(Filters.eq("repoName", repo), Filters.eq("branch", branch)))
+      .toFuture()
+      .map(_.getDeletedCount)
 
   def removeWarnings(repo: String): Future[Long] =
-    collection.deleteMany(filter = Filters.eq("repoName", repo)).toFuture().map(_.getDeletedCount)
+    collection
+      .deleteMany(filter = Filters.eq("repoName", repo))
+      .toFuture()
+      .map(_.getDeletedCount)
 
   def findForReport(reportId: String): Future[Seq[Warning]] =
-    collection.find(filter = Filters.eq("reportId", reportId)).toFuture()
+    collection
+      .find(filter = Filters.eq("reportId", reportId))
+      .toFuture()
 
-    def findBy(repoName: Option[String] = None,
-               branch: Option[String] = None
-              ): Future[Seq[Warning]] = {
+  def findBy(
+    repoName: Option[String] = None,
+    branch  : Option[String] = None
+  ): Future[Seq[Warning]] = {
 
-      val repoFilter: Option[Bson] = repoName.map(Filters.eq("repoName", _))
-      val branchFilter: Option[Bson] = repoName.flatMap(_ => branch.map(Filters.eq("branch", _)))
+    val repoFilter: Option[Bson] = repoName.map(Filters.eq("repoName", _))
+    val branchFilter: Option[Bson] = repoName.flatMap(_ => branch.map(Filters.eq("branch", _)))
 
-      (Seq(repoFilter, branchFilter).flatten match {
-        case Nil => collection.find()
-        case f => collection.find(Filters.and(f: _*))
-      }).toFuture()
-    }
-
+    collection.find(
+      Seq(repoFilter, branchFilter).flatten match {
+        case Nil => BsonDocument()
+        case f   => Filters.and(f: _*)
+      }
+    ).toFuture()
+  }
 }

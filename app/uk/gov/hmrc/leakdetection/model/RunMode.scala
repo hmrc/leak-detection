@@ -26,7 +26,7 @@ sealed trait RunMode extends Product with Serializable {
 
 object RunMode {
   final case object Normal extends RunMode { override def asString = "normal" }
-  final case object Draft extends RunMode { override def asString  = "draft" }
+  final case object Draft  extends RunMode { override def asString = "draft"  }
 
   def parse(s: String): Either[String, RunMode] =
     s match {
@@ -45,6 +45,4 @@ object RunMode {
 
   implicit val binder: QueryStringBindable[RunMode] =
     new SimpleQueryBinder[RunMode](parse, _.asString)
-
 }
-

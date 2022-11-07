@@ -51,8 +51,13 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
       }
     }
 
-  def withValidSignature(payload: ByteString, headers: Headers, webhookSecret: String)(
-    f: String => GithubRequest): Either[Result, GithubRequest] =
+  def withValidSignature(
+    payload: ByteString,
+    headers: Headers,
+    webhookSecret: String
+  )(
+    f: String => GithubRequest
+  ): Either[Result, GithubRequest] =
     headers
       .get("X-Hub-Signature-256")
       .map { signature =>
@@ -90,6 +95,6 @@ class WebhookRequestValidator @Inject()(implicit ec: ExecutionContext) {
   val ExtractPayloadDetails    = new Extract[PayloadDetails   ](PayloadDetails.githubReads)
   val ExtractZenMessage        = new Extract[ZenMessage       ](ZenMessage.githubReads)
   val ExtractDeleteBranchEvent = new Extract[DeleteBranchEvent](DeleteBranchEvent.githubReads)
-  val ExtractRepositoryEvent = new Extract[RepositoryEvent](RepositoryEvent.githubReads)
+  val ExtractRepositoryEvent   = new Extract[RepositoryEvent  ](RepositoryEvent.githubReads)
 
 }

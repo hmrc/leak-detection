@@ -91,5 +91,5 @@ final case class ZenMessage(zen: String) extends GithubRequest
 
 object ZenMessage {
   val githubReads: Reads[ZenMessage] =
-    implicitly[Reads[String]].map(ZenMessage.apply)
+    Reads.of[String].map(ZenMessage.apply)
 }

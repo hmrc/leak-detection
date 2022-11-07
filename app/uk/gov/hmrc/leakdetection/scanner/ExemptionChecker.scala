@@ -31,12 +31,12 @@ class ExemptionChecker @Inject()() {
     RulesExemptionParser
       .parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(explodedZipDir))
       .flatMap(e => e.filePaths.map(filePath => UnusedExemption(e.ruleId, filePath, e.text)))
-      .filterNot(
-        exemption =>
-          excludedResults.exists(
-            exclusion =>
-              exemption.ruleId == exclusion.ruleId &&
-                exemption.filePath == exclusion.filePath &&
-                exemption.text.fold(true)(exclusion.lineText.contains)))
+      .filterNot(exemption =>
+        excludedResults.exists(exclusion =>
+          exemption.ruleId == exclusion.ruleId &&
+            exemption.filePath == exclusion.filePath &&
+            exemption.text.fold(true)(exclusion.lineText.contains)
+        )
+      )
   }
 }

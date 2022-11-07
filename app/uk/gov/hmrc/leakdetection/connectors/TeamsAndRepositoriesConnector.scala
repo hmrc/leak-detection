@@ -40,9 +40,9 @@ object Team {
 }
 
 case class RepositoryInfo(
-  name: String,
-  isPrivate: Boolean,
-  isArchived: Boolean,
+  name         : String,
+  isPrivate    : Boolean,
+  isArchived   : Boolean,
   defaultBranch: String
 )
 
@@ -50,7 +50,8 @@ object RepositoryInfo {
   implicit val format = Json.format[RepositoryInfo]
 }
 
-@Singleton class TeamsAndRepositoriesConnector @Inject()(
+@Singleton
+class TeamsAndRepositoriesConnector @Inject()(
   httpClientV2  : HttpClientV2,
   servicesConfig: ServicesConfig
 )(implicit val ec: ExecutionContext) {

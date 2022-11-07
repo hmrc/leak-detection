@@ -43,12 +43,10 @@ object FileAndDirectoryUtils {
     strippedRepoName
   }
 
-  def getSubdirName(parentDir: File): File = {
+  def getSubdirName(parentDir: File): File =
     Option(parentDir.listFiles())
       .toList
       .flatten
       .find(_.isDirectory)
       .getOrElse(throw new RuntimeException(s"[$parentDir] directory does not exist is empty"))
-  }
-
 }

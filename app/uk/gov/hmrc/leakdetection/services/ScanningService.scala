@@ -113,10 +113,11 @@ class ScanningService @Inject()(
     }
 
   private def alertAboutWarnings(
-                                  repository: Repository,
-                                  branch: Branch,
-                                  author: String,
-                                  warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] =
+    repository: Repository,
+    branch: Branch,
+    author: String,
+    warnings: Seq[Warning]
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
       if (branch.asString == repo.defaultBranch) {
         alertingService.alertAboutWarnings(author, warnings)
@@ -142,12 +143,11 @@ class ScanningService @Inject()(
     } yield  scanned + rescanned
   }
 
-  def rescanOne(implicit ec: ExecutionContext): Future[Int] = {
+  def rescanOne(implicit ec: ExecutionContext): Future[Int] =
     rescanRequestsQueue.pullOutstanding.flatMap {
       case None     => Future.successful(0)
       case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi).map(_.size)
     }
-  }
 
   def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
     val request     = workItem.item

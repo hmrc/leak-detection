@@ -31,7 +31,9 @@ object RulesExemptionParser {
   private val logger = Logger(this.getClass.getName)
 
   def parseServiceSpecificExemptions(repoDir: File): List[RuleExemption] =
-    try { getConfigFileContents(repoDir).map(parseYamlAsRuleExemptions).getOrElse(Nil) } catch {
+    try {
+      getConfigFileContents(repoDir).map(parseYamlAsRuleExemptions).getOrElse(Nil)
+    } catch {
       case e: RuntimeException =>
         logger.warn(s"Error parsing ${repoDir.getAbsolutePath}/repository.yaml. Ignoring all exemptions.", e)
         List.empty
@@ -76,5 +78,4 @@ object RulesExemptionParser {
       .getOrElse(Nil)
       .toList
   }
-
 }

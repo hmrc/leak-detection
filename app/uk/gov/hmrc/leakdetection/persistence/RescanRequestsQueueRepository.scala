@@ -38,7 +38,7 @@ class RescanRequestsQueueRepository @Inject()(
   workItemFields = WorkItemFields.default
 ) {
   override def now(): Instant =
-    Instant.now
+    Instant.now()
 
   lazy val retryIntervalMillis =
     configuration.getMillis("queue.retryAfter")

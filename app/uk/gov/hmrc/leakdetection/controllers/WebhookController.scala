@@ -30,17 +30,19 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class WebhookController @Inject()(
-  configLoader: ConfigLoader,
-  scanningService: ScanningService,
-  reportsService: ReportsService,
-  leakService: LeaksService,
-  warningsService: WarningsService,
-  activeBranchesService: ActiveBranchesService,
-  webhookRequestValidator: WebhookRequestValidator,
-  rescanService: RescanService,
+  configLoader                 : ConfigLoader,
+  scanningService              : ScanningService,
+  reportsService               : ReportsService,
+  leakService                  : LeaksService,
+  warningsService              : WarningsService,
+  activeBranchesService        : ActiveBranchesService,
+  webhookRequestValidator      : WebhookRequestValidator,
+  rescanService                : RescanService,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
-  cc: ControllerComponents)(implicit ec: ExecutionContext)
-    extends BackendController(cc) {
+  cc                           : ControllerComponents
+)(implicit
+  ec: ExecutionContext
+) extends BackendController(cc) {
 
   implicit val responseF = Json.format[WebhookResponse]
 

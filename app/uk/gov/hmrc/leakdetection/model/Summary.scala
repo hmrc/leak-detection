@@ -28,23 +28,22 @@ object Summary {
   val apiFormat = {
     implicit val rf = Rule.format
     implicit val rsf = RepositorySummary.format
-    (
-      (__ \ "rule").format[Rule]
-        ~ (__ \ "leaks").format[Seq[RepositorySummary]]
-      ) (Summary.apply, unlift(Summary.unapply))
+    ( (__ \ "rule" ).format[Rule]
+    ~ (__ \ "leaks").format[Seq[RepositorySummary]]
+    )(Summary.apply, unlift(Summary.unapply))
   }
 }
 
 case class RepositorySummary(
-                              repository: String,
-                              isArchived: Boolean,
-                              firstScannedAt: Instant,
-                              lastScannedAt: Instant,
-                              warningCount: Int,
-                              unresolvedCount: Int,
-                              excludedCount: Int,
-                              branchSummary: Option[Seq[BranchSummary]]
-                            )
+  repository     : String,
+  isArchived     : Boolean,
+  firstScannedAt : Instant,
+  lastScannedAt  : Instant,
+  warningCount   : Int,
+  unresolvedCount: Int,
+  excludedCount  : Int,
+  branchSummary  : Option[Seq[BranchSummary]]
+)
 
 object RepositorySummary {
   implicit val rf = BranchSummary.format
@@ -52,13 +51,13 @@ object RepositorySummary {
 }
 
 case class BranchSummary(
-                          branch: String,
-                          reportId: String,
-                          scannedAt: Instant,
-                          warningCount: Int,
-                          unresolvedCount: Int,
-                          excludedCount: Int
-                        )
+  branch         : String,
+  reportId       : String,
+  scannedAt      : Instant,
+  warningCount   : Int,
+  unresolvedCount: Int,
+  excludedCount  : Int
+)
 
 object BranchSummary {
   val format = Json.format[BranchSummary]

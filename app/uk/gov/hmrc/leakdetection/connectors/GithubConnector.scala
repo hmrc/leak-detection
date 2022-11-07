@@ -55,7 +55,7 @@ class GithubConnector @Inject()(
   def getRateLimit(): Future[JsValue] =
      httpClientV2
       .get(url"$githubUrl/rate_limit")
-      .replaceHeader("Authorization" -> s"token $githubToken")
+      .setHeader("Authorization" -> s"token $githubToken")
       .withProxy
       .execute[JsValue]
 
@@ -68,7 +68,7 @@ class GithubConnector @Inject()(
     logger.info(s"Getting code archive from: $zipUrl")
     httpClientV2
       .get(zipUrl)
-      .replaceHeader("Authorization" -> s"token $githubToken")
+      .setHeader("Authorization" -> s"token $githubToken")
       .withProxy
       .stream[Either[UpstreamErrorResponse, Source[ByteString, _]]]
       .flatMap {
