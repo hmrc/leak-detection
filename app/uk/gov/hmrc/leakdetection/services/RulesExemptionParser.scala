@@ -28,7 +28,7 @@ import scala.io.Source
 
 object RulesExemptionParser {
 
-  private val logger = Logger(this.getClass.getName)
+  private val logger = Logger(getClass)
 
   def parseServiceSpecificExemptions(repoDir: File): List[RuleExemption] =
     try {
@@ -61,17 +61,17 @@ object RulesExemptionParser {
         entries.asScala.flatMap { entry =>
           val ruleIdO   = entry.asScala.get("ruleId")
           val fileNameO = entry.asScala.get("filePath")
-          val fileNames =
-            entry.asScala
-              .getOrElse("filePaths", new java.util.ArrayList())
-              .asInstanceOf[java.util.ArrayList[String]]
-              .asScala
-          val text = entry.asScala.get("text")
+          val fileNames = entry.asScala
+                            .getOrElse("filePaths", new java.util.ArrayList())
+                            .asInstanceOf[java.util.ArrayList[String]]
+                            .asScala
+                            .toSeq
+          val text      = entry.asScala.get("text")
 
           (ruleIdO, fileNames, fileNameO, text) match {
             case (Some(ruleId), _, Some(fileName), text) => Some(RuleExemption(ruleId, fileNames :+ fileName, text))
-            case (Some(ruleId), _, None, text)           => Some(RuleExemption(ruleId, fileNames, text))
-            case (None, _, _, _)                          => None
+            case (Some(ruleId), _, None          , text) => Some(RuleExemption(ruleId, fileNames, text))
+            case (None        , _, _             , _   ) => None
           }
         }
       }

@@ -20,9 +20,9 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.mvc.PathBindable
+import uk.gov.hmrc.leakdetection.binders.SimpleObjectBinder
 import uk.gov.hmrc.leakdetection.scanner.MatchedResult
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
-import uk.gov.hmrc.play.binders.SimpleObjectBinder
 
 import java.time.Instant
 import java.util.UUID
@@ -104,8 +104,8 @@ object Report {
       timestamp        = timestamp,
       author           = authorName,
       totalLeaks       = results.filterNot(_.isExcluded).length,
-      rulesViolated    = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
-      exclusions       = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
+      rulesViolated    = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length).toMap,
+      exclusions       = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length).toMap,
       unusedExemptions = unusedExemptions
     )
 

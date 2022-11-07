@@ -44,7 +44,7 @@ class MetricsScheduler @Inject()(
 
   lazy val refreshIntervalMillis: Long = configuration.getMillis(key)
 
-  val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   val lock = LockService(
     lockRepository = lockRepository,

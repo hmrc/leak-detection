@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.model
 
 import play.api.libs.json._
 import play.api.mvc.QueryStringBindable
-import uk.gov.hmrc.play.binders.SimpleQueryBinder
+import uk.gov.hmrc.leakdetection.binders.SimpleQueryBinder
 
 sealed trait RunMode extends Product with Serializable {
   def asString: String

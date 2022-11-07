@@ -30,7 +30,7 @@ class ActiveBranchesService @Inject()(
 ) {
 
   def getActiveBranches(repoName: Option[String]): Future[Seq[ActiveBranch]] =
-    repoName.fold(activeBranchesRepository.findAll)(activeBranchesRepository.findForRepo)
+    repoName.fold(activeBranchesRepository.findAll())(activeBranchesRepository.findForRepo)
 
   def markAsActive(repository: Repository, branch: Branch, reportId: ReportId): Future[Unit] =
     activeBranchesRepository

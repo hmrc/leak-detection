@@ -29,7 +29,7 @@ import scala.util.control.NonFatal
 
 class RepoVisibilityChecker {
 
-  private val logger = Logger(this.getClass.getName)
+  private val logger = Logger(getClass)
 
   val publicVisibilityIdentifier = "public_0C3F0CE3E6E6448FAD341E7BFA50FCD333E06A20CFF05FCACE61154DDBBADF71"
   val privateVisibilityIdentifier = "private_12E5349CFB8BBA30AF464C24760B70343C0EAE9E9BD99156345DD0852C2E0F6F"

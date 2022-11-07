@@ -35,7 +35,7 @@ class SlackNotificationsConnector @Inject()(
 )(implicit ec: ExecutionContext) {
   import HttpReads.Implicits._
 
-  private val logger = Logger(this.getClass.getName)
+  private val logger = Logger(getClass)
 
   val url: String = servicesConfig.baseUrl("slack-notifications")
 

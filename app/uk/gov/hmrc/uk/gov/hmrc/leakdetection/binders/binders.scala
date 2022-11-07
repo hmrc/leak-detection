@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.play.binders
+package uk.gov.hmrc.leakdetection.binders
 
-import play.api.mvc.QueryStringBindable
+import play.api.mvc.{PathBindable, QueryStringBindable}
 
 class SimpleQueryBinder[T](
   bind  : String => Either[String, T],
@@ -37,4 +37,21 @@ class SimpleQueryBinder[T](
 
   override def unbind(key: String, value: T): String =
     stringBinder.unbind(key, unbind(value))
+}
+
+
+class SimpleObjectBinder[T](
+  bind  : String => T,
+  unbind: T => String
+)(implicit
+  m: Manifest[T]
+) extends PathBindable[T] {
+  override def bind(key: String, value: String): Either[String, T] =
+    try Right(bind(value))
+    catch {
+      case e: Throwable =>
+        Left(s"Cannot parse parameter '$key' with value '$value' as '${m.runtimeClass.getSimpleName}'")
+    }
+
+  def unbind(key: String, value: T): String = unbind(value)
 }
