@@ -24,12 +24,12 @@ import uk.gov.hmrc.leakdetection.persistence.ReportsRepository
 import scala.concurrent.{ExecutionContext, Future}
 
 class ReportsService @Inject()(
-                                reportsRepository: ReportsRepository,
-                                configuration: Configuration
-                              )(implicit ec: ExecutionContext) {
+  reportsRepository: ReportsRepository,
+  configuration    : Configuration
+)(implicit ec: ExecutionContext) {
 
   lazy val repositoriesToIgnore: Seq[String] =
-    configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
+    configuration.get[Seq[String]]("shared.repositories")
 
   def getLatestReport(repository: Repository, branch: Branch): Future[Option[Report]] =
     reportsRepository
@@ -55,5 +55,4 @@ class ReportsService @Inject()(
 
   def saveReport(report: Report): Future[Unit] =
     reportsRepository.saveReport(report)
-
 }

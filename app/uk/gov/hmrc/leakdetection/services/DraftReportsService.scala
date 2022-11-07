@@ -25,10 +25,12 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
 @Singleton
-class DraftReportsService @Inject() (draftRepository: DraftReportsRepository, configuration: Configuration){
-
+class DraftReportsService @Inject() (
+  draftRepository: DraftReportsRepository,
+  configuration  : Configuration
+){
   lazy val repositoriesToIgnore: Seq[String] =
-    configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
+    configuration.get[Seq[String]]("shared.repositories")
 
   def saveReport(report: Report): Future[Unit] =
     draftRepository.saveReport(report)
