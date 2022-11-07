@@ -16,15 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.{AppConfig, Rule}
 
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class RuleService @Inject()(configLoader: ConfigLoader) {
+class RuleService @Inject()(appConfig: AppConfig) {
 
-  lazy private val privateRules = configLoader.cfg.allRules.privateRules
-  lazy private val publicRules = configLoader.cfg.allRules.publicRules
+  lazy private val privateRules = appConfig.allRules.privateRules
+  lazy private val publicRules  = appConfig.allRules.publicRules
 
   def getAllRules(): Seq[Rule] =
     (privateRules ::: publicRules).distinct

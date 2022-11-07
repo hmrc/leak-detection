@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.{AppConfig, Rule}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.WarningRepository
 
@@ -25,12 +25,11 @@ import java.io.File
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class WarningsService @Inject()(configLoader: ConfigLoader,
-                                repoVisibilityChecker: RepoVisibilityChecker,
-                                warningRepository: WarningRepository
-                               )(implicit ec: ExecutionContext) {
-
-  import configLoader.cfg
+class WarningsService @Inject()(
+  appConfig: AppConfig,
+  repoVisibilityChecker: RepoVisibilityChecker,
+  warningRepository: WarningRepository
+)(implicit ec: ExecutionContext) {
 
   def saveWarnings(repository: Repository, branch: Branch, warnings: Seq[Warning]): Future[Unit] =
     warningRepository.update(repository.asString, branch.asString, warnings).map(_ => ())
@@ -48,7 +47,7 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
     warningRepository
       .findForReport(reportId.value)
       .map(_.map(warning =>
-        warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessageType).getOrElse(warning.warningMessageType))
+        warning.copy(warningMessageType = appConfig.warningMessages.get(warning.warningMessageType).getOrElse(warning.warningMessageType))
       ))
 
   def checkForWarnings(report: Report, dir: File, isPrivate: Boolean, isArchived: Boolean): Seq[Warning] =
@@ -62,8 +61,8 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
 
   private def checkFileLevelExemptions(dir: File, isPrivate: Boolean): Option[WarningMessageType] = {
     val ruleSet =
-      if (isPrivate) cfg.allRules.privateRules
-      else cfg.allRules.publicRules
+      if (isPrivate) appConfig.allRules.privateRules
+      else appConfig.allRules.publicRules
 
     val exemptions =
       RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))

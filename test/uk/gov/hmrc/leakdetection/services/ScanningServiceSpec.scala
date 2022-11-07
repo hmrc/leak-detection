@@ -266,28 +266,28 @@ class ScanningServiceSpec
   "The service" should {
     "process all queued requests" in new TestSetup {
       scanningService.queueRequest(request).futureValue
-      queue.collection.countDocuments().toFuture.futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
       scanningService.scanAll.futureValue shouldBe 1
-      queue.collection.countDocuments().toFuture.futureValue shouldBe 0
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 0
     }
 
     "process one rescan request per scanAll cycle" in new TestSetup {
       scanningService.queueRescanRequest(request).futureValue
       scanningService.queueRescanRequest(request.copy(repositoryName = "another-repo")).futureValue
-      queue.collection.countDocuments().toFuture.futureValue shouldBe 0
-      rescanQueue.collection.countDocuments().toFuture.futureValue shouldBe 2
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 0
+      rescanQueue.collection.countDocuments().toFuture().futureValue shouldBe 2
 
       scanningService.scanAll.futureValue shouldBe 1
 
-      rescanQueue.collection.countDocuments().toFuture.futureValue shouldBe 1
+      rescanQueue.collection.countDocuments().toFuture().futureValue shouldBe 1
     }
 
     "recover from exceptions expanding the zip and mark the item as failed" in new TestSetup {
       scanningService.queueRequest(request).futureValue
-      queue.collection.countDocuments().toFuture.futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
@@ -302,7 +302,7 @@ class ScanningServiceSpec
 
     "recover from exceptions saving a report and mark the item as failed" in new TestSetup {
       scanningService.queueRequest(request).futureValue
-      queue.collection.countDocuments().toFuture.futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
@@ -314,7 +314,7 @@ class ScanningServiceSpec
 
     "recover from failures and mark the item as failed" in new TestSetup {
       scanningService.queueRequest(request).futureValue
-      queue.collection.countDocuments().toFuture.futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
@@ -447,8 +447,8 @@ class ScanningServiceSpec
 
     val privateRules: List[Rule] = Nil
 
-    lazy val config =
-      Cfg(
+    lazy val appConfig =
+      AppConfig(
         allRules                  = AllRules(Nil, privateRules),
         githubSecrets             = githubSecrets,
         maxLineLength             = Int.MaxValue,
@@ -456,10 +456,6 @@ class ScanningServiceSpec
         warningMessages           = Map.empty,
         alerts                    = Alerts(aSlackConfig)
       )
-
-    lazy val configLoader = new ConfigLoader {
-      val cfg = config
-    }
 
     val githubConnector               = mock[GithubConnector]
     val reportsService                = mock[ReportsService]
@@ -473,14 +469,14 @@ class ScanningServiceSpec
       override lazy val retryIntervalMillis: Long = 10000L
     }
 
-    queue.collection.deleteMany(BsonDocument()).toFuture.futureValue
+    queue.collection.deleteMany(BsonDocument()).toFuture().futureValue
 
     val rescanQueue = new RescanRequestsQueueRepository(Configuration(ConfigFactory.empty), mongoComponent) {
       override val inProgressRetryAfter: Duration = Duration.ofHours(1)
       override lazy val retryIntervalMillis: Long      = 10000L
     }
 
-    rescanQueue.collection.deleteMany(BsonDocument()).toFuture.futureValue
+    rescanQueue.collection.deleteMany(BsonDocument()).toFuture().futureValue
 
     val unzippedTmpDirectory = Files.createTempDirectory("unzipped_")
     val projectDirectory     = Files.createTempDirectory(unzippedTmpDirectory, "repoName")
@@ -524,7 +520,7 @@ class ScanningServiceSpec
     lazy val scanningService =
       new ScanningService(
         githubConnector,
-        configLoader,
+        appConfig,
         reportsService,
         draftService,
         leaksService,
@@ -534,7 +530,8 @@ class ScanningServiceSpec
         warningsService,
         activeBranchesService,
         new ExemptionChecker(),
-        teamsAndRepositoriesConnector)
+        teamsAndRepositoriesConnector
+      )
   }
 
   def write(content: String, destination: File) =

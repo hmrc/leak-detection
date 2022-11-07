@@ -23,8 +23,8 @@ import org.yaml.snakeyaml.Yaml
 import play.api.Logger
 import uk.gov.hmrc.leakdetection.config.RuleExemption
 
-import scala.collection.JavaConverters._
 import scala.io.Source
+import scala.jdk.CollectionConverters._
 
 object RulesExemptionParser {
 

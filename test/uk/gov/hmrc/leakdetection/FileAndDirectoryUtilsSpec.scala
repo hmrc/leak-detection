@@ -29,7 +29,7 @@ class FileAndDirectoryUtilsSpec extends AnyWordSpec with Matchers {
       val fileName           = "my-file.txt"
       val file               = dir / randomizedRepoName / aSubdirectory / fileName
 
-      write(file, "some-file-content")
+      write(file, "some-file-content", createFolders = true)
 
       val relativePath = FileAndDirectoryUtils.getFilePathRelativeToProjectRoot(dir.toIO, file.toIO)
 
@@ -42,7 +42,7 @@ class FileAndDirectoryUtilsSpec extends AnyWordSpec with Matchers {
       val dir    = tmp.dir()
       val subdir = dir / "subdir"
 
-      mkdir ! subdir
+      mkdir(subdir)
 
       FileAndDirectoryUtils.getSubdirName(dir.toIO) shouldBe subdir.toIO
     }

@@ -45,7 +45,7 @@ class ActiveBranchesRepositorySpec
 
     "updating" should {
       "replace an existing entry" in {
-        repository.collection.insertOne(anActiveBranch).toFuture().futureValue
+        repository.collection.insertOne(anActiveBranch()).toFuture().futureValue
 
         val activeBranch = anActiveBranch().copy(reportId = "new report id")
 

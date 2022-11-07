@@ -47,7 +47,7 @@ class GithubRequestsQueueRepositorySpec
 
   "The github request queue repository" should {
     "ensure indexes are created" in {
-      repository.collection.listIndexes().toFuture.futureValue.size shouldBe 4
+      repository.collection.listIndexes().toFuture().futureValue.size shouldBe 4
     }
 
     "be able to save and reload a github request" in {
@@ -67,7 +67,7 @@ class GithubRequestsQueueRepositorySpec
       repository.pushNew(payloadDetails, anInstant).futureValue
       repository.pushNew(payloadDetails, anInstant).futureValue
 
-      val requests = repository.collection.find().toFuture.futureValue
+      val requests = repository.collection.find().toFuture().futureValue
       requests should have(size(2))
 
       every(requests) should have(

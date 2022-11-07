@@ -23,8 +23,8 @@ import uk.gov.hmrc.leakdetection.model._
 
 import java.io.File
 import java.{util => ju}
-import scala.collection.JavaConverters._
 import scala.io.Source
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 class RepoVisibilityChecker {

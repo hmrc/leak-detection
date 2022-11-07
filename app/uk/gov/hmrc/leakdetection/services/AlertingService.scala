@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import play.api.Logger
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model._
 
@@ -27,34 +27,33 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class AlertingService @Inject()(
-  configLoader: ConfigLoader,
+  appConfig     : AppConfig,
   slackConnector: SlackNotificationsConnector
 )(implicit
   ec: ExecutionContext
 ) {
-  import configLoader.cfg.alerts.slack._
-  import configLoader.cfg.warningMessages
-
   private val logger = Logger(getClass)
 
+  private val slackConfig = appConfig.alerts.slack
+
   def alertAboutWarnings(author: String, warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] = {
-    if (enabled) {
+    if (slackConfig.enabled) {
       warnings.map(warning =>
-        if (warningsToAlert.contains(warning.warningMessageType)) {
-          val warningMessage = warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType)
+        if (slackConfig.warningsToAlert.contains(warning.warningMessageType)) {
+          val warningMessage = appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType)
           val attachments =
             if (warning.warningMessageType != FileLevelExemptions.toString)
               Seq.empty
             else
-              Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions".toString))
+              Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions".toString))
 
           val messageDetails =
             MessageDetails(
-              text                 = warningText
+              text                 = slackConfig.warningText
                                        .replace("{repo}", warning.repoName)
                                        .replace("{warningMessage}", warningMessage),
-              username             = username,
-              iconEmoji            = iconEmoji,
+              username             = slackConfig.username,
+              iconEmoji            = slackConfig.iconEmoji,
               attachments          = attachments,
               showAttachmentAuthor = false
             )
@@ -72,21 +71,21 @@ class AlertingService @Inject()(
   }
 
   def alert(report: Report)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (!enabled || report.rulesViolated.isEmpty) {
+    if (!slackConfig.enabled || report.rulesViolated.isEmpty) {
       Future.unit
     } else {
 
       val alertMessage =
-        messageText
+        slackConfig.messageText
           .replace("{repo}", report.repoName)
           .replace("{branch}", report.branch)
 
       val messageDetails =
         MessageDetails(
           text        = alertMessage,
-          username    = username,
-          iconEmoji   = iconEmoji,
-          attachments = Seq(Attachment(url"$leakDetectionUri/leak-detection/repositories/${report.repoName}/${report.branch}".toString)),
+          username    = slackConfig.username,
+          iconEmoji   = slackConfig.iconEmoji,
+          attachments = Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}".toString)),
           showAttachmentAuthor = false)
 
       Future
@@ -99,10 +98,10 @@ class AlertingService @Inject()(
     commitInfo: CommitInfo): Seq[SlackNotificationAndErrorMessage] = {
 
     val alertChannelNotification =
-      if (sendToAlertChannel) Some(notificationForAlertChannel(messageDetails, commitInfo)) else None
+      if (slackConfig.sendToAlertChannel) Some(notificationForAlertChannel(messageDetails, commitInfo)) else None
 
     val teamChannelNotification =
-      if (sendToTeamChannels) Some(notificationForTeam(messageDetails, commitInfo)) else None
+      if (slackConfig.sendToTeamChannels) Some(notificationForTeam(messageDetails, commitInfo)) else None
 
     List(alertChannelNotification, teamChannelNotification).flatten
 
@@ -125,13 +124,13 @@ class AlertingService @Inject()(
   private def notificationForAlertChannel(messageDetails: MessageDetails, commitInfo: CommitInfo) = {
     val request =
       SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(slackChannels = List(defaultAlertChannel)),
+        channelLookup  = ChannelLookup.SlackChannel(slackChannels = List(slackConfig.defaultAlertChannel)),
         messageDetails = messageDetails
       )
 
     SlackNotificationAndErrorMessage(
       request    = request,
-      errorMsg   = s"Error sending message to default alert channel: '$defaultAlertChannel'",
+      errorMsg   = s"Error sending message to default alert channel: '${slackConfig.defaultAlertChannel}'",
       commitInfo = commitInfo
     )
   }
@@ -154,11 +153,11 @@ class AlertingService @Inject()(
       slackConnector
         .sendMessage(
           SlackNotificationRequest(
-            channelLookup = ChannelLookup.SlackChannel(List(adminChannel)),
+            channelLookup = ChannelLookup.SlackChannel(List(slackConfig.adminChannel)),
             messageDetails = MessageDetails(
               text        = "LDS failed to deliver slack message to intended channels. Errors are shown below:",
-              username    = username,
-              iconEmoji   = iconEmoji,
+              username    = slackConfig.username,
+              iconEmoji   = slackConfig.iconEmoji,
               attachments = errorsToAlert.map(e => Attachment(e.message)) :+ commitInfo.toAttachment,
               showAttachmentAuthor = false
             )

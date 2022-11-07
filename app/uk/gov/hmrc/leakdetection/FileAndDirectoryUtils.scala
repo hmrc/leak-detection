@@ -16,12 +16,12 @@
 
 package uk.gov.hmrc.leakdetection
 
-import java.io.File
-import java.nio.charset.StandardCharsets
-
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.{FileFileFilter, TrueFileFilter}
-import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+
+import java.io.File
+import java.nio.charset.StandardCharsets
+import scala.jdk.CollectionConverters._
 
 object FileAndDirectoryUtils {
   def getFiles(explodedZipDir: File): Iterable[File] =

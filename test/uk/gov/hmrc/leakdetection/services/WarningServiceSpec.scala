@@ -167,25 +167,21 @@ class WarningServiceSpec
         description = "checks-in private key!"
       )
 
-    lazy val config =
-      Cfg(
-        allRules = AllRules(Nil, List(fileContentRule, fileNameRule)),
-        githubSecrets = GithubSecrets("", ""),
-        maxLineLength = Int.MaxValue,
+    lazy val appConfig =
+      AppConfig(
+        allRules                  = AllRules(Nil, List(fileContentRule, fileNameRule)),
+        githubSecrets             = GithubSecrets("", ""),
+        maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
-        warningMessages = Map.empty,
-        alerts = Alerts(aSlackConfig)
+        warningMessages           = Map.empty,
+        alerts                    = Alerts(aSlackConfig)
       )
-
-    lazy val configLoader = new ConfigLoader {
-      val cfg = config
-    }
 
     val repoVisibilityChecker = mock[RepoVisibilityChecker]
     when(repoVisibilityChecker.checkVisibility(any, any, any)).thenReturn(None)
 
     val warningRepository = mock[WarningRepository]
 
-    val warningsService = new WarningsService(configLoader, repoVisibilityChecker, warningRepository)
+    val warningsService = new WarningsService(appConfig, repoVisibilityChecker, warningRepository)
   }
 }

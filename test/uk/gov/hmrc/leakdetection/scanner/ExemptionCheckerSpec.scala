@@ -111,7 +111,7 @@ class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
 
   def givenExemptions(content: String): File = {
     val wd = tmp.dir()
-    write(wd / 'zip_file_name_xyz / "repository.yaml", content)
+    write(wd / 'zip_file_name_xyz / "repository.yaml", content, createFolders = true)
     wd.toNIO.toFile
   }
 

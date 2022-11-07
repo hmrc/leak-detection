@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors.{BranchNotFound, GithubConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
 import uk.gov.hmrc.leakdetection.model._
@@ -35,7 +35,7 @@ import scala.util.Try
 @Singleton
 class ScanningService @Inject()(
   githubConnector              : GithubConnector,
-  configLoader                 : ConfigLoader,
+  appConfig                    : AppConfig,
   reportsService               : ReportsService,
   draftReportsService          : DraftReportsService,
   leaksService                 : LeaksService,
@@ -48,12 +48,10 @@ class ScanningService @Inject()(
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
 )(implicit ec: ExecutionContext) {
 
-  import configLoader.cfg
-
   private val logger = Logger(getClass)
 
-  lazy val privateMatchingEngine = new RegexMatchingEngine(cfg.allRules.privateRules, cfg.maxLineLength)
-  lazy val publicMatchingEngine  = new RegexMatchingEngine(cfg.allRules.publicRules, cfg.maxLineLength)
+  lazy val privateMatchingEngine = new RegexMatchingEngine(appConfig.allRules.privateRules, appConfig.maxLineLength)
+  lazy val publicMatchingEngine  = new RegexMatchingEngine(appConfig.allRules.publicRules, appConfig.maxLineLength)
 
   def scanRepository(
     repository:    Repository,

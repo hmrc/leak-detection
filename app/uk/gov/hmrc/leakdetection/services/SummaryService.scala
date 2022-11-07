@@ -43,7 +43,7 @@ class SummaryService @Inject()(
       teamRepoNames    =  teamRepos.map(repo => repo.name)
       filteredLeaks    =  teamName.fold(leaks)(_ => leaks.filter(l => teamRepoNames.contains(l.repoName)))
       rules            =  ruleService.getAllRules()
-      leaksByRule      =  groupLeaksByRule(allArchivedRepos.toSet ,filteredLeaks, warnings)
+      leaksByRule      =  groupLeaksByRule(allArchivedRepos.toSet, filteredLeaks, warnings)
     } yield
       rules.map(rule => Summary(rule, leaksByRule.getOrElse(rule.id, Seq())))
 

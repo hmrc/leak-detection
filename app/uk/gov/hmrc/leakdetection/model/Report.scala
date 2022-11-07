@@ -104,8 +104,8 @@ object Report {
       timestamp        = timestamp,
       author           = authorName,
       totalLeaks       = results.filterNot(_.isExcluded).length,
-      rulesViolated    = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length).toMap,
-      exclusions       = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length).toMap,
+      rulesViolated    = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).view.mapValues(_.length).toMap,
+      exclusions       = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).view.mapValues(_.length).toMap,
       unusedExemptions = unusedExemptions
     )
 

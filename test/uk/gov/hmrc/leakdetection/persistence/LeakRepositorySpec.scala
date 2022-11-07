@@ -52,7 +52,7 @@ class LeakRepositorySpec
               aLeak(repoName = "repo2").copy(isExcluded = true)
             )
           )
-          .toFuture
+          .toFuture()
           .futureValue
 
         val result = repository.findDistinctRepoNamesWithUnresolvedLeaks().futureValue
