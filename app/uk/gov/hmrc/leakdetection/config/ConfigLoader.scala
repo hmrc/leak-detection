@@ -38,12 +38,12 @@ class PlayConfigLoader @Inject()(configuration: Configuration) extends ConfigLoa
 }
 
 final case class Cfg(
-                      allRules: AllRules,
-                      githubSecrets: GithubSecrets,
-                      maxLineLength: Int,
-                      clearingCollectionEnabled: Boolean,
-                      warningMessages: Map[String, String],
-                      alerts: Alerts
+  allRules                 : AllRules,
+  githubSecrets            : GithubSecrets,
+  maxLineLength            : Int,
+  clearingCollectionEnabled: Boolean,
+  warningMessages          : Map[String, String],
+  alerts                   : Alerts
 )
 
 final case class AllRules(
@@ -98,15 +98,15 @@ object RuleExemption {
 final case class Alerts(slack: SlackConfig)
 
 final case class SlackConfig(
-                              enabled: Boolean,
-                              adminChannel: String,
-                              defaultAlertChannel: String,
-                              username: String,
-                              iconEmoji: String,
-                              sendToAlertChannel: Boolean,
-                              sendToTeamChannels: Boolean,
-                              messageText: String,
-                              leakDetectionUri: String,
-                              warningText: String,
-                              warningsToAlert: Seq[String]
-                            )
+  enabled            : Boolean,
+  adminChannel       : String,
+  defaultAlertChannel: String,
+  username           : String,
+  iconEmoji          : String,
+  sendToAlertChannel : Boolean,
+  sendToTeamChannels : Boolean,
+  messageText        : String,
+  leakDetectionUri   : String,
+  warningText        : String,
+  warningsToAlert    : Seq[String]
+)

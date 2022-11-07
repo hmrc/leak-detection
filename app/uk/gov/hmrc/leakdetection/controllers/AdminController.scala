@@ -47,6 +47,7 @@ class AdminController @Inject()(
   }
 
   def rescan(runMode: RunMode) = Action.async(parse.json) { implicit request =>
+    logger.info("test")
     request.body.validate[List[String]].fold(
       _     => Future.successful(BadRequest("Invalid list of repos")),
       repos => rescanService.triggerRescan(repos, runMode).map(_ => Accepted(""))
