@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.play.binders
+package uk.gov.hmrc.leakdetection.binders
 
-import play.api.mvc.QueryStringBindable
+import play.api.mvc.{PathBindable, QueryStringBindable}
 
-class SimpleQueryBinder[T](bind: String => Either[String, T], unbind: T => String)(implicit stringBinder: QueryStringBindable[String])
-    extends QueryStringBindable[T] {
+class SimpleQueryBinder[T](
+  bind  : String => Either[String, T],
+  unbind: T => String
+)(implicit
+  stringBinder: QueryStringBindable[String]
+) extends QueryStringBindable[T] {
 
   override def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, T]] =
     for {
@@ -31,5 +35,23 @@ class SimpleQueryBinder[T](bind: String => Either[String, T], unbind: T => Strin
       }
     }
 
-  override def unbind(key: String, value: T): String = stringBinder.unbind(key, unbind(value))
+  override def unbind(key: String, value: T): String =
+    stringBinder.unbind(key, unbind(value))
+}
+
+
+class SimpleObjectBinder[T](
+  bind  : String => T,
+  unbind: T => String
+)(implicit
+  m: Manifest[T]
+) extends PathBindable[T] {
+  override def bind(key: String, value: String): Either[String, T] =
+    try Right(bind(value))
+    catch {
+      case e: Throwable =>
+        Left(s"Cannot parse parameter '$key' with value '$value' as '${m.runtimeClass.getSimpleName}'")
+    }
+
+  def unbind(key: String, value: T): String = unbind(value)
 }

@@ -37,12 +37,13 @@ class ReportsRepository @Inject()(
   domainFormat   = Report.mongoFormat,
   indexes        = Seq(
                      IndexModel(Indexes.hashed("repoName"), IndexOptions().name("repoName-idx").background(true)),
-                     IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true)),
-  )
+                     IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true))
+                   )
 ) {
 
   def saveReport(report: Report): Future[Unit] =
-    collection.insertOne(report)
+    collection
+      .insertOne(report)
       .toFuture()
       .map(_ => ())
 
@@ -83,14 +84,16 @@ class ReportsRepository @Inject()(
         )
       )
       .sort(Sorts.descending("timestamp"))
-      .toFuture
+      .toFuture()
 
   def findByReportId(reportId: ReportId): Future[Option[Report]] =
-    collection.find(Filters.eq("_id", reportId.value)).headOption
+    collection
+      .find(Filters.eq("_id", reportId.value))
+      .headOption()
 
   def removeAll(): Future[Long] =
     collection
       .deleteMany(filter = BsonDocument())
-      .toFuture
+      .toFuture()
       .map(_.getDeletedCount)
 }

@@ -24,6 +24,5 @@ import javax.inject.{Inject, Singleton}
 class IgnoreListConfig @Inject()(configuration: Configuration) {
 
   lazy val repositoriesToIgnore: Seq[String] =
-    configuration.getOptional[Seq[String]]("shared.repositories").getOrElse(List.empty)
-
+    configuration.get[Seq[String]]("shared.repositories")
 }

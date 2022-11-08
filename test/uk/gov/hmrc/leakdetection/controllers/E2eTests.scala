@@ -191,7 +191,7 @@ class E2eTests
 
   override def afterEach(): Unit = {
     super.afterEach()
-    queueRepo.collection.deleteMany(BsonDocument()).toFuture.futureValue
+    queueRepo.collection.deleteMany(BsonDocument()).toFuture().futureValue
   }
 
   override implicit val patienceConfig: PatienceConfig =
@@ -210,6 +210,7 @@ class E2eTests
               alerts.slack.enabled = false
 
               scheduling.scanner {
+                enabled      = true
                 initialDelay = 5 millis
                 interval = 1 seconds
               }
@@ -218,7 +219,7 @@ class E2eTests
           ))
       )
       .overrides(bind[MongoComponent].toInstance(mongoComponent))
-      .build
+      .build()
 
   lazy val reportsRepo = new ReportsRepository(mongoComponent)
 
@@ -230,7 +231,9 @@ class E2eTests
                    Filters.equal("repoName", repositoryName),
                    Filters.equal("branch", branchName)
                  )
-      ).sort(Sorts.descending("timestamp")).toFuture
+      )
+      .sort(Sorts.descending("timestamp"))
+      .toFuture()
 
   def prepopulateReportWithProblems(repoName: String, branchName: String): Future[Unit] =
     reportsRepo

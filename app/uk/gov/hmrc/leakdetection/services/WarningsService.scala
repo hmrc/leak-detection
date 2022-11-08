@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
-import uk.gov.hmrc.leakdetection.config.{ConfigLoader, Rule}
+import uk.gov.hmrc.leakdetection.config.{AppConfig, Rule}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.WarningRepository
 
@@ -25,12 +25,11 @@ import java.io.File
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class WarningsService @Inject()(configLoader: ConfigLoader,
-                                repoVisibilityChecker: RepoVisibilityChecker,
-                                warningRepository: WarningRepository
-                               )(implicit ec: ExecutionContext) {
-
-  import configLoader.cfg
+class WarningsService @Inject()(
+  appConfig: AppConfig,
+  repoVisibilityChecker: RepoVisibilityChecker,
+  warningRepository: WarningRepository
+)(implicit ec: ExecutionContext) {
 
   def saveWarnings(repository: Repository, branch: Branch, warnings: Seq[Warning]): Future[Unit] =
     warningRepository.update(repository.asString, branch.asString, warnings).map(_ => ())
@@ -45,11 +44,13 @@ class WarningsService @Inject()(configLoader: ConfigLoader,
     warningRepository.findBy(repoName, branch)
 
   def getWarningsForReport(reportId: ReportId): Future[Seq[Warning]] =
-    warningRepository.findForReport(reportId.value).map(_.map(warning =>
-warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessageType).getOrElse(warning.warningMessageType)
-    )))
+    warningRepository
+      .findForReport(reportId.value)
+      .map(_.map(warning =>
+        warning.copy(warningMessageType = appConfig.warningMessages.get(warning.warningMessageType).getOrElse(warning.warningMessageType))
+      ))
 
-  def checkForWarnings(report: Report, dir: File, isPrivate: Boolean, isArchived: Boolean): Seq[Warning] = {
+  def checkForWarnings(report: Report, dir: File, isPrivate: Boolean, isArchived: Boolean): Seq[Warning] =
     Seq(
       repoVisibilityChecker.checkVisibility(dir, isPrivate, isArchived),
       checkFileLevelExemptions(dir, isPrivate),
@@ -57,13 +58,17 @@ warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessage
     )
       .flatten
       .map(w => Warning(report.repoName, report.branch, report.timestamp, report.id, w.toString))
-  }
 
   private def checkFileLevelExemptions(dir: File, isPrivate: Boolean): Option[WarningMessageType] = {
-    val ruleSet = if (isPrivate) cfg.allRules.privateRules else cfg.allRules.publicRules
-    val exemptions = RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
+    val ruleSet =
+      if (isPrivate) appConfig.allRules.privateRules
+      else appConfig.allRules.publicRules
 
-    def isFileContentRule(ruleId: String): Boolean = ruleSet.filter(_.scope == Rule.Scope.FILE_CONTENT).exists(_.id == ruleId)
+    val exemptions =
+      RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
+
+    def isFileContentRule(ruleId: String): Boolean =
+      ruleSet.filter(_.scope == Rule.Scope.FILE_CONTENT).exists(_.id == ruleId)
 
     if (exemptions
       .filter(e => isFileContentRule(e.ruleId))
@@ -75,6 +80,7 @@ warning.copy(warningMessageType = cfg.warningMessages.get(warning.warningMessage
   }
 
   private def checkUnusedExemptions(report: Report, isArchived: Boolean): Option[WarningMessageType] =
-    if(isArchived || report.unusedExemptions.isEmpty) None else Some(UnusedExemptions)
-
+    if (isArchived || report.unusedExemptions.isEmpty)
+      None
+    else Some(UnusedExemptions)
 }

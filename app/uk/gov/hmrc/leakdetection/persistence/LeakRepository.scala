@@ -30,74 +30,105 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class LeakRepository @Inject()(mongoComponent: MongoComponent)(implicit ec: ExecutionContext) extends PlayMongoRepository[Leak](
+class LeakRepository @Inject()(
+  mongoComponent: MongoComponent
+)(implicit
+  ec: ExecutionContext
+) extends PlayMongoRepository[Leak](
   collectionName = "leaks",
   mongoComponent = mongoComponent,
-  domainFormat = Leak.mongoFormat,
-  indexes = Seq(
-    IndexModel(Indexes.descending("repoName"), IndexOptions().name("repoName-idx").background(true)),
-    IndexModel(Indexes.descending("ruleId"), IndexOptions().name("ruleId-idx").background(true)),
-    IndexModel(Indexes.descending("reportId"), IndexOptions().name("reportId-idx").background(true)),
-    IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true)))) with Logging {
+  domainFormat   = Leak.mongoFormat,
+  indexes        = Seq(
+      IndexModel(Indexes.descending("repoName"), IndexOptions().name("repoName-idx").background(true)),
+      IndexModel(Indexes.descending("ruleId"), IndexOptions().name("ruleId-idx").background(true)),
+      IndexModel(Indexes.descending("reportId"), IndexOptions().name("reportId-idx").background(true)),
+      IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true))
+    )
+) with Logging {
 
   // TODO: use transactions
   def update(repo: String, branch: String, violations: Seq[Leak]): Future[LeakUpdateResult] =
     for {
       // remove previous violations
-      deleted <- removeBranch(repo, branch)
+      deleted  <- removeBranch(repo, branch)
       // replace with new ones
       inserted <- if (violations.nonEmpty) collection.insertMany(violations).toFuture().map(_.getInsertedIds.size()) else Future(0)
-      _ = logger.info(s"removed $deleted leaks, added $inserted leaks for $repo/$branch")
+      _        =  logger.info(s"removed $deleted leaks, added $inserted leaks for $repo/$branch")
     } yield LeakUpdateResult(inserted, deleted)
 
   def removeBranch(repo: String, branch: String): Future[Long] =
-    collection.deleteMany(filter = and(Filters.eq("repoName", repo), Filters.eq("branch", branch))).toFuture().map(_.getDeletedCount)
+    collection
+      .deleteMany(filter = and(Filters.eq("repoName", repo), Filters.eq("branch", branch)))
+      .toFuture()
+      .map(_.getDeletedCount)
 
   def removeRepository(repo: String): Future[Long] =
-    collection.deleteMany(filter = Filters.eq("repoName", repo)).toFuture().map(_.getDeletedCount)
+    collection
+      .deleteMany(filter = Filters.eq("repoName", repo))
+      .toFuture()
+      .map(_.getDeletedCount)
 
-  def findLeaksBy(ruleId:   Option[String] = None,
-                  repoName: Option[String] = None,
-                  branch:   Option[String] = None
-                 ): Future[Seq[Leak]] = {
+  def findLeaksBy(
+    ruleId:   Option[String] = None,
+    repoName: Option[String] = None,
+    branch:   Option[String] = None
+  ): Future[Seq[Leak]] = {
 
     val ruleFilter:   Option[Bson] = ruleId.map(Filters.eq("ruleId", _))
     val repoFilter:   Option[Bson] = repoName.map(Filters.eq("repoName", _))
     val branchFilter: Option[Bson] = repoName.flatMap( _ => branch.map(Filters.eq("branch", _))) // only active when repoName is also set
 
-    (Seq(ruleFilter, repoFilter, branchFilter).flatten match {
-      case Nil => collection.find()
-      case f   => collection.find(Filters.and(f: _*))
-    }).toFuture()
+    collection
+      .find(
+        Seq(ruleFilter, repoFilter, branchFilter).flatten match {
+          case Nil => BsonDocument()
+          case f   => Filters.and(f: _*)
+        }
+      )
+      .toFuture()
   }
 
   def findLeaksForReport(reportId: String): Future[Seq[Leak]] =
     collection.find(filter = Filters.eq("reportId", reportId)).toFuture()
 
   def findLeaksForRepository(repo: String, branch: String): Future[Seq[Leak]] =
-    collection.find(
-      Filters.and(
-        Filters.eq("repoName", repo),
-        Filters.eq("branch", branch))
-    ).toFuture()
+    collection
+      .find(
+        Filters.and(
+          Filters.eq("repoName", repo),
+          Filters.eq("branch", branch)
+        )
+      )
+      .toFuture()
 
   def findDistinctRepoNamesWithUnresolvedLeaks(): Future[Seq[String]] =
-    collection.distinct[String](
-      fieldName = "repoName",
-      filter    = Filters.eq("isExcluded", false)
-    ).toFuture()
-
-  def countAll(): Future[Int] = collection.countDocuments().toFuture().map(_.toInt)
-
-  def countByRepo(): Future[Map[String, Int]] = collection.aggregate[BsonDocument](
-      pipeline = Seq[Bson](
-        Aggregates.group("$repoName", BsonField("count", BsonDocument("$sum" -> 1)))
+    collection
+      .distinct[String](
+        fieldName = "repoName",
+        filter    = Filters.eq("isExcluded", false)
       )
-    )
-    .toFuture.map(_.map { doc =>
-        val line = Codecs.fromBson[CountByRepo](doc)(CountByRepo.reads)
-        line._id -> line.count
-    }.toMap)
+      .toFuture()
+
+  def countAll(): Future[Int] =
+    collection
+      .countDocuments()
+      .toFuture()
+      .map(_.toInt)
+
+  def countByRepo(): Future[Map[String, Int]] =
+    collection
+      .aggregate[BsonDocument](
+        pipeline = Seq[Bson](
+          Aggregates.group("$repoName", BsonField("count", BsonDocument("$sum" -> 1)))
+        )
+      )
+      .toFuture()
+      .map(
+        _.map { doc =>
+          val line = Codecs.fromBson[CountByRepo](doc)(CountByRepo.reads)
+          line._id -> line.count
+        }.toMap
+      )
 }
 
 case class CountByRepo(_id: String, count: Int)

@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.model
 
 import play.api.libs.json.{Reads, __}
 
-case class Branch(asString: String) extends AnyVal {}
+case class Branch(asString: String) extends AnyVal
 
 object Branch {
   val main: Branch = Branch("main")

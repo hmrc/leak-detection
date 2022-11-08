@@ -52,7 +52,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
           aLeak.copy(repoName = "repo1", ruleId = "rule-2", timestamp = timestamp),
           aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch1", timestamp = timestamp.minus(3, HOURS)),
           aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch2", timestamp = timestamp.minus(1, HOURS)))
-      ).toFuture.futureValue
+      ).toFuture().futureValue
 
       val results = leaksService.getLeaksForReport(ReportId("reportId")).futureValue
 
@@ -109,12 +109,10 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
   }
 
   "ignore shared repositories" in {
-
     val leak1 = few(() => aLeakFor("r1", "b1"))
     val leak2 = few(() => aLeakFor("r2", "b1"))
     val leaks = leak1 ::: leak2
     repository.collection.insertMany(leaks).toFuture().futureValue
-
 
     val now = Some(LocalDateTime.now)
     val teams: Seq[Team] = Seq(
@@ -131,7 +129,8 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     )
   }
 
-  def aLeakFor(repo: String, branch: String) = aLeak.copy(repoName = repo, branch = branch)
+  def aLeakFor(repo: String, branch: String) =
+    aLeak.copy(repoName = repo, branch = branch)
 
   def aLeak = Leak(
     "repoName",
@@ -148,5 +147,4 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     "high",
     false
   )
-
 }

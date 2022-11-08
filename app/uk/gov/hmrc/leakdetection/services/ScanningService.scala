@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors.{BranchNotFound, GithubConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
 import uk.gov.hmrc.leakdetection.model._
@@ -35,7 +35,7 @@ import scala.util.Try
 @Singleton
 class ScanningService @Inject()(
   githubConnector              : GithubConnector,
-  configLoader                 : ConfigLoader,
+  appConfig                    : AppConfig,
   reportsService               : ReportsService,
   draftReportsService          : DraftReportsService,
   leaksService                 : LeaksService,
@@ -48,12 +48,10 @@ class ScanningService @Inject()(
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
 )(implicit ec: ExecutionContext) {
 
-  import configLoader.cfg
-
   private val logger = Logger(getClass)
 
-  lazy val privateMatchingEngine = new RegexMatchingEngine(cfg.allRules.privateRules, cfg.maxLineLength)
-  lazy val publicMatchingEngine  = new RegexMatchingEngine(cfg.allRules.publicRules, cfg.maxLineLength)
+  lazy val privateMatchingEngine = new RegexMatchingEngine(appConfig.allRules.privateRules, appConfig.maxLineLength)
+  lazy val publicMatchingEngine  = new RegexMatchingEngine(appConfig.allRules.publicRules, appConfig.maxLineLength)
 
   def scanRepository(
     repository:    Repository,
@@ -113,10 +111,11 @@ class ScanningService @Inject()(
     }
 
   private def alertAboutWarnings(
-                                  repository: Repository,
-                                  branch: Branch,
-                                  author: String,
-                                  warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] =
+    repository: Repository,
+    branch: Branch,
+    author: String,
+    warnings: Seq[Warning]
+  )(implicit hc: HeaderCarrier): Future[Unit] =
     teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
       if (branch.asString == repo.defaultBranch) {
         alertingService.alertAboutWarnings(author, warnings)
@@ -142,12 +141,11 @@ class ScanningService @Inject()(
     } yield  scanned + rescanned
   }
 
-  def rescanOne(implicit ec: ExecutionContext): Future[Int] = {
+  def rescanOne(implicit ec: ExecutionContext): Future[Int] =
     rescanRequestsQueue.pullOutstanding.flatMap {
       case None     => Future.successful(0)
       case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi).map(_.size)
     }
-  }
 
   def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
     val request     = workItem.item

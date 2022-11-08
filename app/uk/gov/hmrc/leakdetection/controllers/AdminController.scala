@@ -33,8 +33,10 @@ class AdminController @Inject()(
   rescanService  : RescanService,
   githubConnector: GithubConnector,
   cc             : ControllerComponents
-)(implicit ec: ExecutionContext) extends BackendController(cc) {
-  val logger = Logger(this.getClass.getName)
+)(implicit
+  ec: ExecutionContext
+) extends BackendController(cc) {
+  private val logger = Logger(getClass)
 
   def rescanRepo(repository: Repository, branch: Branch, runMode: RunMode) = Action.async { implicit request =>
     implicit val rf: Format[Report] = Report.apiFormat

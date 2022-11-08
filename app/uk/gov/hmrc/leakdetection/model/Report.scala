@@ -20,9 +20,9 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.mvc.PathBindable
+import uk.gov.hmrc.leakdetection.binders.SimpleObjectBinder
 import uk.gov.hmrc.leakdetection.scanner.MatchedResult
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
-import uk.gov.hmrc.play.binders.SimpleObjectBinder
 
 import java.time.Instant
 import java.util.UUID
@@ -35,7 +35,7 @@ object ReportId {
   def random = ReportId(UUID.randomUUID().toString)
 
   implicit val format: Format[ReportId] =
-    implicitly[Format[String]]
+    Format.of[String]
       .inmap(ReportId.apply, unlift(ReportId.unapply))
 
   implicit val binder: PathBindable[ReportId] =
@@ -48,7 +48,7 @@ final case class RuleId(value: String) extends AnyVal {
 
 object RuleId {
   implicit val format: Format[RuleId] =
-    implicitly[Format[String]]
+    Format.of[String]
       .inmap(RuleId.apply, unlift(RuleId.unapply))
 }
 
@@ -59,58 +59,58 @@ object ResolvedLeak {
 }
 
 final case class UnusedExemption(
-                                  ruleId: String,
-                                  filePath: String,
-                                  text: Option[String]
-                                )
+  ruleId  : String,
+  filePath: String,
+  text    : Option[String]
+)
 
 object UnusedExemption {
   implicit val format = Json.format[UnusedExemption]
 }
 
 final case class Report(
-                         id               : ReportId,
-                         repoName         : String,
-                         repoUrl          : String,
-                         commitId         : String,
-                         branch           : String,
-                         timestamp        : Instant,
-                         author           : String,
-                         totalLeaks       : Int,
-                         totalWarnings    : Int = 0,
-                         rulesViolated    : Map[RuleId, Int],
-                         exclusions       : Map[RuleId, Int],
-                         unusedExemptions : Seq[UnusedExemption]
+  id               : ReportId,
+  repoName         : String,
+  repoUrl          : String,
+  commitId         : String,
+  branch           : String,
+  timestamp        : Instant,
+  author           : String,
+  totalLeaks       : Int,
+  totalWarnings    : Int = 0,
+  rulesViolated    : Map[RuleId, Int],
+  exclusions       : Map[RuleId, Int],
+  unusedExemptions : Seq[UnusedExemption]
 )
 
 object Report {
 
   def createFromMatchedResults(
-              repositoryName   : String,
-              repositoryUrl    : String,
-              commitId         : String,
-              authorName       : String,
-              branch           : String,
-              results          : Seq[MatchedResult],
-              unusedExemptions : Seq[UnusedExemption],
-              timestamp        : Instant = Instant.now()
+    repositoryName   : String,
+    repositoryUrl    : String,
+    commitId         : String,
+    authorName       : String,
+    branch           : String,
+    results          : Seq[MatchedResult],
+    unusedExemptions : Seq[UnusedExemption],
+    timestamp        : Instant = Instant.now()
   ): Report =
     Report(
-      id            = ReportId.random,
-      repoName      = repositoryName,
-      repoUrl       = repositoryUrl,
-      commitId      = commitId,
-      branch        = branch,
-      timestamp     = timestamp,
-      author        = authorName,
-      totalLeaks    = results.filterNot(_.isExcluded).length,
-      rulesViolated = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
-      exclusions    = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).mapValues(_.length),
+      id               = ReportId.random,
+      repoName         = repositoryName,
+      repoUrl          = repositoryUrl,
+      commitId         = commitId,
+      branch           = branch,
+      timestamp        = timestamp,
+      author           = authorName,
+      totalLeaks       = results.filterNot(_.isExcluded).length,
+      rulesViolated    = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).view.mapValues(_.length).toMap,
+      exclusions       = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).view.mapValues(_.length).toMap,
       unusedExemptions = unusedExemptions
     )
 
   private val ruleIdMapFormat: Format[Map[RuleId, Int]] =
-    implicitly[Format[Map[String, Int]]].inmap(
+    Format.of[Map[String, Int]].inmap(
       _.map { case (k, v) => (RuleId(k), v) },
       _.map { case (RuleId(k), v) => (k, v) }
     )

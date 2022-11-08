@@ -48,7 +48,7 @@ class ReportsRepositorySpec
           .zipWithIndex
           .map { case (r, idx) => r.copy(timestamp = Instant.now().truncatedTo(ChronoUnit.MILLIS).plus(idx, ChronoUnit.SECONDS)) }
 
-      repository.collection.insertMany(Random.shuffle(reports)).toFuture.futureValue
+      repository.collection.insertMany(Random.shuffle(reports)).toFuture().futureValue
 
       val foundReports: Seq[Report] = repository.findUnresolvedWithProblems(Repository(repoName)).futureValue
 
@@ -62,7 +62,7 @@ class ReportsRepositorySpec
 
       val all = reportsWithUnresolvedProblems ::: reportsWithoutProblems
 
-      repository.collection.insertMany(all).toFuture.futureValue
+      repository.collection.insertMany(all).toFuture().futureValue
 
       val foundReports = repository.findUnresolvedWithProblems(Repository(repoName)).futureValue
 

@@ -106,7 +106,7 @@ class WarningRepositorySpec extends AnyWordSpec
     val warnings: Seq[Warning] = few(() => {
       warning
     })
-    repository.collection.insertMany(Random.shuffle(warnings)).toFuture
+    repository.collection.insertMany(Random.shuffle(warnings)).toFuture()
     repository.collection.find().toFuture().futureValue
     warnings
   }

@@ -91,15 +91,6 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         results shouldBe Seq(
           Summary(aRule.copy(id = "rule-1"), Seq(
             RepositorySummary(
-              repository      = "repo1",
-              isArchived      = true,
-              firstScannedAt  = timestamp,
-              lastScannedAt   = timestamp,
-              warningCount    = 2,
-              unresolvedCount = 1,
-              excludedCount   = 1,
-              branchSummary   = None),
-            RepositorySummary(
               repository      = "repo2",
               isArchived      = false,
               firstScannedAt  = timestamp.minus(3, HOURS),
@@ -107,6 +98,15 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
               warningCount    = 1,
               unresolvedCount = 2,
               excludedCount   = 0,
+              branchSummary   = None),
+            RepositorySummary(
+              repository      = "repo1",
+              isArchived      = true,
+              firstScannedAt  = timestamp,
+              lastScannedAt   = timestamp,
+              warningCount    = 2,
+              unresolvedCount = 1,
+              excludedCount   = 1,
               branchSummary   = None)
           )),
           Summary(aRule.copy(id = "rule-2"), Seq(

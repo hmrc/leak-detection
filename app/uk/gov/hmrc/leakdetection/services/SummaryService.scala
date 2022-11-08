@@ -30,7 +30,11 @@ class SummaryService @Inject()(
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
 )(implicit ec: ExecutionContext) {
 
-  def getRuleSummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String]): Future[Seq[Summary]] =
+  def getRuleSummaries(
+    ruleId  : Option[String],
+    repoName: Option[String],
+    teamName: Option[String]
+  ): Future[Seq[Summary]] =
     for {
       leaks            <- leaksService.getLeaks(repoName, None, ruleId)
       warnings         <- warningsService.getWarnings(repoName, None)
@@ -39,11 +43,17 @@ class SummaryService @Inject()(
       teamRepoNames    =  teamRepos.map(repo => repo.name)
       filteredLeaks    =  teamName.fold(leaks)(_ => leaks.filter(l => teamRepoNames.contains(l.repoName)))
       rules            =  ruleService.getAllRules()
-      leaksByRule      =  groupLeaksByRule(allArchivedRepos.toSet ,filteredLeaks, warnings)
+      leaksByRule      =  groupLeaksByRule(allArchivedRepos.toSet, filteredLeaks, warnings)
     } yield
       rules.map(rule => Summary(rule, leaksByRule.getOrElse(rule.id, Seq())))
 
-  def getRepositorySummaries(ruleId: Option[String], repoName: Option[String], teamName: Option[String], excludeNonIssues: Boolean, includeBranches: Boolean): Future[Seq[RepositorySummary]] =
+  def getRepositorySummaries(
+    ruleId          : Option[String],
+    repoName        : Option[String],
+    teamName        : Option[String],
+    excludeNonIssues: Boolean,
+    includeBranches : Boolean
+  ): Future[Seq[RepositorySummary]] =
     for {
       activeBranches   <- if (excludeNonIssues)
                             Future.successful(Seq.empty)
@@ -78,7 +88,11 @@ class SummaryService @Inject()(
           )
       }
 
-  def buildBranchSummaries(activeBranches: Seq[ActiveBranch], leaks: Seq[Leak], warnings: Seq[Warning]): Seq[BranchSummary] = {
+  def buildBranchSummaries(
+    activeBranches: Seq[ActiveBranch],
+    leaks         : Seq[Leak],
+    warnings      : Seq[Warning]
+  ): Seq[BranchSummary] = {
     val allBranches = leaks.map(_.branch) ++ warnings.map(_.branch)
     val branchDetails =
       allBranches.distinct.map(r => (r, leaks.filter(_.branch == r), warnings.filter(_.branch == r)))
@@ -101,37 +115,44 @@ class SummaryService @Inject()(
     }
   }
 
-  private def getUnresolvedLeakCount(leaks: Seq[Leak]): Int = leaks.filterNot(_.isExcluded).length
+  private def getUnresolvedLeakCount(leaks: Seq[Leak]): Int =
+    leaks.filterNot(_.isExcluded).length
 
-  private def getExcludedLeakCount(leaks: Seq[Leak]): Int   = leaks.filter(_.isExcluded).length
+  private def getExcludedLeakCount(leaks: Seq[Leak]): Int =
+    leaks.filter(_.isExcluded).length
 
   private def getTeamRepos(teamName: Option[String]): Future[Seq[RepositoryInfo]] = teamName match {
     case Some(t) => teamsAndRepositoriesConnector.reposWithTeams(t)
     case None    => Future.successful(Seq())
   }
 
-  private def groupLeaksByRule(allArchivedRepos: Set[String], leaks: Seq[Leak], warnings: Seq[Warning]): Map[String, Seq[RepositorySummary]] = leaks
-    .groupBy(_.ruleId)
-    .map {
-      case (ruleId, leaksByRule) =>
-        (
-          ruleId,
-          leaksByRule
-            .groupBy(_.repoName)
-            .map {
-              case (repoName, ruleLeaksByRepo) =>
-                RepositorySummary(
-                  repository      = repoName,
-                  isArchived      = allArchivedRepos.contains(repoName),
-                  firstScannedAt  = ruleLeaksByRepo.minBy(_.timestamp).timestamp,
-                  lastScannedAt   = ruleLeaksByRepo.maxBy(_.timestamp).timestamp,
-                  warningCount    = warnings.count(_.repoName == repoName),
-                  unresolvedCount = getUnresolvedLeakCount(ruleLeaksByRepo),
-                  excludedCount   = getExcludedLeakCount(ruleLeaksByRepo),
-                  branchSummary   = None
-                )
-            }
-            .toSeq
-        )
-    }
+  private def groupLeaksByRule(
+    allArchivedRepos: Set[String],
+    leaks           : Seq[Leak],
+    warnings        : Seq[Warning]
+  ): Map[String, Seq[RepositorySummary]] =
+    leaks
+      .groupBy(_.ruleId)
+      .map {
+        case (ruleId, leaksByRule) =>
+          (
+            ruleId,
+            leaksByRule
+              .groupBy(_.repoName)
+              .map {
+                case (repoName, ruleLeaksByRepo) =>
+                  RepositorySummary(
+                    repository      = repoName,
+                    isArchived      = allArchivedRepos.contains(repoName),
+                    firstScannedAt  = ruleLeaksByRepo.minBy(_.timestamp).timestamp,
+                    lastScannedAt   = ruleLeaksByRepo.maxBy(_.timestamp).timestamp,
+                    warningCount    = warnings.count(_.repoName == repoName),
+                    unresolvedCount = getUnresolvedLeakCount(ruleLeaksByRepo),
+                    excludedCount   = getExcludedLeakCount(ruleLeaksByRepo),
+                    branchSummary   = None
+                  )
+              }
+              .toSeq
+          )
+      }
 }

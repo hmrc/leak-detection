@@ -23,17 +23,23 @@ import uk.gov.hmrc.leakdetection.persistence.ActiveBranchesRepository
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
-class ActiveBranchesService @Inject()(activeBranchesRepository: ActiveBranchesRepository)(
-  implicit ec: ExecutionContext) {
+class ActiveBranchesService @Inject()(
+  activeBranchesRepository: ActiveBranchesRepository
+)(implicit
+  ec: ExecutionContext
+) {
 
   def getActiveBranches(repoName: Option[String]): Future[Seq[ActiveBranch]] =
-    repoName.fold(activeBranchesRepository.findAll)(activeBranchesRepository.findForRepo)
+    repoName.fold(activeBranchesRepository.findAll())(activeBranchesRepository.findForRepo)
 
   def markAsActive(repository: Repository, branch: Branch, reportId: ReportId): Future[Unit] =
     activeBranchesRepository
       .find(repository.asString, branch.asString)
-      .map(_.map(a => activeBranchesRepository.update(a.copy(updated = Instant.now(), reportId = reportId.value)))
-        .getOrElse(activeBranchesRepository.create(ActiveBranch(repository.asString, branch.asString, reportId.value))))
+      .map(
+        _
+          .map(a => activeBranchesRepository.update(a.copy(updated = Instant.now(), reportId = reportId.value)))
+          .getOrElse(activeBranchesRepository.create(ActiveBranch(repository.asString, branch.asString, reportId.value)))
+       )
 
   def clearBranch(repoName: String, branchName: String): Future[Unit] =
     activeBranchesRepository.delete(repoName, branchName)

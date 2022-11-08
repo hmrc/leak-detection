@@ -16,4 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.model
 
-case class LeakUpdateResult (inserted: Long, deleted: Long)
+case class LeakUpdateResult(
+  inserted: Long,
+  deleted : Long
+)

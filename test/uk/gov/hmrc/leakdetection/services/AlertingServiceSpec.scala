@@ -28,8 +28,8 @@ import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model._
 
 import java.time.Instant
-import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatchersSugar with ScalaFutures with MockitoSugar {
 
@@ -336,8 +336,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
     val slackConfig = aSlackConfig
 
-    lazy val config =
-      Cfg(
+    lazy val appConfig =
+      AppConfig(
         allRules                  = AllRules(Nil, Nil),
         githubSecrets             = GithubSecrets("token", "webhook-key"),
         maxLineLength             = Int.MaxValue,
@@ -346,11 +346,6 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         alerts                    = Alerts(slackConfig)
       )
 
-    lazy val configLoader = new ConfigLoader {
-      val cfg = config
-    }
-
-    lazy val service = new AlertingService(configLoader, slackConnector)(ExecutionContext.global)
-
+    lazy val service = new AlertingService(appConfig, slackConnector)(ExecutionContext.global)
   }
 }

@@ -25,27 +25,28 @@ import play.api.libs.json._
 import uk.gov.hmrc.http.StringContextOps
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
-case class Leak( repoName   : String,
-                 branch     : String,
-                 timestamp  : Instant,
-                 reportId   : ReportId,
-                 ruleId     : String,
-                 description: String,
-                 filePath   : String,
-                 scope      : String,
-                 lineNumber : Int,
-                 urlToSource: String,
-                 lineText   : String,
-                 matches    : List[Match],
-                 priority   : String,
-                 isExcluded   : Boolean)
+case class Leak(
+  repoName   : String,
+  branch     : String,
+  timestamp  : Instant,
+  reportId   : ReportId,
+  ruleId     : String,
+  description: String,
+  filePath   : String,
+  scope      : String,
+  lineNumber : Int,
+  urlToSource: String,
+  lineText   : String,
+  matches    : List[Match],
+  priority   : String,
+  isExcluded : Boolean
+)
 
 object Leak {
 
-  val apiFormat: OFormat[Leak] =  {
+  val apiFormat: OFormat[Leak] = {
     implicit val mf = Match.format
-    (
-      (__ \ "repoName").format[String]
+    ( (__ \ "repoName").format[String]
     ~ (__ \ "branch").format[String]
     ~ (__ \ "timestamp").format[Instant]
     ~ (__ \ "reportId").format[ReportId](ReportId.format)
@@ -62,10 +63,9 @@ object Leak {
     )(Leak.apply, unlift(Leak.unapply))
   }
 
-  def mongoFormat: OFormat[Leak] = {
+  val mongoFormat: OFormat[Leak] = {
     implicit val mf = Match.format
-    (
-      (__ \ "repoName").format[String]
+    ( (__ \ "repoName").format[String]
     ~ (__ \ "branch").format[String]
     ~ (__ \ "timestamp").format[Instant](MongoJavatimeFormats.instantFormat)
     ~ (__ \ "reportId").format[ReportId](ReportId.format)
@@ -83,7 +83,8 @@ object Leak {
   }
 
   def createFromMatchedResults(report: Report, results: List[MatchedResult]): List[Leak] =
-    results.map(result => Leak(
+    results.map(result =>
+      Leak(
         repoName    = report.repoName,
         branch      = report.branch,
         timestamp   = report.timestamp,
@@ -98,6 +99,7 @@ object Leak {
         lineText    = result.lineText,
         matches     = result.matches,
         priority    = result.priority,
-        isExcluded    = result.isExcluded
-      ))
+        isExcluded  = result.isExcluded
+      )
+    )
 }

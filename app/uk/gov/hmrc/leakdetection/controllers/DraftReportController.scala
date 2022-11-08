@@ -25,20 +25,27 @@ import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class DraftReportController @Inject()(draftReportsService: DraftReportsService,
-                                      ruleService: RuleService,
-                                      cc: ControllerComponents)(implicit ec: ExecutionContext) extends BackendController(cc) {
+class DraftReportController @Inject()(
+  draftReportsService: DraftReportsService,
+  ruleService        : RuleService,
+  cc                 : ControllerComponents
+)(implicit
+  ec: ExecutionContext
+) extends BackendController(cc) {
   implicit val rf = Report.apiFormat
 
   def findDraftReports(rule: Option[String]) = Action.async {
     rule match {
-      case None => draftReportsService.findAllDraftReports().map(d => Ok(Json.toJson(d)))
+      case None        => draftReportsService.findAllDraftReports().map(d => Ok(Json.toJson(d)))
       case Some("any") => draftReportsService.findDraftReportsWithViolations().map(d => Ok(Json.toJson(d)))
-      case Some(r) => ruleService
-        .getAllRules()
-        .find(_.id == r)
-        .fold(ifEmpty = Future.successful(BadRequest("Unknown ruleId")))(
-          rule => draftReportsService.findDraftReportsForRule(rule).map(d => Ok(Json.toJson(d))))
+      case Some(r)     => ruleService
+                            .getAllRules()
+                            .find(_.id == r)
+                            .fold(
+                              ifEmpty = Future.successful(BadRequest("Unknown ruleId"))
+                            )(
+                              rule => draftReportsService.findDraftReportsForRule(rule).map(d => Ok(Json.toJson(d)))
+                            )
     }
   }
 
@@ -48,5 +55,8 @@ class DraftReportController @Inject()(draftReportsService: DraftReportsService,
       .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
   }
 
-  def clearAllDrafts() = Action.async { draftReportsService.clearDrafts().map(_ => Ok("all drafts deleted"))}
+  def clearAllDrafts() =
+    Action.async {
+      draftReportsService.clearDrafts().map(_ => Ok("all drafts deleted"))
+    }
 }

@@ -28,11 +28,16 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, rescanQueue: RescanRequestsQueueRepository, scanningService: ScanningService, activeBranchesService: ActiveBranchesService)(implicit ec: ExecutionContext) {
+class RescanService @Inject()(
+  teamsAndRepos        : TeamsAndRepositoriesConnector,
+  rescanQueue          : RescanRequestsQueueRepository,
+  scanningService      : ScanningService,
+  activeBranchesService: ActiveBranchesService
+)(implicit ec: ExecutionContext) {
 
   private val logger = Logger(getClass)
 
-  def rescan(repository: Repository, branch: Branch, runMode: RunMode)(implicit headerCarrier: HeaderCarrier): Future[Option[Future[Report]]] = {
+  def rescan(repository: Repository, branch: Branch, runMode: RunMode)(implicit headerCarrier: HeaderCarrier): Future[Option[Future[Report]]] =
     teamsAndRepos.repo(repository.asString)
       .map(f =>
         f.map(repoToPayload(_, runMode))
@@ -51,37 +56,35 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
               )
           )
       )
-  }
 
-  def rescanAllRepos(runMode: RunMode): Future[Unit] = {
+  def rescanAllRepos(runMode: RunMode): Future[Unit] =
     for {
       repos    <- teamsAndRepos.repos()
-      payloads  = repos.map(r => repoToPayload(r, runMode))
+      payloads =  repos.map(r => repoToPayload(r, runMode))
+      inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
+      _        =  logger.info(s"Re-triggered $inserts rescans")
+    } yield ()
+
+  def triggerRescan(repos: List[String], runMode: RunMode): Future[Unit] =
+    for {
+      payloads <- repos.foldLeftM(Seq.empty[PayloadDetails])((acc, repoName) =>
+                    teamsAndRepos.repo(repoName).map(r => acc ++ r.map(r => repoToPayload(r, runMode)).toSeq)
+                  )
       inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
       _         = logger.info(s"Re-triggered $inserts rescans")
     } yield ()
-  }
 
-  def triggerRescan(repos: List[String], runMode: RunMode): Future[Unit] = {
+  def rescanArchivedBranches(repository: Repository, runMode: RunMode) =
     for {
-      payloads <- repos.foldLeftM(Seq.empty[PayloadDetails])((acc, repoName) => teamsAndRepos.repo(repoName).map(r => acc ++ r.map(r => repoToPayload(r, runMode)).toSeq))
-      inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
-      _         = logger.info(s"Re-triggered $inserts rescans")
+      branches       <- activeBranchesService.getActiveBranches(Some(repository.asString)).map(_.map(_.branch))
+      repoDetails    <- teamsAndRepos.repo(repository.asString)
+      payloadDetails =  repoDetails.map(r => repoToPayload(r, runMode))
+      payloads       =  branches.map(b => payloadDetails.map(p => p.copy(branchRef = b, isArchived = true))).flatten //we need to ensure it's marked as archived as it's unlikely teamsAndRepos knows this yet
+      inserts        <- rescanQueue.pushNewBatch(payloads).map(_.length)
+      _              =  logger.info(s"Re-triggered $inserts rescans")
     } yield ()
-  }
 
-  def rescanArchivedBranches(repository: Repository, runMode: RunMode) = {
-    for {
-      branches      <- activeBranchesService.getActiveBranches(Some(repository.asString)).map(_.map(_.branch))
-      repoDetails   <- teamsAndRepos.repo(repository.asString)
-      payloadDetails = repoDetails.map(r => repoToPayload(r, runMode))
-      payloads       = branches.map(b => payloadDetails.map(p => p.copy(branchRef = b, isArchived = true))).flatten //we need to ensure it's marked as archived as it's unlikely teamsAndRepos knows this yet
-      inserts       <- rescanQueue.pushNewBatch(payloads).map(_.length)
-      _              = logger.info(s"Re-triggered $inserts rescans")
-    } yield ()
-  }
-
-  private def repoToPayload(repoInfo: RepositoryInfo, runMode: RunMode): PayloadDetails = {
+  private def repoToPayload(repoInfo: RepositoryInfo, runMode: RunMode): PayloadDetails =
     PayloadDetails(
       repositoryName = repoInfo.name,
       isPrivate      = repoInfo.isPrivate,
@@ -94,6 +97,4 @@ class RescanService @Inject()(teamsAndRepos: TeamsAndRepositoriesConnector, resc
       deleted        = false,
       runMode        = Some(runMode)
     )
-  }
-
 }

@@ -36,30 +36,28 @@ case object FileLevelExemptions extends WarningMessageType
 
 case object UnusedExemptions extends WarningMessageType
 
-case class Warning(repoName: String,
-                   branch: String,
-                   timestamp: Instant,
-                   reportId: ReportId,
-                   warningMessageType: String)
+case class Warning(
+  repoName          : String,
+  branch            : String,
+  timestamp         : Instant,
+  reportId          : ReportId,
+  warningMessageType: String
+)
 
 object Warning {
-  val apiFormat: OFormat[Warning] = {
-    (
-      (__ \ "repoName").format[String]
-        ~ (__ \ "branch").format[String]
-        ~ (__ \ "timestamp").format[Instant]
-        ~ (__ \ "reportId").format[ReportId](ReportId.format)
-        ~ (__ \ "message").format[String]
-      ) (Warning.apply, unlift(Warning.unapply))
-  }
+  val apiFormat: OFormat[Warning] =
+    ( (__ \ "repoName" ).format[String]
+    ~ (__ \ "branch"   ).format[String]
+    ~ (__ \ "timestamp").format[Instant]
+    ~ (__ \ "reportId" ).format[ReportId](ReportId.format)
+    ~ (__ \ "message"  ).format[String]
+    )(Warning.apply, unlift(Warning.unapply))
 
-  def mongoFormat: OFormat[Warning] = {
-    (
-      (__ \ "repoName").format[String]
-        ~ (__ \ "branch").format[String]
-        ~ (__ \ "timestamp").format[Instant](MongoJavatimeFormats.instantFormat)
-        ~ (__ \ "reportId").format[ReportId](ReportId.format)
-        ~ (__ \ "warningMessageType").format[String]
-      ) (Warning.apply, unlift(Warning.unapply))
-  }
+  def mongoFormat: OFormat[Warning] =
+    ( (__ \ "repoName"          ).format[String]
+    ~ (__ \ "branch"            ).format[String]
+    ~ (__ \ "timestamp"         ).format[Instant](MongoJavatimeFormats.instantFormat)
+    ~ (__ \ "reportId"          ).format[ReportId](ReportId.format)
+    ~ (__ \ "warningMessageType").format[String]
+    )(Warning.apply, unlift(Warning.unapply))
 }

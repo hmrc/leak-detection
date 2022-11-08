@@ -22,26 +22,28 @@ import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
 import java.time.Instant
 
-case class ActiveBranch (repoName: String, branch: String, reportId: String, created: Instant = Instant.now(), updated: Instant = Instant.now())
+case class ActiveBranch(
+  repoName: String,
+  branch  : String,
+  reportId: String,
+  created : Instant = Instant.now(),
+  updated : Instant = Instant.now()
+)
 
 object ActiveBranch {
-  val apiFormat: OFormat[ActiveBranch] = {
-    (
-      (__ \ "repoName").format[String]
-        ~ (__ \ "branch").format[String]
-        ~ (__ \ "reportId").format[String]
-        ~ (__ \ "created").format[Instant]
-        ~ (__ \ "updated").format[Instant]
-      ) (ActiveBranch.apply, unlift(ActiveBranch.unapply))
-  }
+  val apiFormat: OFormat[ActiveBranch] =
+    ( (__ \ "repoName").format[String]
+    ~ (__ \ "branch"  ).format[String]
+    ~ (__ \ "reportId").format[String]
+    ~ (__ \ "created" ).format[Instant]
+    ~ (__ \ "updated" ).format[Instant]
+    ) (ActiveBranch.apply, unlift(ActiveBranch.unapply))
 
-  def mongoFormat: OFormat[ActiveBranch] = {
-    (
-      (__ \ "repoName").format[String]
-        ~ (__ \ "branch").format[String]
-        ~ (__ \ "reportId").format[String]
-        ~ (__ \ "created").format[Instant](MongoJavatimeFormats.instantFormat)
-        ~ (__ \ "updated").format[Instant](MongoJavatimeFormats.instantFormat)
-      ) (ActiveBranch.apply, unlift(ActiveBranch.unapply))
-  }
+  def mongoFormat: OFormat[ActiveBranch] =
+    ( (__ \ "repoName").format[String]
+    ~ (__ \ "branch"  ).format[String]
+    ~ (__ \ "reportId").format[String]
+    ~ (__ \ "created" ).format[Instant](MongoJavatimeFormats.instantFormat)
+    ~ (__ \ "updated" ).format[Instant](MongoJavatimeFormats.instantFormat)
+    ) (ActiveBranch.apply, unlift(ActiveBranch.unapply))
 }

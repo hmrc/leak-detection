@@ -16,14 +16,14 @@
 
 package uk.gov.hmrc.leakdetection.scanner
 
-import java.io.File
-import java.nio.charset.CodingErrorAction
-
 import play.api.Logger
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.services.RulesExemptionParser
 
+import java.io.File
+import java.nio.charset.CodingErrorAction
+import scala.collection.parallel.CollectionConverters._
 import scala.io.{Codec, Source}
 
 case class Result(filePath: String, scanResults: MatchedResult)
@@ -32,7 +32,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
 
   import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 
-  private val logger = Logger(this.getClass.getName)
+  private val logger = Logger(getClass)
 
   val fileContentScanners = createFileContentScanners(rules)
   val fileNameScanners    = createFileNameScanners(rules)
@@ -48,9 +48,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
     val serviceDefinedExemptions =
       RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(explodedZipDir))
 
-    val filesAndDirs: Iterable[File] = getFiles(explodedZipDir)
-
-    val results = filesAndDirs
+    getFiles(explodedZipDir)
       .filterNot(_.isDirectory)
       .par
       .flatMap { file =>
@@ -69,7 +67,8 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
         val source = Source.fromFile(file)
 
         val contentResults: Seq[MatchedResult] = try {
-          source.getLines
+          source
+            .getLines()
             .foldLeft((1, Seq.empty[MatchedResult], false)) {
               case ((lineNumber, acc, isInline), line) =>
                 (lineNumber + 1, acc ++ applicableFileContentScanners.flatMap {
@@ -93,8 +92,6 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
 
       }
       .toList
-
-    results
   }
 
   private def createFileContentScanners(rules: Seq[Rule]): Seq[RegexScanner] =

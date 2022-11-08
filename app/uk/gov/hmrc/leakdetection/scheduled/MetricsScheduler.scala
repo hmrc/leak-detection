@@ -29,20 +29,22 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class MetricsScheduler @Inject()(
-  actorSystem: ActorSystem,
-  configuration: Configuration,
-  metrics: Metrics,
+  actorSystem                  : ActorSystem,
+  configuration                : Configuration,
+  metrics                      : Metrics,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
-  leaksService: LeaksService,
-  lockRepository: LockRepository,
-  metricRepository: MetricRepository
-)(implicit ec: ExecutionContext) {
+  leaksService                 : LeaksService,
+  lockRepository               : LockRepository,
+  metricRepository             : MetricRepository
+)(implicit
+  ec: ExecutionContext
+) {
 
   private val key = "queue.metricsGauges.interval"
 
   lazy val refreshIntervalMillis: Long = configuration.getMillis(key)
 
-  val logger = Logger(this.getClass.getName)
+  private val logger = Logger(getClass)
 
   val lock = LockService(
     lockRepository = lockRepository,
@@ -57,7 +59,7 @@ class MetricsScheduler @Inject()(
     metricRegistry   = metrics.defaultRegistry
   )
 
-  actorSystem.scheduler.scheduleWithFixedDelay(1.minute, refreshIntervalMillis.milliseconds)( () => {
+  actorSystem.scheduler.scheduleWithFixedDelay(1.minute, refreshIntervalMillis.milliseconds){ () =>
     metricOrchestrator
       .attemptMetricRefresh()
       .map(_.log())
@@ -65,5 +67,5 @@ class MetricsScheduler @Inject()(
         case e: RuntimeException =>
           logger.error(s"An error occurred processing metrics: ${e.getMessage}", e)
       })
-  })
+  }
 }

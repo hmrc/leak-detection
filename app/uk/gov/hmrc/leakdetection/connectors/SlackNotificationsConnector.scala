@@ -35,7 +35,7 @@ class SlackNotificationsConnector @Inject()(
 )(implicit ec: ExecutionContext) {
   import HttpReads.Implicits._
 
-  private val logger = Logger(this.getClass.getName)
+  private val logger = Logger(getClass)
 
   val url: String = servicesConfig.baseUrl("slack-notifications")
 
@@ -50,7 +50,7 @@ class SlackNotificationsConnector @Inject()(
     httpClientV2
       .post(url"$url/slack-notifications/notification")
       .withBody(Json.toJson(message))
-      .replaceHeader("Authorization" -> authorizationHeaderValue)
+      .setHeader("Authorization" -> authorizationHeaderValue)
       .execute[SlackNotificationResponse]
       .recoverWith {
         case NonFatal(ex) =>
@@ -60,7 +60,7 @@ class SlackNotificationsConnector @Inject()(
 }
 
 final case class SlackNotificationError(
-  code: String,
+  code   : String,
   message: String
 )
 
@@ -70,8 +70,8 @@ object SlackNotificationError {
 }
 
 final case class SlackNotificationResponse(
-  successfullySentTo: Seq[String] = Nil,
-  errors: List[SlackNotificationError] = Nil
+  successfullySentTo: Seq[String]                  = Nil,
+  errors            : List[SlackNotificationError] = Nil
 ) {
   def hasSentMessages: Boolean = successfullySentTo.nonEmpty
 }
@@ -89,12 +89,12 @@ sealed trait ChannelLookup {
 object ChannelLookup {
   final case class TeamsOfGithubUser(
     githubUsername: String,
-    by: String = "teams-of-github-user"
+    by            : String = "teams-of-github-user"
   ) extends ChannelLookup
 
   final case class SlackChannel(
     slackChannels: List[String],
-    by: String = "slack-channel"
+    by           : String = "slack-channel"
   ) extends ChannelLookup
 
   implicit val writes: Writes[ChannelLookup] = Writes {
@@ -121,10 +121,10 @@ object Attachment {
 }
 
 final case class MessageDetails(
-  text: String,
-  username: String,
-  iconEmoji: String,
-  attachments: Seq[Attachment],
+  text                : String,
+  username            : String,
+  iconEmoji           : String,
+  attachments         : Seq[Attachment],
   showAttachmentAuthor: Boolean
 )
 
@@ -133,7 +133,7 @@ object MessageDetails {
 }
 
 final case class SlackNotificationRequest(
-  channelLookup: ChannelLookup,
+  channelLookup : ChannelLookup,
   messageDetails: MessageDetails
 )
 

@@ -16,12 +16,12 @@
 
 package uk.gov.hmrc.leakdetection
 
-import java.io.File
-import java.nio.charset.StandardCharsets
-
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.{FileFileFilter, TrueFileFilter}
-import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+
+import java.io.File
+import java.nio.charset.StandardCharsets
+import scala.jdk.CollectionConverters._
 
 object FileAndDirectoryUtils {
   def getFiles(explodedZipDir: File): Iterable[File] =
@@ -43,12 +43,10 @@ object FileAndDirectoryUtils {
     strippedRepoName
   }
 
-  def getSubdirName(parentDir: File): File = {
+  def getSubdirName(parentDir: File): File =
     Option(parentDir.listFiles())
       .toList
       .flatten
       .find(_.isDirectory)
       .getOrElse(throw new RuntimeException(s"[$parentDir] directory does not exist is empty"))
-  }
-
 }

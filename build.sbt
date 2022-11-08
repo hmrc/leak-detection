@@ -1,38 +1,24 @@
 import play.sbt.routes.RoutesKeys
 import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
 
-val silencerVersion = "1.7.2"
-
 lazy val microservice = Project("leak-detection", file("."))
-  .enablePlugins(
-    Seq(play.sbt.PlayScala, SbtAutoBuildPlugin, SbtGitVersioning, SbtDistributablesPlugin): _*)
+  .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
   .disablePlugins(JUnitXmlReportPlugin)
-  .settings(majorVersion := 0)
+  .settings(
+    majorVersion := 0,
+    scalaVersion := "2.13.10",
+    libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
+    PlayKeys.playDefaultPort := 8855,
+    resolvers     += Resolver.jcenterRepo,
+    scalacOptions += "-Yrangepos",
+    scalacOptions += "-Wconf:src=routes/.*:s"
+  )
   .settings(publishingSettings: _*)
-  .settings(PlayKeys.playDefaultPort := 8855)
-  .settings(
-    scalaVersion                     := "2.12.13",
-    libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test
-  )
-  .settings(resolvers += Resolver.jcenterRepo)
-  .settings(
-    scalacOptions ++= List(
-      "-Yrangepos"
-    )
-  )
-  .settings(
-    // Use the silencer plugin to suppress warnings from unused imports in routes etc.
-    scalacOptions += "-P:silencer:pathFilters=views;routes",
-    libraryDependencies ++= Seq(
-      compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
-      "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full,
-      ws
-    )
-  )
 
 RoutesKeys.routesImport ++= Seq(
   "uk.gov.hmrc.leakdetection.model.Branch",
   "uk.gov.hmrc.leakdetection.model.Repository",
   "uk.gov.hmrc.leakdetection.model.ReportId",
   "uk.gov.hmrc.leakdetection.model.RunMode",
-  "uk.gov.hmrc.leakdetection.model.RunMode._")
+  "uk.gov.hmrc.leakdetection.model.RunMode._"
+)

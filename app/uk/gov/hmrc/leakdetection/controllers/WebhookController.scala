@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.controllers
 import play.api.libs.json.Json
 import play.api.libs.json.Json.toJson
 import play.api.mvc.{BodyParser, ControllerComponents}
-import uk.gov.hmrc.leakdetection.config.ConfigLoader
+import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, Repository, RepositoryEvent, RunMode, ZenMessage}
 import uk.gov.hmrc.leakdetection.services.{ActiveBranchesService, LeaksService, ReportsService, RescanService, ScanningService, WarningsService}
@@ -30,17 +30,19 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class WebhookController @Inject()(
-  configLoader: ConfigLoader,
-  scanningService: ScanningService,
-  reportsService: ReportsService,
-  leakService: LeaksService,
-  warningsService: WarningsService,
-  activeBranchesService: ActiveBranchesService,
-  webhookRequestValidator: WebhookRequestValidator,
-  rescanService: RescanService,
+  appConfig                    : AppConfig,
+  scanningService              : ScanningService,
+  reportsService               : ReportsService,
+  leakService                  : LeaksService,
+  warningsService              : WarningsService,
+  activeBranchesService        : ActiveBranchesService,
+  webhookRequestValidator      : WebhookRequestValidator,
+  rescanService                : RescanService,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
-  cc: ControllerComponents)(implicit ec: ExecutionContext)
-    extends BackendController(cc) {
+  cc                           : ControllerComponents
+)(implicit
+  ec: ExecutionContext
+) extends BackendController(cc) {
 
   implicit val responseF = Json.format[WebhookResponse]
 
@@ -96,7 +98,7 @@ class WebhookController @Inject()(
     }
 
   val parseGithubRequest: BodyParser[GithubRequest] =
-    webhookRequestValidator.parser(configLoader.cfg.githubSecrets.webhookSecretKey)
+    webhookRequestValidator.parser(appConfig.githubSecrets.webhookSecretKey)
 
 }
 

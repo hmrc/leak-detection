@@ -16,4 +16,4 @@
 
 package uk.gov.hmrc.leakdetection.model
 
-case class Repository(asString: String) extends AnyVal{}
+case class Repository(asString: String) extends AnyVal
