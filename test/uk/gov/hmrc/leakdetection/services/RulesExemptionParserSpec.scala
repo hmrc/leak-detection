@@ -28,7 +28,6 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
 
   "Rules exemption service" should {
     "extract rule exemptions from a configuration file" in new Setup {
-
       val configContent =
         """
           |leakDetectionExemptions:
@@ -44,11 +43,9 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
       val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe expectedRules
-
     }
 
     "Support multiple paths with the same id" in new Setup {
-
       val configContent =
         """
           |leakDetectionExemptions:
@@ -68,12 +65,11 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
     }
 
     "Support rule exemption with multiple paths" in new Setup {
-
       val configContent =
         """
           |leakDetectionExemptions:
           |  - ruleId: '1'
-          |    filePaths: 
+          |    filePaths:
           |      - foo.scala
           |      - bar.py
         """.stripMargin
@@ -84,11 +80,9 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
       val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe expectedRules
-
     }
 
     "Support rule exemption with text" in new Setup {
-
       val configContent =
         """
           |leakDetectionExemptions:
@@ -104,11 +98,9 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
       val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe expectedRules
-
     }
 
     "Ignore leakDetectionExemptions with bad syntax" in new Setup {
-
       val configContent =
         """
           |leakDetectionExemptions: boom
@@ -119,10 +111,9 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
       val parsedRules: List[RuleExemption] = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe empty
-
     }
-    "Ignore leakDetectionExemptions with bad syntax in a rule" in new Setup {
 
+    "Ignore leakDetectionExemptions with bad syntax in a rule" in new Setup {
       val configContent =
         """
           |leakDetectionExemptions:
@@ -141,7 +132,6 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
       val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe expectedRules
-
     }
 
     "return empty list if no configuration file exists" in new Setup {
@@ -159,6 +149,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
 
       parsedRules shouldBe Nil
     }
+
     "return empty list if config exists but has syntax errors" in new Setup {
       val emptyContent =
         """
@@ -166,6 +157,26 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
           |- bar: 1
         """.stripMargin
       createFileForTest(emptyContent)
+
+      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+
+      parsedRules shouldBe Nil
+    }
+
+    "return empty list if config has wrong type" in new Setup {
+      val configContent =
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: '1' # snake case instead of camelCase
+          |    filePath: foo.scala
+          |    text:
+          |      - bad-array
+          |  - ruleId: 'id2'
+          |    filePath: bar.py
+          |    text: ok
+        """.stripMargin
+
+      createFileForTest(configContent)
 
       val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
@@ -188,7 +199,6 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
       val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
 
       parsedRules shouldBe expectedRules
-
     }
   }
 
@@ -199,7 +209,5 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
       write(dir / "repository.yaml", content)
       dir
     }
-
   }
-
 }

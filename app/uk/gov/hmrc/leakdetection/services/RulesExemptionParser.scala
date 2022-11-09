@@ -58,15 +58,18 @@ object RulesExemptionParser {
       .asScala
       .get("leakDetectionExemptions")
       .map { entries =>
+        def getString(entry: ju.Map[String, String], k: String): Option[String] =
+          // we need the cast to String to eagerly ensure that the value actually is a String
+          entry.asScala.get(k).map(_.asInstanceOf[String])
         entries.asScala.flatMap { entry =>
-          val ruleIdO   = entry.asScala.get("ruleId")
-          val fileNameO = entry.asScala.get("filePath")
+          val ruleIdO   = getString(entry, "ruleId")
+          val fileNameO = getString(entry, "filePath")
           val fileNames = entry.asScala
                             .getOrElse("filePaths", new java.util.ArrayList())
                             .asInstanceOf[java.util.ArrayList[String]]
                             .asScala
                             .toSeq
-          val text      = entry.asScala.get("text")
+          val text      = getString(entry, "text")
 
           (ruleIdO, fileNames, fileNameO, text) match {
             case (Some(ruleId), _, Some(fileName), text) => Some(RuleExemption(ruleId, fileNames :+ fileName, text))
