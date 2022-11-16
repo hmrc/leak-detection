@@ -84,7 +84,7 @@ class ScanningService @Inject()(
             for {
               matched                <- Future { regexMatchingEngine.run(dir) }
               results                 = matched.filterNot(_.draft)
-              unusedExemptions        = exemptionChecker.run(results, dir)
+              unusedExemptions        = exemptionChecker.checkForUnused(results, dir)
               report                  = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
               draftReport             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
               leaks                   = Leak.createFromMatchedResults(report, results)

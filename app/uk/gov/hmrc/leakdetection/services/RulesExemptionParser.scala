@@ -39,10 +39,10 @@ object RulesExemptionParser {
         List.empty
     }
 
-  private def getConfigFileContents(repoDir: File): Option[String] = {
+  def getConfigFileContents(repoDir: File): Option[String] = {
     val f = new File(repoDir.getAbsolutePath + "/" + "repository.yaml")
     if (f.exists) {
-      val source = Source.fromFile(f)
+      val source  = Source.fromFile(f)
       val content = source.mkString
       source.close()
       Some(content)
@@ -65,16 +65,16 @@ object RulesExemptionParser {
           val ruleIdO   = getString(entry, "ruleId")
           val fileNameO = getString(entry, "filePath")
           val fileNames = entry.asScala
-                            .getOrElse("filePaths", new java.util.ArrayList())
-                            .asInstanceOf[java.util.ArrayList[String]]
-                            .asScala
-                            .toSeq
-          val text      = getString(entry, "text")
+            .getOrElse("filePaths", new java.util.ArrayList())
+            .asInstanceOf[java.util.ArrayList[String]]
+            .asScala
+            .toSeq
+          val text = getString(entry, "text")
 
           (ruleIdO, fileNames, fileNameO, text) match {
-            case (Some(ruleId), _, Some(fileName), text) => Some(RuleExemption(ruleId, fileNames :+ fileName, text))
-            case (Some(ruleId), _, None          , text) => Some(RuleExemption(ruleId, fileNames, text))
-            case (None        , _, _             , _   ) => None
+            case (Some(ruleId), _, Some(fileName), text)             => Some(RuleExemption(ruleId, fileNames :+ fileName, text))
+            case (Some(ruleId), files, None, text) if files.nonEmpty => Some(RuleExemption(ruleId, fileNames, text))
+            case _                                                   => None
           }
         }
       }

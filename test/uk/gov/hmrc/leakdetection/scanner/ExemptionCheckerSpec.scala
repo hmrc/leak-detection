@@ -27,10 +27,10 @@ import java.io.File
 class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
   val exemptionChecker = new ExemptionChecker
 
-  "exemption checker" should {
+  "checkForUnused" should {
     "return empty list if no exemptions defined" in {
       val dir     = givenExemptions("")
-      val results = exemptionChecker.run(Seq.empty, dir)
+      val results = exemptionChecker.checkForUnused(Seq.empty, dir)
 
       results shouldBe empty
     }
@@ -54,7 +54,7 @@ class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
         aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file3", isExcluded = true)
       )
 
-      val results = exemptionChecker.run(matchedResults, dir)
+      val results = exemptionChecker.checkForUnused(matchedResults, dir)
 
       results shouldBe empty
     }
@@ -77,7 +77,7 @@ class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
         aMatchedResult.copy(ruleId = "rule-3", filePath = "/dir/file1", isExcluded = false)
       )
 
-      val results = exemptionChecker.run(matchedResults, dir)
+      val results = exemptionChecker.checkForUnused(matchedResults, dir)
 
       results shouldBe Seq(
         UnusedExemption("rule-1", "/dir/file1", Some("some text")),
@@ -103,9 +103,47 @@ class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
           .copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "with some text that matches", isExcluded = true)
       )
 
-      val results = exemptionChecker.run(matchedResults, dir)
+      val results = exemptionChecker.checkForUnused(matchedResults, dir)
 
       results shouldBe Seq(UnusedExemption("rule-1", "/dir/file1", Some("other text")))
+    }
+  }
+
+  "checkForInvalid" should {
+    "return false when no exemptions are present" in {
+      val dir = givenExemptions("")
+
+      exemptionChecker.checkForInvalid(dir) shouldBe false
+    }
+
+    "return false when all exemptions are parsed successfully" in {
+      val dir = givenExemptions(
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: 'rule-1'
+          |    filePath: /dir/file1
+          |    text: 'some text'
+        """.stripMargin
+      )
+
+      exemptionChecker.checkForInvalid(dir) shouldBe false
+    }
+
+    "return true when one or more exemption rules was parsed unsuccessfully" in {
+      val dir = givenExemptions(
+        """
+          |leakDetectionExemptions:
+          |  - ruleId: 'rule-1'
+          |    filePath: /dir/file1
+          |    text: 'some text'
+          |  - ruleId: 'rule-2'
+          |    filepath:
+          |      - boom
+          |      - bang
+        """.stripMargin
+      )
+
+      exemptionChecker.checkForInvalid(dir) shouldBe true
     }
   }
 

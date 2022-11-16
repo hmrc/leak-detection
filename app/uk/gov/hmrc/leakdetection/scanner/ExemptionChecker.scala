@@ -25,7 +25,7 @@ import java.io.File
 
 class ExemptionChecker @Inject()() {
 
-  def run(matchedResults: Seq[MatchedResult], explodedZipDir: File): Seq[UnusedExemption] = {
+  def checkForUnused(matchedResults: Seq[MatchedResult], explodedZipDir: File): Seq[UnusedExemption] = {
     val excludedResults = matchedResults.filter(_.isExcluded)
 
     RulesExemptionParser
@@ -38,5 +38,24 @@ class ExemptionChecker @Inject()() {
             exemption.text.fold(true)(exclusion.lineText.contains)
         )
       )
+  }
+
+  def checkForInvalid(explodedZipDir: File): Boolean = {
+    val dir: File = FileAndDirectoryUtils.getSubdirName(explodedZipDir)
+    val contents: String = RulesExemptionParser.getConfigFileContents(dir).getOrElse("")
+
+    if (contents.contains("leakDetectionExemptions")) {
+      val ruleSignal: String = "ruleId:"
+
+      val declaredExemptions: Int =
+        contents.sliding(ruleSignal.length).count(_ == ruleSignal)
+
+      val parsedExemptions: Int =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir).size
+
+      declaredExemptions != parsedExemptions
+    } else {
+      false
+    }
   }
 }
