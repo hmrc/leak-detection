@@ -68,6 +68,7 @@ class ScanningServiceSpec
       report.repoUrl           shouldBe "https://github.com/hmrc/repoName"
       report.totalLeaks        shouldBe 2
       report.rulesViolated     shouldBe Map(RuleId("rule-1") -> 1, RuleId("rule-2") -> 1)
+      report.hasInvalidExemptions shouldBe false
     }
 
     "scan a git repository and ignore a rule with the filename included in the ignoredFiles property" in new TestSetup {
@@ -166,6 +167,24 @@ class ScanningServiceSpec
       report.totalLeaks        shouldBe 2
       report.rulesViolated     shouldBe Map(RuleId("rule-1") -> 1, RuleId("rule-2") -> 1)
       report.unusedExemptions  shouldBe Seq(UnusedExemption("rule-1", "/dir/missing.file", None))
+    }
+
+    "scan the git repository and return a report that flags invalid exemptions" in new TestSetup {
+      override val privateRules = List(rules.checksInPrivateKeys)
+
+      writeRepositoryYaml {
+        s"""
+           |leakDetectionExemptions:
+           |  - ruleId: 'rule-1'
+           |    filePath:
+           |      - boom
+        """.stripMargin
+      }
+
+      val report = generateReport
+
+      report.hasInvalidExemptions shouldBe true
+
     }
 
     "trigger alerts" in new TestSetup {
