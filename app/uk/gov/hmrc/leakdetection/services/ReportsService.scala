@@ -46,12 +46,14 @@ class ReportsService @Inject()(
       authorName     = deleteBranchEvent.authorName,
       branch         = deleteBranchEvent.branchRef,
       results        = Nil,
-      unusedExemptions = Nil
+      unusedExemptions = Nil,
+      hasInvalidExemptions = false
     )
     for {
       _  <- reportsRepository.saveReport(reportSolvingProblems)
     } yield  reportSolvingProblems
   }
+
 
   def saveReport(report: Report): Future[Unit] =
     reportsRepository.saveReport(report)

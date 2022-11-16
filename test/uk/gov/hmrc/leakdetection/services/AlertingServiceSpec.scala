@@ -49,7 +49,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         totalLeaks = 1,
         rulesViolated = Map(RuleId("no nulls allowed") -> 1),
         exclusions = Map.empty,
-        unusedExemptions = Seq.empty
+        unusedExemptions = Seq.empty,
+        hasInvalidExemptions = false
       )
 
       service.alert(report).futureValue
@@ -89,7 +90,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         totalLeaks    = 1,
         rulesViolated = Map(RuleId("no nulls allowed") -> 1),
         exclusions = Map.empty,
-        unusedExemptions = Seq.empty
+        unusedExemptions = Seq.empty,
+        hasInvalidExemptions = false
       )
 
       service.alert(report).futureValue
@@ -123,7 +125,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         totalLeaks = 1,
         rulesViolated = Map(RuleId("no nulls allowed") -> 1),
         exclusions = Map.empty,
-        unusedExemptions = Seq.empty
+        unusedExemptions = Seq.empty,
+        hasInvalidExemptions = false
       )
 
       service.alert(report).futureValue
@@ -144,7 +147,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         totalLeaks    = 0,
         rulesViolated = Map.empty,
         exclusions = Map.empty,
-        unusedExemptions = Seq.empty
+        unusedExemptions = Seq.empty,
+        hasInvalidExemptions = false
       )
 
       service.alert(report).futureValue
@@ -165,7 +169,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         totalLeaks    = 1,
         rulesViolated = Map.empty,
         exclusions = Map(RuleId("an excluded leak") -> 1),
-        unusedExemptions = Seq.empty
+        unusedExemptions = Seq.empty,
+        hasInvalidExemptions = false
       )
 
       service.alert(report).futureValue

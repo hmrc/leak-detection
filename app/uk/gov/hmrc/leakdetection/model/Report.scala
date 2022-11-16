@@ -69,31 +69,33 @@ object UnusedExemption {
 }
 
 final case class Report(
-  id               : ReportId,
-  repoName         : String,
-  repoUrl          : String,
-  commitId         : String,
-  branch           : String,
-  timestamp        : Instant,
-  author           : String,
-  totalLeaks       : Int,
-  totalWarnings    : Int = 0,
-  rulesViolated    : Map[RuleId, Int],
-  exclusions       : Map[RuleId, Int],
-  unusedExemptions : Seq[UnusedExemption]
+  id                   : ReportId,
+  repoName             : String,
+  repoUrl              : String,
+  commitId             : String,
+  branch               : String,
+  timestamp            : Instant,
+  author               : String,
+  totalLeaks           : Int,
+  totalWarnings        : Int = 0,
+  rulesViolated        : Map[RuleId, Int],
+  exclusions           : Map[RuleId, Int],
+  unusedExemptions     : Seq[UnusedExemption],
+  hasInvalidExemptions : Boolean
 )
 
 object Report {
 
   def createFromMatchedResults(
-    repositoryName   : String,
-    repositoryUrl    : String,
-    commitId         : String,
-    authorName       : String,
-    branch           : String,
-    results          : Seq[MatchedResult],
-    unusedExemptions : Seq[UnusedExemption],
-    timestamp        : Instant = Instant.now()
+    repositoryName       : String,
+    repositoryUrl        : String,
+    commitId             : String,
+    authorName           : String,
+    branch               : String,
+    results              : Seq[MatchedResult],
+    unusedExemptions     : Seq[UnusedExemption],
+    hasInvalidExemptions : Boolean,
+    timestamp            : Instant = Instant.now()
   ): Report =
     Report(
       id               = ReportId.random,
@@ -106,7 +108,8 @@ object Report {
       totalLeaks       = results.filterNot(_.isExcluded).length,
       rulesViolated    = results.filterNot(_.isExcluded).groupBy(r => RuleId(r.ruleId)).view.mapValues(_.length).toMap,
       exclusions       = results.filter(_.isExcluded).groupBy(r => RuleId(r.ruleId)).view.mapValues(_.length).toMap,
-      unusedExemptions = unusedExemptions
+      unusedExemptions = unusedExemptions,
+      hasInvalidExemptions = hasInvalidExemptions
     )
 
   private val ruleIdMapFormat: Format[Map[RuleId, Int]] =
@@ -130,18 +133,19 @@ object Report {
     reportFormat(MongoJavatimeFormats.instantFormat)
 
   private def reportFormat(implicit instantFormat: Format[Instant]): OFormat[Report] = {
-    ( (__ \ "_id"              ).format[ReportId]
-    ~ (__ \ "repoName"         ).format[String]
-    ~ (__ \ "repoUrl"          ).format[String]
-    ~ (__ \ "commitId"         ).format[String]
-    ~ (__ \ "branch"           ).format[String]
-    ~ (__ \ "timestamp"        ).format[Instant]
-    ~ (__ \ "author"           ).format[String]
-    ~ (__ \ "totalLeaks"       ).format[Int]
-    ~ (__ \ "totalWarnings"    ).formatWithDefault[Int](0)
-    ~ (__ \ "rulesViolated"    ).format[Map[RuleId, Int]](ruleIdMapFormat)
-    ~ (__ \ "exclusions"       ).formatWithDefault[Map[RuleId, Int]](Map.empty)(ruleIdMapFormat)
-    ~ (__ \ "unusedExemptions" ).formatWithDefault[Seq[UnusedExemption]](Seq.empty)
+    ( (__ \ "_id"                  ).format[ReportId]
+    ~ (__ \ "repoName"             ).format[String]
+    ~ (__ \ "repoUrl"              ).format[String]
+    ~ (__ \ "commitId"             ).format[String]
+    ~ (__ \ "branch"               ).format[String]
+    ~ (__ \ "timestamp"            ).format[Instant]
+    ~ (__ \ "author"               ).format[String]
+    ~ (__ \ "totalLeaks"           ).format[Int]
+    ~ (__ \ "totalWarnings"        ).formatWithDefault[Int](0)
+    ~ (__ \ "rulesViolated"        ).format[Map[RuleId, Int]](ruleIdMapFormat)
+    ~ (__ \ "exclusions"           ).formatWithDefault[Map[RuleId, Int]](Map.empty)(ruleIdMapFormat)
+    ~ (__ \ "unusedExemptions"     ).formatWithDefault[Seq[UnusedExemption]](Seq.empty)
+    ~ (__ \ "hasInvalidExemptions" ).formatWithDefault[Boolean](false)
     )(Report.apply, unlift(Report.unapply))
   }
 }

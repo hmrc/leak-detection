@@ -107,6 +107,7 @@ object ModelFactory {
       branch         = aString("ref"),
       results        = results,
       unusedExemptions = Nil,
+      hasInvalidExemptions = false,
       timestamp      = anInstant
       )
   }

@@ -129,7 +129,7 @@ class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
       exemptionChecker.checkForInvalid(dir) shouldBe false
     }
 
-    "return true when one or more exemption rules was parsed unsuccessfully" in {
+    "return true when one or more exemption rules were parsed unsuccessfully" in {
       val dir = givenExemptions(
         """
           |leakDetectionExemptions:

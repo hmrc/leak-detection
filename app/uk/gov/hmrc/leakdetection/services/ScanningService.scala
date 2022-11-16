@@ -85,8 +85,9 @@ class ScanningService @Inject()(
               matched                <- Future { regexMatchingEngine.run(dir) }
               results                 = matched.filterNot(_.draft)
               unusedExemptions        = exemptionChecker.checkForUnused(results, dir)
-              report                  = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
-              draftReport             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
+              hasInvalidExemptions    = exemptionChecker.checkForInvalid(dir)
+              report                  = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions, hasInvalidExemptions)
+              draftReport             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions, hasInvalidExemptions)
               leaks                   = Leak.createFromMatchedResults(report, results)
               warnings                = warningsService.checkForWarnings(report, dir, isPrivate, isArchived)
               reportWithWarnings      = report.copy(totalWarnings = warnings.length)
@@ -149,7 +150,7 @@ class ScanningService @Inject()(
 
   def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
     val request     = workItem.item
-    implicit val hc = HeaderCarrier()
+    implicit val hc: HeaderCarrier = HeaderCarrier()
     scanRepository(
       repository    = Repository(request.repositoryName),
       branch        = Branch(request.branchRef),
