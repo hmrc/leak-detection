@@ -19,6 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import org.apache.commons.io.FileUtils
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors.{BranchNotFound, GithubConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
@@ -79,16 +80,20 @@ class ScanningService @Inject()(
           val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
           def executeIfDraftMode(function: => Future[Unit]): Future[Unit] = if (runMode == Draft) function else Future.unit
           def executeIfNormalMode(function: => Future[Unit]): Future[Unit] = if (runMode == Normal) function else Future.unit
+          val exemptionParsingResult = RulesExemptionParser
+            .parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
+
+          val exemptions = exemptionParsingResult.getOrElse(List.empty)
 
           val processingResult =
             for {
-              matched                <- Future { regexMatchingEngine.run(dir) }
+              matched                <- Future { regexMatchingEngine.run(dir, exemptions) }
               results                 = matched.filterNot(_.draft)
-              unusedExemptions        = exemptionChecker.run(results, dir)
+              unusedExemptions        = exemptionChecker.run(results, exemptions)
               report                  = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
               draftReport             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
               leaks                   = Leak.createFromMatchedResults(report, results)
-              warnings                = warningsService.checkForWarnings(report, dir, isPrivate, isArchived)
+              warnings                = warningsService.checkForWarnings(report, dir, isPrivate, isArchived, exemptions, exemptionParsingResult.left.toSeq)
               reportWithWarnings      = report.copy(totalWarnings = warnings.length)
               draftReportWithWarnings = draftReport.copy(totalWarnings = warnings.length)
               _                      <- executeIfDraftMode(draftReportsService.saveReport(draftReportWithWarnings))
@@ -149,7 +154,7 @@ class ScanningService @Inject()(
 
   def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
     val request     = workItem.item
-    implicit val hc = HeaderCarrier()
+    implicit val hc: HeaderCarrier = HeaderCarrier()
     scanRepository(
       repository    = Repository(request.repositoryName),
       branch        = Branch(request.branchRef),

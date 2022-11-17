@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import play.api.Logger
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
-import uk.gov.hmrc.leakdetection.config.Rule
+import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
 import uk.gov.hmrc.leakdetection.services.RulesExemptionParser
 
 import java.io.File
@@ -43,10 +43,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
   codec.onUnmappableCharacter(CodingErrorAction.IGNORE)
 
 
-  def run(explodedZipDir: File): List[MatchedResult] = {
-
-    val serviceDefinedExemptions =
-      RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(explodedZipDir))
+  def run(explodedZipDir: File, serviceDefinedExemptions: List[RuleExemption]): List[MatchedResult] = {
 
     getFiles(explodedZipDir)
       .filterNot(_.isDirectory)

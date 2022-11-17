@@ -16,8 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
-import uk.gov.hmrc.leakdetection.config.{AppConfig, Rule}
+import uk.gov.hmrc.leakdetection.config.{AppConfig, Rule, RuleExemption}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.WarningRepository
 
@@ -46,33 +45,38 @@ class WarningsService @Inject()(
   def getWarningsForReport(reportId: ReportId): Future[Seq[Warning]] =
     warningRepository
       .findForReport(reportId.value)
-      .map(_.map(warning =>
-        warning.copy(warningMessageType = appConfig.warningMessages.get(warning.warningMessageType).getOrElse(warning.warningMessageType))
-      ))
+      .map(
+        _.map(warning =>
+          warning.copy(warningMessageType =
+            appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))))
 
-  def checkForWarnings(report: Report, dir: File, isPrivate: Boolean, isArchived: Boolean): Seq[Warning] =
-    Seq(
+  def checkForWarnings(
+    report: Report,
+    dir: File,
+    isPrivate: Boolean,
+    isArchived: Boolean,
+    exemptions: List[RuleExemption],
+    additionalWarnings: Seq[WarningMessageType]): Seq[Warning] =
+    (Seq(
       repoVisibilityChecker.checkVisibility(dir, isPrivate, isArchived),
-      checkFileLevelExemptions(dir, isPrivate),
+      checkFileLevelExemptions(isPrivate, exemptions),
       checkUnusedExemptions(report, isArchived)
-    )
-      .flatten
+    ).flatten ++ additionalWarnings).distinct
       .map(w => Warning(report.repoName, report.branch, report.timestamp, report.id, w.toString))
 
-  private def checkFileLevelExemptions(dir: File, isPrivate: Boolean): Option[WarningMessageType] = {
+  private def checkFileLevelExemptions(
+    isPrivate: Boolean,
+    exemptions: List[RuleExemption]): Option[WarningMessageType] = {
     val ruleSet =
       if (isPrivate) appConfig.allRules.privateRules
       else appConfig.allRules.publicRules
-
-    val exemptions =
-      RulesExemptionParser.parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
 
     def isFileContentRule(ruleId: String): Boolean =
       ruleSet.filter(_.scope == Rule.Scope.FILE_CONTENT).exists(_.id == ruleId)
 
     if (exemptions
-      .filter(e => isFileContentRule(e.ruleId))
-      .exists(_.text.isEmpty)) {
+          .filter(e => isFileContentRule(e.ruleId))
+          .exists(_.text.isEmpty)) {
       Some(FileLevelExemptions)
     } else {
       None
