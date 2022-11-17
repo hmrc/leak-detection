@@ -17,19 +17,15 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import com.google.inject.Inject
-import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
+import uk.gov.hmrc.leakdetection.config.RuleExemption
 import uk.gov.hmrc.leakdetection.model.UnusedExemption
-import uk.gov.hmrc.leakdetection.services.RulesExemptionParser
-
-import java.io.File
 
 class ExemptionChecker @Inject()() {
 
-  def run(matchedResults: Seq[MatchedResult], explodedZipDir: File): Seq[UnusedExemption] = {
+  def run(matchedResults: Seq[MatchedResult], serviceDefinedExemptions: Seq[RuleExemption]): Seq[UnusedExemption] = {
     val excludedResults = matchedResults.filter(_.isExcluded)
 
-    RulesExemptionParser
-      .parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(explodedZipDir))
+    serviceDefinedExemptions
       .flatMap(e => e.filePaths.map(filePath => UnusedExemption(e.ruleId, filePath, e.text)))
       .filterNot(exemption =>
         excludedResults.exists(exclusion =>

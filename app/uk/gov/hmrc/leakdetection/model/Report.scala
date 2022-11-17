@@ -32,7 +32,7 @@ final case class ReportId(value: String) extends AnyVal {
 }
 
 object ReportId {
-  def random = ReportId(UUID.randomUUID().toString)
+  def random: ReportId = ReportId(UUID.randomUUID().toString)
 
   implicit val format: Format[ReportId] =
     Format.of[String]
@@ -65,7 +65,7 @@ final case class UnusedExemption(
 )
 
 object UnusedExemption {
-  implicit val format = Json.format[UnusedExemption]
+  implicit val format: OFormat[UnusedExemption] = Json.format[UnusedExemption]
 }
 
 final case class Report(

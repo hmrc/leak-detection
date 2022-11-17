@@ -46,7 +46,7 @@ class WarningServiceSpec
     "return warning if visibility check identified an issue" in new TestSetup {
       when(repoVisibilityChecker.checkVisibility(dir, true, false)).thenReturn(Some(MissingRepositoryYamlFile))
 
-      val results = warningsService.checkForWarnings(aReport, dir, true, false)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false, List.empty, Seq.empty)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), MissingRepositoryYamlFile.toString))
     }
@@ -54,80 +54,60 @@ class WarningServiceSpec
     "return no warnings if visibility checks passed" in new TestSetup {
       when(repoVisibilityChecker.checkVisibility(dir, true, false)).thenReturn(None)
 
-      val results = warningsService.checkForWarnings(aReport, dir, true, false)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false, List.empty, Seq.empty)
 
       results shouldBe Seq.empty
     }
 
     "return file level exemption warning if missing text element against rules with scope FileContent" in new TestSetup {
-      writeRepositoryYaml {
-        s"""
-           |leakDetectionExemptions:
-           |  - ruleId: 'rule-1'
-           |    filePath: 'file'
-        """.stripMargin
-      }
+      val exemptions = List(RuleExemption("rule-1", Seq("file")))
 
-      val results = warningsService.checkForWarnings(aReport, dir, true, false)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false, exemptions, Seq.empty)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), FileLevelExemptions.toString))
     }
 
     "include file level exemption warnings if repository is archived" in new TestSetup {
-      writeRepositoryYaml {
-        s"""
-           |leakDetectionExemptions:
-           |  - ruleId: 'rule-1'
-           |    filePath: 'file'
-        """.stripMargin
-      }
+      val exemptions = List(RuleExemption("rule-1", Seq("file")))
 
-      val results = warningsService.checkForWarnings(aReport, dir, true, true)
+      val results = warningsService.checkForWarnings(aReport, dir, true, true, exemptions, Seq.empty)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), FileLevelExemptions.toString))
     }
 
     "not return file level exemption warning if missing text element against rules with scope FileName" in new TestSetup {
-      writeRepositoryYaml {
-        s"""
-           |leakDetectionExemptions:
-           |  - ruleId: 'rule-2'
-           |    filePath: 'file'
-        """.stripMargin
-      }
+      val exemptions = List(RuleExemption("rule-2", Seq("file")))
 
-      val results = warningsService.checkForWarnings(aReport, dir, true, false)
+      val results = warningsService.checkForWarnings(aReport, dir, true, false, exemptions, Seq.empty)
 
       results shouldBe Seq.empty
     }
 
     "not return file level exemption warning if all exemptions are line level exemptions" in new TestSetup {
-      writeRepositoryYaml {
-        s"""
-           |leakDetectionExemptions:
-           |  - ruleId: 'rule-1'
-           |    filePath: 'file'
-           |    text: 'false-positive'
-        """.stripMargin
-      }
 
-      val results = warningsService.checkForWarnings(aReport, dir, true, false)
+      val exemptions = List(RuleExemption("rule-1", Seq("file"), Some("false-positive")))
+
+      val results = warningsService.checkForWarnings(aReport, dir, true, false, exemptions, Seq.empty)
 
       results shouldBe Seq.empty
     }
 
     "return unused exemptions warning if report has unused exemptions" in new TestSetup {
+      val exemptions = List(RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")))
+
       val report = aReport.copy(unusedExemptions = Seq(UnusedExemption("rule-1", "/dir/file1", Some("some text"))))
 
-      val results = warningsService.checkForWarnings(report, dir, true, false)
+      val results = warningsService.checkForWarnings(report, dir, true, false, exemptions, Seq.empty)
 
       results shouldBe Seq(Warning("repoName", "branch", timestamp, ReportId("report"), UnusedExemptions.toString))
     }
 
     "ignore unused exemptions warning if repository is archived" in new TestSetup {
+      val exemptions = List(RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")))
+
       val report = aReport.copy(unusedExemptions = Seq(UnusedExemption("rule-1", "/dir/file1", Some("some text"))))
 
-      val results = warningsService.checkForWarnings(report, dir, true, true)
+      val results = warningsService.checkForWarnings(report, dir, true, true, exemptions, Seq.empty)
 
       results shouldBe Seq.empty
     }

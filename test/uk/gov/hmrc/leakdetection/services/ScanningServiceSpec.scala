@@ -117,7 +117,7 @@ class ScanningServiceSpec
         s"""
            |leakDetectionExemptions:
            |  - ruleId: 'rule-2'
-           |    filePath: ${relativePath(file2)}
+           |    filePath: '${relativePath(file2)}'
         """.stripMargin
       }
 
@@ -177,7 +177,7 @@ class ScanningServiceSpec
     }
 
     "send a warning alert if there were problems" in new TestSetup {
-      when(warningsService.checkForWarnings(any, any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
+      when(warningsService.checkForWarnings(any, any, any, any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
 
       generateReport
 
@@ -185,7 +185,7 @@ class ScanningServiceSpec
     }
 
     "not send alerts if the branch is not main" in new TestSetup {
-      when(warningsService.checkForWarnings(any, any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
+      when(warningsService.checkForWarnings(any, any, any, any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
 
       override val branch = "not-main"
       when(
@@ -219,7 +219,7 @@ class ScanningServiceSpec
       "report on warnings without storing them in the warnings collection" in new TestSetup {
         val argCap = ArgCaptor[Report]
 
-        when(warningsService.checkForWarnings(any, any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
+        when(warningsService.checkForWarnings(any, any, any, any, any, any)).thenReturn(Seq(Warning("", "", Instant.now(), ReportId(""), MissingRepositoryYamlFile.toString)))
         when(draftService.saveReport(any)).thenReturn(Future.unit)
 
         val report = performScan(Draft)
@@ -500,7 +500,7 @@ class ScanningServiceSpec
     when(reportsService.saveReport(any)).thenReturn(Future.successful(()))
     when(leaksService.saveLeaks(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
     when(warningsService.saveWarnings(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
-    when(warningsService.checkForWarnings(any, any, any, any)).thenReturn(Seq.empty)
+    when(warningsService.checkForWarnings(any, any, any, any, any, any)).thenReturn(Seq.empty)
     when(activeBranchesService.markAsActive(any[Repository], any[Branch], any[ReportId])).thenReturn(Future.successful(()))
     when(teamsAndRepositoriesConnector.repo(any)).thenReturn(Future.successful(Some(RepositoryInfo("", true, false, "main"))))
 
