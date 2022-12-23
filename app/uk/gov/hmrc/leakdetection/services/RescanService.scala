@@ -94,7 +94,6 @@ class RescanService @Inject()(
       repositoryUrl  = s"https://github.com/hmrc/${repoInfo.name}",
       commitId       = NOT_APPLICABLE,
       archiveUrl     = s"https://api.github.com/repos/hmrc/${repoInfo.name}/{archive_format}{/ref}",
-      deleted        = false,
       runMode        = Some(runMode)
     )
 }

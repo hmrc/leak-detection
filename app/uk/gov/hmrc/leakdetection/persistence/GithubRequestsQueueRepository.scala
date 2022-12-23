@@ -38,7 +38,6 @@ object MongoPayloadDetailsFormats {
     ~ (__ \ "repositoryUrl" ).format[String]
     ~ (__ \ "commitId"      ).format[String]
     ~ (__ \ "archiveUrl"    ).format[String]
-    ~ (__ \ "deleted"       ).format[Boolean]
     ~ (__ \ "runMode"       ).formatNullable[RunMode]
     )(PayloadDetails.apply, unlift(PayloadDetails.unapply))
 }

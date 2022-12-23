@@ -17,9 +17,7 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import play.api.Logger
-import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
-import uk.gov.hmrc.leakdetection.services.RulesExemptionParser
 
 import java.io.File
 import java.nio.charset.CodingErrorAction

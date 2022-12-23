@@ -359,14 +359,12 @@ class ScanningServiceSpec
       repositoryUrl  = "https://github.com/hmrc/repoName",
       commitId       = "some commit id",
       archiveUrl     = "https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}",
-      deleted        = false,
       runMode        = None
     )
 
     val githubSecrets =
       GithubSecrets(
         personalAccessToken = "pat",
-        webhookSecretKey    = "a secret"
       )
 
     object rules {

@@ -150,7 +150,7 @@ class WarningServiceSpec
     lazy val appConfig =
       AppConfig(
         allRules                  = AllRules(Nil, List(fileContentRule, fileNameRule)),
-        githubSecrets             = GithubSecrets("", ""),
+        githubSecrets             = GithubSecrets(""),
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
         warningMessages           = Map.empty,

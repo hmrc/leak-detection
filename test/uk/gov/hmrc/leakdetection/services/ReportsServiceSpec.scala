@@ -49,7 +49,6 @@ class ReportsServiceSpec
 
   private val configuration: Configuration = Configuration(
     "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
-    "githubSecrets.webhookSecretKey"         -> "PLACEHOLDER",
     "allRules.privateRules"                  -> List(),
     "allRules.publicRules"                   -> List(),
     "leakResolutionUrl"                      -> "PLACEHOLDER",
@@ -65,7 +64,7 @@ class ReportsServiceSpec
 
     "insert a report with no leaks when a branch is deleted" in {
 
-      val branchDeleteEvent = DeleteBranchEvent("repo", "test.user", "branch1", true, "http://repo.url/repo/branch1")
+      val branchDeleteEvent = DeleteBranchEvent("repo", "test.user", "branch1", "http://repo.url/repo/branch1")
 
       val expectedResult = reportsService.clearReportsAfterBranchDeleted(branchDeleteEvent).futureValue
 

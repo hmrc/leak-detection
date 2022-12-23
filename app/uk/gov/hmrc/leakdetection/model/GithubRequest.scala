@@ -22,6 +22,16 @@ import play.api.libs.json._
 
 sealed trait GithubRequest extends Product with Serializable
 
+object GithubRequest {
+  val githubReads: Reads[GithubRequest] =
+    PayloadDetails.githubReads
+      .orElse(DeleteBranchEvent.githubReads)
+      .orElse(RepositoryEvent.githubReads)
+}
+
+// https://docs.github.com/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#push
+// Set to fail when deleted is false
+// runMode is for the admin endpoint - TODO change to query param
 final case class PayloadDetails(
   repositoryName: String,
   isPrivate     : Boolean,
@@ -31,65 +41,60 @@ final case class PayloadDetails(
   repositoryUrl : String,
   commitId      : String,
   archiveUrl    : String,
-  deleted       : Boolean,
   runMode       : Option[RunMode]
 ) extends GithubRequest
 
 object PayloadDetails {
   implicit val rmr = RunMode.format
-  val githubReads: Reads[PayloadDetails] =
-    ( (__ \ "repository" \ "name"       ).read[String]
-    ~ (__ \ "repository" \ "private"    ).read[Boolean]
-    ~ (__ \ "repository" \ "archived"   ).read[Boolean]
-    ~ (__ \ "pusher"     \ "name"       ).read[String]
-    ~ (__ \ "ref"                       ).read[String].map(_.stripPrefix("refs/heads/"))
-    ~ (__ \ "repository" \ "url"        ).read[String]
-    ~ (__ \ "after"                     ).read[String]
-    ~ (__ \ "repository" \ "archive_url").read[String]
-    ~ (__ \ "deleted"                   ).read[Boolean]
-    ~ (__ \ "runMode"                   ).readNullable[RunMode]
-    )(PayloadDetails.apply _)
-      .filter(JsonValidationError("Delete event is not valid"))(!_.deleted)
+  val githubReads: Reads[GithubRequest] =
+    (__ \ "deleted")
+      .read[Boolean]
+      .filter(JsonValidationError("delete should be false"))(_ == false)
+      .flatMap(_ =>
+        ( (__ \ "repository" \ "name"       ).read[String]
+        ~ (__ \ "repository" \ "private"    ).read[Boolean]
+        ~ (__ \ "repository" \ "archived"   ).read[Boolean]
+        ~ (__ \ "pusher"     \ "name"       ).read[String]
+        ~ (__ \ "ref"                       ).read[String].map(_.stripPrefix("refs/heads/"))
+        ~ (__ \ "repository" \ "url"        ).read[String]
+        ~ (__ \ "after"                     ).read[String]
+        ~ (__ \ "repository" \ "archive_url").read[String]
+        ~ (__ \ "runMode"                   ).readNullable[RunMode]
+        )(PayloadDetails.apply _)
+      )
 }
 
+// Also a Push - deleted is true
 final case class DeleteBranchEvent(
   repositoryName: String,
   authorName    : String,
   branchRef     : String,
-  deleted       : Boolean,
   repositoryUrl : String
 ) extends GithubRequest
 
 object DeleteBranchEvent {
-  val githubReads: Reads[DeleteBranchEvent] =
-    ( (__ \ "repository" \ "name").read[String]
-    ~ (__ \ "pusher"     \ "name").read[String]
-    ~ (__ \ "ref"                ).read[String].map(_.stripPrefix("refs/heads/"))
-    ~ (__ \ "deleted"            ).read[Boolean]
-    ~ (__ \ "repository" \ "url" ).read[String]
-    )(DeleteBranchEvent.apply _)
-      .filter(JsonValidationError("Not a delete event"))(_.deleted)
+  val githubReads: Reads[GithubRequest] =
+    (__ \ "deleted")
+      .read[Boolean]
+      .filter(JsonValidationError("delete should be true"))(_ == true)
+      .flatMap(_ =>
+        ( (__ \ "repository" \ "name").read[String]
+        ~ (__ \ "pusher"     \ "name").read[String]
+        ~ (__ \ "ref"                ).read[String].map(_.stripPrefix("refs/heads/"))
+        ~ (__ \ "repository" \ "url" ).read[String]
+        )(DeleteBranchEvent.apply _)
+      )
 }
 
+// https://docs.github.com/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#repository
 final case class RepositoryEvent(
   repositoryName: String,
   action        : String
 ) extends GithubRequest
 
 object RepositoryEvent {
-  val githubReads: Reads[RepositoryEvent] =
+  val githubReads: Reads[GithubRequest] =
     ( (__ \ "repository" \ "name").read[String]
     ~ (__ \ "action"             ).read[String]
     )(RepositoryEvent.apply _)
-}
-
-/**
-  * Test message sent by Github when webhook is created.
-  * Should be ignored with 200 OK.
-  */
-final case class ZenMessage(zen: String) extends GithubRequest
-
-object ZenMessage {
-  val githubReads: Reads[ZenMessage] =
-    Reads.of[String].map(ZenMessage.apply)
 }

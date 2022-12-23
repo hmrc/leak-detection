@@ -68,7 +68,7 @@ class ScanningService @Inject()(
     try {
       githubConnector.getZip(archiveUrl, branch).flatMap {
         case Left(BranchNotFound(_)) =>
-          val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, deleted = true, repositoryUrl = repositoryUrl)
+          val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, repositoryUrl = repositoryUrl)
           for {
             _      <- activeBranchesService.clearBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
             _      <- leaksService.clearBranchLeaks(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)

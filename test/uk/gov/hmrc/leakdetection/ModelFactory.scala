@@ -53,7 +53,6 @@ object ModelFactory {
       repositoryUrl  = aString("repo-url"),
       commitId       = aString("commitId"),
       archiveUrl     = aString("archiveUrl"),
-      deleted        = false,
       runMode        = None
     )
 
@@ -63,7 +62,6 @@ object ModelFactory {
       authorName     = aString("author"),
       repositoryUrl  = aString("repo-url"),
       branchRef      = aString("ref"),
-      deleted        = true
     )
 
   def aDeleteRepositoryEvent =
@@ -141,7 +139,6 @@ object ModelFactory {
       Json.obj(
         "ref"     -> s"refs/heads/$branchRef",
         "after"   -> commitId,
-        "deleted" -> deleted,
         "repository" -> Json
           .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate, "archived" -> isArchived),
         "pusher" -> Json.obj("name" -> authorName)
@@ -154,7 +151,6 @@ object ModelFactory {
       Json.obj(
         "ref"        -> s"refs/heads/$branchRef",
         "pusher"     -> Json.obj("name" -> authorName),
-        "deleted"    -> deleted,
         "repository" -> Json.obj("name" -> repositoryName, "url" -> repositoryUrl)
       )
     }
@@ -167,8 +163,4 @@ object ModelFactory {
         "action" -> action
       )
     }
-
-  def asJson[A: Writes](a: A): String =
-    Json.stringify(Json.toJson(a))
-
 }
