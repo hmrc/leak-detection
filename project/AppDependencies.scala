@@ -10,8 +10,6 @@ object AppDependencies {
     "uk.gov.hmrc"            %% "bootstrap-backend-play-28"         % bootstrapVersion,
     "uk.gov.hmrc.mongo"      %% "hmrc-mongo-work-item-repo-play-28" % hmrcMongoVersion,
     "org.zeroturnaround"     %  "zt-zip"                            % "1.14",
-    "commons-codec"          %  "commons-codec"                     % "1.15",
-    "commons-lang"           %  "commons-lang"                      % "2.6",
     "commons-io"             %  "commons-io"                        % "2.11.0",
     "org.typelevel"          %% "cats-core"                         % "2.6.1",
     "org.yaml"               %  "snakeyaml"                         % "1.17",

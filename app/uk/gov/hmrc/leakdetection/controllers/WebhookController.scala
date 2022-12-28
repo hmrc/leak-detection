@@ -18,10 +18,10 @@ package uk.gov.hmrc.leakdetection.controllers
 
 import play.api.libs.json.Json
 import play.api.libs.json.Json.toJson
-import play.api.mvc.{BodyParser, ControllerComponents}
+import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
-import uk.gov.hmrc.leakdetection.model.{DeleteBranchEvent, GithubRequest, PayloadDetails, Repository, RepositoryEvent, RunMode, ZenMessage}
+import uk.gov.hmrc.leakdetection.model.{GithubRequest, PushDelete, PushUpdate, Repository, RepositoryEvent, RunMode}
 import uk.gov.hmrc.leakdetection.services.{ActiveBranchesService, LeaksService, ReportsService, RescanService, ScanningService, WarningsService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -36,7 +36,6 @@ class WebhookController @Inject()(
   leakService                  : LeaksService,
   warningsService              : WarningsService,
   activeBranchesService        : ActiveBranchesService,
-  webhookRequestValidator      : WebhookRequestValidator,
   rescanService                : RescanService,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
   cc                           : ControllerComponents
@@ -47,59 +46,49 @@ class WebhookController @Inject()(
   implicit val responseF = Json.format[WebhookResponse]
 
   def processGithubWebhook() =
-    Action.async(parseGithubRequest) { implicit request =>
+    Action.async(parse.json[GithubRequest](GithubRequest.githubReads)) { implicit request =>
       request.body match {
 
-        case payloadDetails: PayloadDetails if payloadDetails.branchRef.contains("refs/tags/") =>
+        case pushUpdate: PushUpdate if pushUpdate.branchRef.contains("refs/tags/") =>
           Future.successful(
             Ok(toJson(WebhookResponse("Tag commit ignored")))
           )
 
-        case payloadDetails: PayloadDetails =>
-          scanningService.queueRequest(payloadDetails).map { _ =>
+        case pushUpdate: PushUpdate =>
+          scanningService.queueRequest(pushUpdate).map { _ =>
             Ok(toJson(WebhookResponse("Request successfully queued")))
           }
 
-        case deleteBranchEvent: DeleteBranchEvent =>
+        case pushDelete: PushDelete =>
           for {
-            _ <- activeBranchesService.clearBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
-            _ <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
-            _ <- leakService.clearBranchLeaks(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
-            _ <- warningsService.clearBranchWarnings(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
-          } yield Ok (toJson (WebhookResponse (s"${deleteBranchEvent.repositoryName}/${deleteBranchEvent.branchRef} deleted")))
+            _ <- activeBranchesService.clearBranch(pushDelete.repositoryName, pushDelete.branchRef)
+            _ <- reportsService.clearReportsAfterBranchDeleted(pushDelete)
+            _ <- leakService.clearBranchLeaks(pushDelete.repositoryName, pushDelete.branchRef)
+            _ <- warningsService.clearBranchWarnings(pushDelete.repositoryName, pushDelete.branchRef)
+          } yield Ok (toJson (WebhookResponse(s"${pushDelete.repositoryName}/${pushDelete.branchRef} deleted")))
 
         case repositoryEvent: RepositoryEvent if repositoryEvent.action.equalsIgnoreCase("archived") =>
           for {
             _             <- leakService.clearRepoLeaks(repositoryEvent.repositoryName)
             _             <- warningsService.clearRepoWarnings(repositoryEvent.repositoryName)
             _             <- rescanService.rescanArchivedBranches(Repository(repositoryEvent.repositoryName), RunMode.Normal)
-            defaultBranch <- teamsAndRepositoriesConnector.repo(repositoryEvent.repositoryName).map(_.map(_.defaultBranch).getOrElse("main"))
+            defaultBranch <- teamsAndRepositoriesConnector.repo(repositoryEvent.repositoryName).map(_.fold("main")(_.defaultBranch))
             _             <- activeBranchesService.clearRepoExceptDefault(repositoryEvent.repositoryName, defaultBranch)
-          } yield Ok( toJson(WebhookResponse(s"${repositoryEvent.repositoryName} archived")))
+          } yield Ok(toJson(WebhookResponse(s"${repositoryEvent.repositoryName} archived")))
 
         case repositoryEvent: RepositoryEvent if repositoryEvent.action.equalsIgnoreCase("deleted") =>
           for {
             _ <- activeBranchesService.clearRepo(repositoryEvent.repositoryName)
             _ <- leakService.clearRepoLeaks(repositoryEvent.repositoryName)
             _ <- warningsService.clearRepoWarnings(repositoryEvent.repositoryName)
-          } yield Ok( toJson(WebhookResponse(s"${repositoryEvent.repositoryName} deleted")))
+          } yield Ok(toJson(WebhookResponse(s"${repositoryEvent.repositoryName} deleted")))
 
         case repositoryEvent: RepositoryEvent =>
           Future.successful(
             Ok(toJson(WebhookResponse(s"Repository events with ${repositoryEvent.action} actions are ignored")))
           )
-
-        case ZenMessage(_) =>
-          Future.successful(
-            Ok(toJson(WebhookResponse("Zen message ignored")))
-          )
       }
-
     }
-
-  val parseGithubRequest: BodyParser[GithubRequest] =
-    webhookRequestValidator.parser(appConfig.githubSecrets.webhookSecretKey)
-
 }
 
 case class WebhookResponse(details: String)

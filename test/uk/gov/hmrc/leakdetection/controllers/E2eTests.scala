@@ -19,7 +19,6 @@ package uk.gov.hmrc.leakdetection.controllers
 import java.time.{Duration => JDuration}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.apache.commons.codec.digest.{HmacAlgorithms, HmacUtils}
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Sorts}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
@@ -44,6 +43,7 @@ import uk.gov.hmrc.mongo.test.MongoSupport
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import play.api.libs.json.JsObject
 
 class E2eTests
     extends AnyFeatureSpec
@@ -61,21 +61,12 @@ class E2eTests
   Feature("Verifying Github commits") {
     Scenario("happy path") {
       Given("Github makes a request with all required fields incl. a link to download a zip")
-      val githubStub                   = GithubStub.servingZippedFiles(List(TestZippedFile("content", "/foo/bar")))
-      val payloadDetails               = aPayloadDetails.copy(archiveUrl = githubStub.archiveUrl, deleted = false)
-      val githubRequestPayload: String = asJson(payloadDetails)
-
-      And("the request is signed using a secret known to us")
-      val signedRequest =
-        FakeRequest("POST", "/validate")
-          .withBody(githubRequestPayload)
-          .withHeaders(
-            CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature-256" -> ("sha256=" + generateHmac(githubRequestPayload))
-          )
+      val githubStub           = GithubStub.servingZippedFiles(List(TestZippedFile("content", "/foo/bar")))
+      val pushUpdate           = aPushUpdate.copy(archiveUrl = githubStub.archiveUrl)
+      val githubRequestPayload = Json.stringify(Json.toJson(pushUpdate).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
 
       When("Leak Detection service receives a request")
-      val res = Helpers.route(app, signedRequest).get
+      val res = Helpers.route(app, FakeRequest("POST", "/validate").withHeaders(CONTENT_TYPE -> "application/json").withBody(githubRequestPayload)).get
 
       Then("Processing should be successful")
       Helpers.status(res) shouldBe 200
@@ -86,7 +77,7 @@ class E2eTests
 
       And("New report will eventually be created after branch is processed")
       eventually {
-        val reports = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue
+        val reports = findReportsForRepoAndBranch(pushUpdate.repositoryName, pushUpdate.branchRef).futureValue
         reports.size shouldBe 1
       }
     }
@@ -94,20 +85,12 @@ class E2eTests
     Scenario("tags") {
 
       Given("Github makes a request where the ref indicates a tag")
-      val githubRequestPayload: String =
-        asJson(aPayloadDetails.copy(deleted = false, branchRef = "refs/tags/v6.17.0"))
+      val pushUpdate           = aPushUpdate.copy(branchRef = "refs/tags/v6.17.0")
+      val githubRequestPayload = Json.stringify(Json.toJson(pushUpdate).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
 
-      And("the request is signed using a secret known to us")
-      val signedRequest =
-        FakeRequest("POST", "/validate")
-          .withBody(githubRequestPayload)
-          .withHeaders(
-            CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature-256" -> ("sha256=" + generateHmac(githubRequestPayload))
-          )
 
       When("Leak Detection service receives a request")
-      val res = Helpers.route(app, signedRequest).get
+      val res = Helpers.route(app, FakeRequest("POST", "/validate").withHeaders(CONTENT_TYPE -> "application/json").withBody(githubRequestPayload)).get
 
       Then("Processing should be skipped and return 200")
       Helpers.status(res) shouldBe 200
@@ -119,23 +102,14 @@ class E2eTests
 
     Scenario("Delete branch event") {
       Given("Github makes a request representing a delete branch event")
-      val requestPayload               = aPayloadDetails.copy(deleted = true)
-      val githubRequestPayload: String = asJson(requestPayload)
-
-      And("the request is signed using a secret known to us")
-      val signedRequest =
-        FakeRequest("POST", "/validate")
-          .withBody(githubRequestPayload)
-          .withHeaders(
-            CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature-256" -> ("sha256=" + generateHmac(githubRequestPayload))
-          )
+      val requestPayload       = aPushUpdate
+      val githubRequestPayload = Json.stringify(Json.toJson(requestPayload).as[JsObject].deepMerge(Json.obj("deleted" -> true)))
 
       And("there is already a report with problems for a given repo/branch")
       prepopulateReportWithProblems(requestPayload.repositoryName, requestPayload.branchRef).futureValue
 
       When("LDS receives a request related to deleting a branch")
-      val res = Helpers.route(app, signedRequest).get
+      val res = Helpers.route(app, FakeRequest("POST", "/validate").withHeaders(CONTENT_TYPE -> "application/json").withBody(githubRequestPayload)).get
 
       Then("processing should be successful")
       Helpers.status(res) shouldBe 200
@@ -150,23 +124,15 @@ class E2eTests
       val githubStub = GithubStub.serving404
 
       And("it will provide a url to a no longer existing branch")
-      val noLongerExistingArchiveUrl   = githubStub.archiveUrl
-      val payloadDetails               = aPayloadDetails.copy(archiveUrl = noLongerExistingArchiveUrl, deleted = false)
-      val githubRequestPayload: String = asJson(payloadDetails)
+      val noLongerExistingArchiveUrl = githubStub.archiveUrl
+      val pushUpdate                 = aPushUpdate.copy(archiveUrl = noLongerExistingArchiveUrl)
+      val githubRequestPayload       = Json.stringify(Json.toJson(pushUpdate).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
 
       And("there is already a report with problems for a given repo/branch")
-      prepopulateReportWithProblems(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue
+      prepopulateReportWithProblems(pushUpdate.repositoryName, pushUpdate.branchRef).futureValue
 
       When("Github calls LDS")
-      val signedRequest =
-        FakeRequest("POST", "/validate")
-          .withBody(githubRequestPayload)
-          .withHeaders(
-            CONTENT_TYPE      -> "application/json",
-            "X-Hub-Signature-256" -> ("sha256=" + generateHmac(githubRequestPayload))
-          )
-
-      val res = Helpers.route(app, signedRequest).get
+      val res = Helpers.route(app, FakeRequest("POST", "/validate").withHeaders(CONTENT_TYPE -> "application/json").withBody(githubRequestPayload)).get
 
       Then("Processing should be successful")
       Helpers.status(res) shouldBe 200
@@ -177,7 +143,7 @@ class E2eTests
 
       And("Eventually previous reports with problems will be cleared")
       eventually {
-        val report = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue.head
+        val report = findReportsForRepoAndBranch(pushUpdate.repositoryName, pushUpdate.branchRef).futureValue.head
         report.totalLeaks shouldBe 0
         report.rulesViolated shouldBe Map.empty
       }
@@ -197,16 +163,12 @@ class E2eTests
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = 5.seconds)
 
-  val secret: String = aString()
-  private def generateHmac(payload: String) = new HmacUtils(HmacAlgorithms.HMAC_SHA_256, secret).hmacHex(payload)
-
   override def newAppForTest(testData: TestData): Application =
     new GuiceApplicationBuilder()
       .configure(
         Configuration(
           ConfigFactory.parseString(
             s"""
-              githubSecrets.webhookSecretKey = $secret
               alerts.slack.enabled = false
 
               scheduling.scanner {

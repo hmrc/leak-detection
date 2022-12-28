@@ -38,13 +38,13 @@ class ReportsService @Inject()(
   def getReport(reportId: ReportId): Future[Option[Report]] =
     reportsRepository.findByReportId(reportId)
 
-  def clearReportsAfterBranchDeleted(deleteBranchEvent: DeleteBranchEvent): Future[Report] = {
+  def clearReportsAfterBranchDeleted(pushDelete: PushDelete): Future[Report] = {
     val reportSolvingProblems = Report.createFromMatchedResults(
-      repositoryName = deleteBranchEvent.repositoryName,
-      repositoryUrl  = deleteBranchEvent.repositoryUrl,
+      repositoryName = pushDelete.repositoryName,
+      repositoryUrl  = pushDelete.repositoryUrl,
       commitId       = "n/a (branch was deleted)",
-      authorName     = deleteBranchEvent.authorName,
-      branch         = deleteBranchEvent.branchRef,
+      authorName     = pushDelete.authorName,
+      branch         = pushDelete.branchRef,
       results        = Nil,
       unusedExemptions = Nil
     )

@@ -67,7 +67,7 @@ class RescanService @Inject()(
 
   def triggerRescan(repos: List[String], runMode: RunMode): Future[Unit] =
     for {
-      payloads <- repos.foldLeftM(Seq.empty[PayloadDetails])((acc, repoName) =>
+      payloads <- repos.foldLeftM(Seq.empty[PushUpdate])((acc, repoName) =>
                     teamsAndRepos.repo(repoName).map(r => acc ++ r.map(r => repoToPayload(r, runMode)).toSeq)
                   )
       inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
@@ -76,16 +76,16 @@ class RescanService @Inject()(
 
   def rescanArchivedBranches(repository: Repository, runMode: RunMode) =
     for {
-      branches       <- activeBranchesService.getActiveBranches(Some(repository.asString)).map(_.map(_.branch))
-      repoDetails    <- teamsAndRepos.repo(repository.asString)
-      payloadDetails =  repoDetails.map(r => repoToPayload(r, runMode))
-      payloads       =  branches.map(b => payloadDetails.map(p => p.copy(branchRef = b, isArchived = true))).flatten //we need to ensure it's marked as archived as it's unlikely teamsAndRepos knows this yet
-      inserts        <- rescanQueue.pushNewBatch(payloads).map(_.length)
-      _              =  logger.info(s"Re-triggered $inserts rescans")
+      branches    <- activeBranchesService.getActiveBranches(Some(repository.asString)).map(_.map(_.branch))
+      repoDetails <- teamsAndRepos.repo(repository.asString)
+      pushUpdate  =  repoDetails.map(r => repoToPayload(r, runMode))
+      payloads    =  branches.map(b => pushUpdate.map(p => p.copy(branchRef = b, isArchived = true))).flatten //we need to ensure it's marked as archived as it's unlikely teamsAndRepos knows this yet
+      inserts     <- rescanQueue.pushNewBatch(payloads).map(_.length)
+      _           =  logger.info(s"Re-triggered $inserts rescans")
     } yield ()
 
-  private def repoToPayload(repoInfo: RepositoryInfo, runMode: RunMode): PayloadDetails =
-    PayloadDetails(
+  private def repoToPayload(repoInfo: RepositoryInfo, runMode: RunMode): PushUpdate =
+    PushUpdate(
       repositoryName = repoInfo.name,
       isPrivate      = repoInfo.isPrivate,
       isArchived     = repoInfo.isArchived,
@@ -94,7 +94,6 @@ class RescanService @Inject()(
       repositoryUrl  = s"https://github.com/hmrc/${repoInfo.name}",
       commitId       = NOT_APPLICABLE,
       archiveUrl     = s"https://api.github.com/repos/hmrc/${repoInfo.name}/{archive_format}{/ref}",
-      deleted        = false,
       runMode        = Some(runMode)
     )
 }

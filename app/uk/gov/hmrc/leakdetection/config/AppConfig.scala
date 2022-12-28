@@ -50,7 +50,6 @@ class AppConfigProvider @Inject()(
       githubSecrets =
         GithubSecrets(
           personalAccessToken = configuration.get[String]("githubSecrets.personalAccessToken"),
-          webhookSecretKey    = configuration.get[String]("githubSecrets.webhookSecretKey")
         ),
 
       maxLineLength =
@@ -131,7 +130,6 @@ object Rule {
 
 final case class GithubSecrets(
   personalAccessToken: String,
-  webhookSecretKey   : String
 )
 
 final case class RuleExemption(

@@ -43,8 +43,8 @@ object ModelFactory {
 
   def anInstant: Instant = Instant.now().truncatedTo((ChronoUnit.MILLIS))
 
-  def aPayloadDetails =
-    PayloadDetails(
+  def aPushUpdate =
+    PushUpdate(
       repositoryName = aString("repositoryName"),
       isPrivate      = aBoolean,
       isArchived     = false,
@@ -53,17 +53,15 @@ object ModelFactory {
       repositoryUrl  = aString("repo-url"),
       commitId       = aString("commitId"),
       archiveUrl     = aString("archiveUrl"),
-      deleted        = false,
       runMode        = None
     )
 
-  def aDeleteBranchEvent =
-    DeleteBranchEvent(
+  def aPushDelete =
+    PushDelete(
       repositoryName = aString("repositoryName"),
       authorName     = aString("author"),
       repositoryUrl  = aString("repo-url"),
       branchRef      = aString("ref"),
-      deleted        = true
     )
 
   def aDeleteRepositoryEvent =
@@ -135,26 +133,24 @@ object ModelFactory {
     warningsToAlert     = Seq.empty
   )
 
-  implicit val payloadDetailsWrites: Writes[PayloadDetails] =
-    Writes[PayloadDetails] { payloadDetails =>
-      import payloadDetails._
+  implicit val pushUpdateWrites: Writes[PushUpdate] =
+    Writes[PushUpdate] { pushUpdate =>
+      import pushUpdate._
       Json.obj(
         "ref"     -> s"refs/heads/$branchRef",
         "after"   -> commitId,
-        "deleted" -> deleted,
         "repository" -> Json
           .obj("name" -> repositoryName, "url" -> repositoryUrl, "archive_url" -> archiveUrl, "private" -> isPrivate, "archived" -> isArchived),
         "pusher" -> Json.obj("name" -> authorName)
       )
     }
 
-  implicit val deleteBranchEventWrites: Writes[DeleteBranchEvent] =
-    Writes[DeleteBranchEvent] { deleteBranchEvent =>
-      import deleteBranchEvent._
+  implicit val pushDeleteWrites: Writes[PushDelete] =
+    Writes[PushDelete] { pushDelete =>
+      import pushDelete._
       Json.obj(
         "ref"        -> s"refs/heads/$branchRef",
         "pusher"     -> Json.obj("name" -> authorName),
-        "deleted"    -> deleted,
         "repository" -> Json.obj("name" -> repositoryName, "url" -> repositoryUrl)
       )
     }
@@ -167,8 +163,4 @@ object ModelFactory {
         "action" -> action
       )
     }
-
-  def asJson[A: Writes](a: A): String =
-    Json.stringify(Json.toJson(a))
-
 }

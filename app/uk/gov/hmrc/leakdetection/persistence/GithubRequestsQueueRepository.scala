@@ -20,13 +20,13 @@ import java.time.{Duration, Instant}
 import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 import play.api.libs.json.__
-import uk.gov.hmrc.leakdetection.model.{PayloadDetails, RunMode}
+import uk.gov.hmrc.leakdetection.model.{PushUpdate, RunMode}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object MongoPayloadDetailsFormats {
+object MongoPushUpdateFormats {
   import play.api.libs.functional.syntax._
   implicit val rmf = RunMode.format
   val formats =
@@ -38,9 +38,8 @@ object MongoPayloadDetailsFormats {
     ~ (__ \ "repositoryUrl" ).format[String]
     ~ (__ \ "commitId"      ).format[String]
     ~ (__ \ "archiveUrl"    ).format[String]
-    ~ (__ \ "deleted"       ).format[Boolean]
     ~ (__ \ "runMode"       ).formatNullable[RunMode]
-    )(PayloadDetails.apply, unlift(PayloadDetails.unapply))
+    )(PushUpdate.apply, unlift(PushUpdate.unapply))
 }
 
 @Singleton
@@ -48,10 +47,10 @@ class GithubRequestsQueueRepository @Inject()(
   configuration: Configuration,
   mongoComponent: MongoComponent
 )(implicit ec: ExecutionContext
-) extends WorkItemRepository[PayloadDetails](
+) extends WorkItemRepository[PushUpdate](
   collectionName = "githubRequestsQueue",
   mongoComponent = mongoComponent,
-  itemFormat     = MongoPayloadDetailsFormats.formats,
+  itemFormat     = MongoPushUpdateFormats.formats,
   workItemFields = WorkItemFields.default
 ) {
   override def now(): Instant =
@@ -63,7 +62,7 @@ class GithubRequestsQueueRepository @Inject()(
   override val inProgressRetryAfter: Duration =
     Duration.ofMillis(retryIntervalMillis)
 
-  def pullOutstanding: Future[Option[WorkItem[PayloadDetails]]] =
+  def pullOutstanding: Future[Option[WorkItem[PushUpdate]]] =
     super.pullOutstanding(
       failedBefore    = now().minusMillis(retryIntervalMillis.toInt),
       availableBefore = now()

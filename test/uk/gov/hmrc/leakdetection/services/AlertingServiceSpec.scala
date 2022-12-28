@@ -339,7 +339,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     lazy val appConfig =
       AppConfig(
         allRules                  = AllRules(Nil, Nil),
-        githubSecrets             = GithubSecrets("token", "webhook-key"),
+        githubSecrets             = GithubSecrets("token"),
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
         warningMessages           = Map("InvalidEntry" -> "invalid entry message", "FileLevelExemptions" -> "file level exemptions"),
