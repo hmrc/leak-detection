@@ -62,8 +62,8 @@ class E2eTests
     Scenario("happy path") {
       Given("Github makes a request with all required fields incl. a link to download a zip")
       val githubStub           = GithubStub.servingZippedFiles(List(TestZippedFile("content", "/foo/bar")))
-      val payloadDetails       = aPayloadDetails.copy(archiveUrl = githubStub.archiveUrl)
-      val githubRequestPayload = Json.stringify(Json.toJson(payloadDetails).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
+      val pushUpdate           = aPushUpdate.copy(archiveUrl = githubStub.archiveUrl)
+      val githubRequestPayload = Json.stringify(Json.toJson(pushUpdate).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
 
       When("Leak Detection service receives a request")
       val res = Helpers.route(app, FakeRequest("POST", "/validate").withHeaders(CONTENT_TYPE -> "application/json").withBody(githubRequestPayload)).get
@@ -77,7 +77,7 @@ class E2eTests
 
       And("New report will eventually be created after branch is processed")
       eventually {
-        val reports = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue
+        val reports = findReportsForRepoAndBranch(pushUpdate.repositoryName, pushUpdate.branchRef).futureValue
         reports.size shouldBe 1
       }
     }
@@ -85,8 +85,8 @@ class E2eTests
     Scenario("tags") {
 
       Given("Github makes a request where the ref indicates a tag")
-      val payloadDetails       = aPayloadDetails.copy(branchRef = "refs/tags/v6.17.0")
-      val githubRequestPayload = Json.stringify(Json.toJson(payloadDetails).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
+      val pushUpdate           = aPushUpdate.copy(branchRef = "refs/tags/v6.17.0")
+      val githubRequestPayload = Json.stringify(Json.toJson(pushUpdate).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
 
 
       When("Leak Detection service receives a request")
@@ -102,7 +102,7 @@ class E2eTests
 
     Scenario("Delete branch event") {
       Given("Github makes a request representing a delete branch event")
-      val requestPayload       = aPayloadDetails
+      val requestPayload       = aPushUpdate
       val githubRequestPayload = Json.stringify(Json.toJson(requestPayload).as[JsObject].deepMerge(Json.obj("deleted" -> true)))
 
       And("there is already a report with problems for a given repo/branch")
@@ -125,11 +125,11 @@ class E2eTests
 
       And("it will provide a url to a no longer existing branch")
       val noLongerExistingArchiveUrl = githubStub.archiveUrl
-      val payloadDetails             = aPayloadDetails.copy(archiveUrl = noLongerExistingArchiveUrl)
-      val githubRequestPayload       = Json.stringify(Json.toJson(payloadDetails).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
+      val pushUpdate                 = aPushUpdate.copy(archiveUrl = noLongerExistingArchiveUrl)
+      val githubRequestPayload       = Json.stringify(Json.toJson(pushUpdate).as[JsObject].deepMerge(Json.obj("deleted" -> false)))
 
       And("there is already a report with problems for a given repo/branch")
-      prepopulateReportWithProblems(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue
+      prepopulateReportWithProblems(pushUpdate.repositoryName, pushUpdate.branchRef).futureValue
 
       When("Github calls LDS")
       val res = Helpers.route(app, FakeRequest("POST", "/validate").withHeaders(CONTENT_TYPE -> "application/json").withBody(githubRequestPayload)).get
@@ -143,7 +143,7 @@ class E2eTests
 
       And("Eventually previous reports with problems will be cleared")
       eventually {
-        val report = findReportsForRepoAndBranch(payloadDetails.repositoryName, payloadDetails.branchRef).futureValue.head
+        val report = findReportsForRepoAndBranch(pushUpdate.repositoryName, pushUpdate.branchRef).futureValue.head
         report.totalLeaks shouldBe 0
         report.rulesViolated shouldBe Map.empty
       }

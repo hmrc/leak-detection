@@ -24,15 +24,15 @@ sealed trait GithubRequest extends Product with Serializable
 
 object GithubRequest {
   val githubReads: Reads[GithubRequest] =
-    PayloadDetails.githubReads
-      .orElse(DeleteBranchEvent.githubReads)
+    PushUpdate.githubReads
+      .orElse(PushDelete.githubReads)
       .orElse(RepositoryEvent.githubReads)
 }
 
 // https://docs.github.com/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#push
 // Set to fail when deleted is false
 // runMode is for the admin endpoint - TODO change to query param
-final case class PayloadDetails(
+final case class PushUpdate(
   repositoryName: String,
   isPrivate     : Boolean,
   isArchived    : Boolean,
@@ -44,7 +44,7 @@ final case class PayloadDetails(
   runMode       : Option[RunMode]
 ) extends GithubRequest
 
-object PayloadDetails {
+object PushUpdate {
   implicit val rmr = RunMode.format
   val githubReads: Reads[GithubRequest] =
     (__ \ "deleted")
@@ -60,19 +60,19 @@ object PayloadDetails {
         ~ (__ \ "after"                     ).read[String]
         ~ (__ \ "repository" \ "archive_url").read[String]
         ~ (__ \ "runMode"                   ).readNullable[RunMode]
-        )(PayloadDetails.apply _)
+        )(PushUpdate.apply _)
       )
 }
 
 // Also a Push - deleted is true
-final case class DeleteBranchEvent(
+final case class PushDelete(
   repositoryName: String,
   authorName    : String,
   branchRef     : String,
   repositoryUrl : String
 ) extends GithubRequest
 
-object DeleteBranchEvent {
+object PushDelete {
   val githubReads: Reads[GithubRequest] =
     (__ \ "deleted")
       .read[Boolean]
@@ -82,7 +82,7 @@ object DeleteBranchEvent {
         ~ (__ \ "pusher"     \ "name").read[String]
         ~ (__ \ "ref"                ).read[String].map(_.stripPrefix("refs/heads/"))
         ~ (__ \ "repository" \ "url" ).read[String]
-        )(DeleteBranchEvent.apply _)
+        )(PushDelete.apply _)
       )
 }
 

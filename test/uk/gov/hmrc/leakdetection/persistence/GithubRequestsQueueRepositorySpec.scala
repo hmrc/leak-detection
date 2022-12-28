@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.{Configuration, Environment}
 import uk.gov.hmrc.leakdetection.ModelFactory._
-import uk.gov.hmrc.leakdetection.model.PayloadDetails
+import uk.gov.hmrc.leakdetection.model.PushUpdate
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
 
@@ -33,7 +33,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class GithubRequestsQueueRepositorySpec
   extends AnyWordSpec
      with Matchers
-     with DefaultPlayMongoRepositorySupport[WorkItem[PayloadDetails]]
+     with DefaultPlayMongoRepositorySupport[WorkItem[PushUpdate]]
      with ScalaFutures
      with Inspectors
      with IntegrationPatience {
@@ -51,11 +51,11 @@ class GithubRequestsQueueRepositorySpec
     }
 
     "be able to save and reload a github request" in {
-      val payloadDetails = aPayloadDetails
-      val workItem       = repository.pushNew(payloadDetails, anInstant).futureValue
+      val pushUpdate = aPushUpdate
+      val workItem   = repository.pushNew(pushUpdate, anInstant).futureValue
 
       repository.findById(workItem.id).futureValue.get should have(
-        'item (payloadDetails),
+        'item (pushUpdate),
         'status (ProcessingStatus.ToDo),
         'receivedAt (anInstant),
         'updatedAt (anInstant)
@@ -63,15 +63,15 @@ class GithubRequestsQueueRepositorySpec
     }
 
     "be able to save the same requests twice" in {
-      val payloadDetails = aPayloadDetails
-      repository.pushNew(payloadDetails, anInstant).futureValue
-      repository.pushNew(payloadDetails, anInstant).futureValue
+      val pushUpdate = aPushUpdate
+      repository.pushNew(pushUpdate, anInstant).futureValue
+      repository.pushNew(pushUpdate, anInstant).futureValue
 
       val requests = repository.collection.find().toFuture().futureValue
       requests should have(size(2))
 
       every(requests) should have(
-        'item (payloadDetails),
+        'item (pushUpdate),
         'status (ProcessingStatus.ToDo),
         'receivedAt (anInstant),
         'updatedAt (anInstant)

@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.persistence
 
 import play.api.Configuration
-import uk.gov.hmrc.leakdetection.model.PayloadDetails
+import uk.gov.hmrc.leakdetection.model.PushUpdate
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
 
@@ -31,10 +31,10 @@ class RescanRequestsQueueRepository @Inject()(
   configuration: Configuration,
   mongoComponent: MongoComponent
 )(implicit ec: ExecutionContext
-) extends WorkItemRepository[PayloadDetails](
+) extends WorkItemRepository[PushUpdate](
   collectionName = "rescanRequestsQueue",
   mongoComponent = mongoComponent,
-  itemFormat     = MongoPayloadDetailsFormats.formats,
+  itemFormat     = MongoPushUpdateFormats.formats,
   workItemFields = WorkItemFields.default
 ) {
   override def now(): Instant =
@@ -46,7 +46,7 @@ class RescanRequestsQueueRepository @Inject()(
   override val inProgressRetryAfter: Duration =
     Duration.ofMillis(retryIntervalMillis)
 
-  def pullOutstanding: Future[Option[WorkItem[PayloadDetails]]] =
+  def pullOutstanding: Future[Option[WorkItem[PushUpdate]]] =
     super.pullOutstanding(
       failedBefore    = now().minusMillis(retryIntervalMillis.toInt),
       availableBefore = now()

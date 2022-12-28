@@ -350,7 +350,7 @@ class ScanningServiceSpec
         )
         .futureValue
 
-    val request = new PayloadDetails(
+    val request = new PushUpdate(
       repositoryName = "repoName",
       isPrivate      = true,
       isArchived     = false,

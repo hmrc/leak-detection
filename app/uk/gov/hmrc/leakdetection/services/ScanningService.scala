@@ -68,12 +68,12 @@ class ScanningService @Inject()(
     try {
       githubConnector.getZip(archiveUrl, branch).flatMap {
         case Left(BranchNotFound(_)) =>
-          val deleteBranchEvent = DeleteBranchEvent(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, repositoryUrl = repositoryUrl)
+          val pushDelete = PushDelete(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, repositoryUrl = repositoryUrl)
           for {
-            _      <- activeBranchesService.clearBranch(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
-            _      <- leaksService.clearBranchLeaks(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
-            _      <- warningsService.clearBranchWarnings(deleteBranchEvent.repositoryName, deleteBranchEvent.branchRef)
-            report <- reportsService.clearReportsAfterBranchDeleted(deleteBranchEvent)
+            _      <- activeBranchesService.clearBranch(pushDelete.repositoryName, pushDelete.branchRef)
+            _      <- leaksService.clearBranchLeaks(pushDelete.repositoryName, pushDelete.branchRef)
+            _      <- warningsService.clearBranchWarnings(pushDelete.repositoryName, pushDelete.branchRef)
+            report <- reportsService.clearReportsAfterBranchDeleted(pushDelete)
           } yield report
 
         case Right(dir) =>
@@ -127,10 +127,10 @@ class ScanningService @Inject()(
       }
     ))
 
-  def queueRequest(p: PayloadDetails): Future[Boolean] =
+  def queueRequest(p: PushUpdate): Future[Boolean] =
     githubRequestsQueue.pushNew(p).map(_ => true)
 
-  def queueRescanRequest(p: PayloadDetails): Future[Boolean] =
+  def queueRescanRequest(p: PushUpdate): Future[Boolean] =
     rescanRequestsQueue.pushNew(p).map(_ => true)
 
   def scanAll(implicit ec: ExecutionContext): Future[Int] = {
@@ -152,7 +152,7 @@ class ScanningService @Inject()(
       case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi).map(_.size)
     }
 
-  def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PayloadDetails])(workItem: WorkItem[PayloadDetails]): Future[Option[Report]] = {
+  def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PushUpdate])(workItem: WorkItem[PushUpdate]): Future[Option[Report]] = {
     val request     = workItem.item
     implicit val hc: HeaderCarrier = HeaderCarrier()
     scanRepository(

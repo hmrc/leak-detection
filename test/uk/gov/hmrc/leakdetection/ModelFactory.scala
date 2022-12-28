@@ -43,8 +43,8 @@ object ModelFactory {
 
   def anInstant: Instant = Instant.now().truncatedTo((ChronoUnit.MILLIS))
 
-  def aPayloadDetails =
-    PayloadDetails(
+  def aPushUpdate =
+    PushUpdate(
       repositoryName = aString("repositoryName"),
       isPrivate      = aBoolean,
       isArchived     = false,
@@ -56,8 +56,8 @@ object ModelFactory {
       runMode        = None
     )
 
-  def aDeleteBranchEvent =
-    DeleteBranchEvent(
+  def aPushDelete =
+    PushDelete(
       repositoryName = aString("repositoryName"),
       authorName     = aString("author"),
       repositoryUrl  = aString("repo-url"),
@@ -133,9 +133,9 @@ object ModelFactory {
     warningsToAlert     = Seq.empty
   )
 
-  implicit val payloadDetailsWrites: Writes[PayloadDetails] =
-    Writes[PayloadDetails] { payloadDetails =>
-      import payloadDetails._
+  implicit val pushUpdateWrites: Writes[PushUpdate] =
+    Writes[PushUpdate] { pushUpdate =>
+      import pushUpdate._
       Json.obj(
         "ref"     -> s"refs/heads/$branchRef",
         "after"   -> commitId,
@@ -145,9 +145,9 @@ object ModelFactory {
       )
     }
 
-  implicit val deleteBranchEventWrites: Writes[DeleteBranchEvent] =
-    Writes[DeleteBranchEvent] { deleteBranchEvent =>
-      import deleteBranchEvent._
+  implicit val pushDeleteWrites: Writes[PushDelete] =
+    Writes[PushDelete] { pushDelete =>
+      import pushDelete._
       Json.obj(
         "ref"        -> s"refs/heads/$branchRef",
         "pusher"     -> Json.obj("name" -> authorName),
