@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 HM Revenue & Customs
+ * Copyright 2023 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import akka.util.ByteString
 import akka.stream.Materializer
 import akka.stream.scaladsl.{FileIO, Source}
 import com.kenshoo.play.metrics.Metrics
+import org.apache.commons.io.FileUtils
 import org.zeroturnaround.zip.ZipUtil
 import play.api.{Configuration, Logging}
 import play.api.libs.json.JsValue
@@ -32,6 +33,8 @@ import java.net.URL
 import java.nio.file.Files
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
+import scala.util.control.NonFatal
 
 @Singleton
 class GithubConnector @Inject()(
@@ -75,12 +78,19 @@ class GithubConnector @Inject()(
         case Right(source) =>
           registry.counter(s"github.open.zip.success").inc()
           val savedZipFilePath = Files.createTempFile("unzipped_", "")
-          logger.debug(s"Saving $archiveUrl to $savedZipFilePath")
+          logger.debug(s"Saving $archiveUrl to $savedZipFilePath, free disk space ${savedZipFilePath.toFile.getFreeSpace}")
           source.runWith(FileIO.toPath(savedZipFilePath)).map { _ =>
-            logger.info(s"Saved file: ${savedZipFilePath}")
             val savedZipFile = savedZipFilePath.toFile
+            logger.info(s"Saved file: ${savedZipFilePath}, free diskspace before unzipping ${savedZipFile.getFreeSpace}")
             ZipUtil.explode(savedZipFile)
             Right(savedZipFile)
+          }.recover {
+            case NonFatal(e) =>
+              if (savedZipFilePath.toFile.isDirectory)
+                FileUtils.deleteDirectory(savedZipFilePath.toFile)
+              else
+                FileUtils.delete(savedZipFilePath.toFile)
+              throw e
           }
         case Left(UpstreamErrorResponse.WithStatusCode(404)) =>
           Future.successful(Left(BranchNotFound(branch)))
