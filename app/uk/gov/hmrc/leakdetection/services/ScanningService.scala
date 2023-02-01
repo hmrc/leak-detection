@@ -68,7 +68,7 @@ class ScanningService @Inject()(
     val savedZipFilePath = Files.createTempFile("unzipped_", "")
     try {
       val zip = githubConnector.getZip(archiveUrl, branch, savedZipFilePath)
-      zip.flatMap {
+      val result = zip.flatMap {
         case Left(BranchNotFound(_)) =>
           val pushDelete = PushDelete(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, repositoryUrl = repositoryUrl)
           for {
@@ -111,14 +111,17 @@ class ScanningService @Inject()(
             _ <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings))
           } yield if (runMode == Normal) reportWithWarnings else draftReportWithWarnings
       }
+      result.onComplete {
+        _ => {
+          if(savedZipFilePath.toFile.isDirectory)
+            FileUtils.deleteDirectory(savedZipFilePath.toFile)
+          else
+            FileUtils.delete(savedZipFilePath.toFile)
+        }
+      }
+      result
     } catch {
       case NonFatal(e) => Future.failed(e)
-    } finally {
-      if(savedZipFilePath.toFile.isDirectory) {
-        FileUtils.deleteDirectory(savedZipFilePath.toFile)
-      } else {
-        FileUtils.delete(savedZipFilePath.toFile)
-      }
     }
   }
 
