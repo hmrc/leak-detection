@@ -72,9 +72,9 @@ class ScanningService @Inject()(
         case Left(BranchNotFound(_)) =>
           val pushDelete = PushDelete(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, repositoryUrl = repositoryUrl)
           for {
-            _ <- activeBranchesService.clearBranch(pushDelete.repositoryName, pushDelete.branchRef)
-            _ <- leaksService.clearBranchLeaks(pushDelete.repositoryName, pushDelete.branchRef)
-            _ <- warningsService.clearBranchWarnings(pushDelete.repositoryName, pushDelete.branchRef)
+            _      <- activeBranchesService.clearBranch(pushDelete.repositoryName, pushDelete.branchRef)
+            _      <- leaksService.clearBranchLeaks(pushDelete.repositoryName, pushDelete.branchRef)
+            _      <- warningsService.clearBranchWarnings(pushDelete.repositoryName, pushDelete.branchRef)
             report <- reportsService.clearReportsAfterBranchDeleted(pushDelete)
           } yield report
 
@@ -91,33 +91,30 @@ class ScanningService @Inject()(
           val exemptions = exemptionParsingResult.getOrElse(List.empty)
 
           for {
-            matched <- Future {
-              regexMatchingEngine.run(dir, exemptions)
-            }
-            results = matched.filterNot(_.draft)
-            unusedExemptions = exemptionChecker.run(results, exemptions)
-            report = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
-            draftReport = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
-            leaks = Leak.createFromMatchedResults(report, results)
-            warnings = warningsService.checkForWarnings(report, dir, isPrivate, isArchived, exemptions, exemptionParsingResult.left.toSeq)
-            reportWithWarnings = report.copy(totalWarnings = warnings.length)
-            draftReportWithWarnings = draftReport.copy(totalWarnings = warnings.length)
-            _ <- executeIfDraftMode(draftReportsService.saveReport(draftReportWithWarnings))
-            _ <- executeIfNormalMode(reportsService.saveReport(reportWithWarnings))
-            _ <- executeIfNormalMode(leaksService.saveLeaks(repository, branch, leaks))
-            _ <- executeIfNormalMode(warningsService.saveWarnings(repository, branch, warnings))
-            _ <- executeIfNormalMode(activeBranchesService.markAsActive(repository, branch, report.id))
-            _ <- executeIfNormalMode(alertingService.alert(report))
-            _ <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings))
+            matched                 <- Future {regexMatchingEngine.run(dir, exemptions)}
+            results                  = matched.filterNot(_.draft)
+            unusedExemptions         = exemptionChecker.run(results, exemptions)
+            report                   = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
+            draftReport              = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
+            leaks                    = Leak.createFromMatchedResults(report, results)
+            warnings                 = warningsService.checkForWarnings(report, dir, isPrivate, isArchived, exemptions, exemptionParsingResult.left.toSeq)
+            reportWithWarnings       = report.copy(totalWarnings = warnings.length)
+            draftReportWithWarnings  = draftReport.copy(totalWarnings = warnings.length)
+            _                       <- executeIfDraftMode(draftReportsService.saveReport(draftReportWithWarnings))
+            _                       <- executeIfNormalMode(reportsService.saveReport(reportWithWarnings))
+            _                       <- executeIfNormalMode(leaksService.saveLeaks(repository, branch, leaks))
+            _                       <- executeIfNormalMode(warningsService.saveWarnings(repository, branch, warnings))
+            _                       <- executeIfNormalMode(activeBranchesService.markAsActive(repository, branch, report.id))
+            _                       <- executeIfNormalMode(alertingService.alert(report))
+            _                       <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings))
           } yield if (runMode == Normal) reportWithWarnings else draftReportWithWarnings
       }
       result.onComplete {
-        _ => {
+        _ =>
           if(savedZipFilePath.toFile.isDirectory)
             FileUtils.deleteDirectory(savedZipFilePath.toFile)
           else
             FileUtils.delete(savedZipFilePath.toFile)
-        }
       }
       result
     } catch {
@@ -132,10 +129,10 @@ class ScanningService @Inject()(
     warnings: Seq[Warning]
   )(implicit hc: HeaderCarrier): Future[Unit] =
     teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
-      if (branch.asString == repo.defaultBranch) {
-        alertingService.alertAboutWarnings(author, warnings)
-      }
-    ))
+        if (branch.asString == repo.defaultBranch) {
+          alertingService.alertAboutWarnings(author, warnings)
+        }
+      ))
 
   def queueRequest(p: PushUpdate): Future[Boolean] =
     githubRequestsQueue.pushNew(p).map(_ => true)
@@ -176,11 +173,11 @@ class ScanningService @Inject()(
       archiveUrl    = request.archiveUrl,
       runMode       = request.runMode.getOrElse(Normal)
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
-      .recoverWith {
-        case NonFatal(e) =>
-          logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
-          repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
-      }
+     .recoverWith {
+       case NonFatal(e) =>
+         logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
+         repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
+     }
   }
 
 }
