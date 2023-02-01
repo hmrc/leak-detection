@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 HM Revenue & Customs
+ * Copyright 2023 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,10 +28,10 @@ import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, Res
 import uk.gov.hmrc.leakdetection.scanner.{ExemptionChecker, RegexMatchingEngine}
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
 
+import java.nio.file.Files
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import scala.util.Try
 
 @Singleton
 class ScanningService @Inject()(
@@ -64,9 +64,11 @@ class ScanningService @Inject()(
     authorName:    String,
     archiveUrl:    String,
     runMode:       RunMode
-  )(implicit hc: HeaderCarrier): Future[Report] =
+)(implicit hc: HeaderCarrier): Future[Report] = {
+    val savedZipFilePath = Files.createTempFile("unzipped_", "")
     try {
-      githubConnector.getZip(archiveUrl, branch).flatMap {
+      val zip = githubConnector.getZip(archiveUrl, branch, savedZipFilePath)
+      val result = zip.flatMap {
         case Left(BranchNotFound(_)) =>
           val pushDelete = PushDelete(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, repositoryUrl = repositoryUrl)
           for {
@@ -78,42 +80,47 @@ class ScanningService @Inject()(
 
         case Right(dir) =>
           val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
+
           def executeIfDraftMode(function: => Future[Unit]): Future[Unit] = if (runMode == Draft) function else Future.unit
+
           def executeIfNormalMode(function: => Future[Unit]): Future[Unit] = if (runMode == Normal) function else Future.unit
+
           val exemptionParsingResult = RulesExemptionParser
             .parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
 
           val exemptions = exemptionParsingResult.getOrElse(List.empty)
 
-          val processingResult =
-            for {
-              matched                <- Future { regexMatchingEngine.run(dir, exemptions) }
-              results                 = matched.filterNot(_.draft)
-              unusedExemptions        = exemptionChecker.run(results, exemptions)
-              report                  = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
-              draftReport             = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
-              leaks                   = Leak.createFromMatchedResults(report, results)
-              warnings                = warningsService.checkForWarnings(report, dir, isPrivate, isArchived, exemptions, exemptionParsingResult.left.toSeq)
-              reportWithWarnings      = report.copy(totalWarnings = warnings.length)
-              draftReportWithWarnings = draftReport.copy(totalWarnings = warnings.length)
-              _                      <- executeIfDraftMode(draftReportsService.saveReport(draftReportWithWarnings))
-              _                      <- executeIfNormalMode(reportsService.saveReport(reportWithWarnings))
-              _                      <- executeIfNormalMode(leaksService.saveLeaks(repository, branch, leaks))
-              _                      <- executeIfNormalMode(warningsService.saveWarnings(repository, branch, warnings))
-              _                      <- executeIfNormalMode(activeBranchesService.markAsActive(repository, branch, report.id))
-              _                      <- executeIfNormalMode(alertingService.alert(report))
-              _                      <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings))
-            } yield if (runMode == Normal) reportWithWarnings else draftReportWithWarnings
-
-          processingResult.onComplete { _ =>
-            Try(FileUtils.deleteDirectory(dir))
-              .fold(ex => logger.error(s"Could not delete directory $dir", ex), result => result)
-          }
-          processingResult
+          for {
+            matched                 <- Future {regexMatchingEngine.run(dir, exemptions)}
+            results                  = matched.filterNot(_.draft)
+            unusedExemptions         = exemptionChecker.run(results, exemptions)
+            report                   = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
+            draftReport              = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
+            leaks                    = Leak.createFromMatchedResults(report, results)
+            warnings                 = warningsService.checkForWarnings(report, dir, isPrivate, isArchived, exemptions, exemptionParsingResult.left.toSeq)
+            reportWithWarnings       = report.copy(totalWarnings = warnings.length)
+            draftReportWithWarnings  = draftReport.copy(totalWarnings = warnings.length)
+            _                       <- executeIfDraftMode(draftReportsService.saveReport(draftReportWithWarnings))
+            _                       <- executeIfNormalMode(reportsService.saveReport(reportWithWarnings))
+            _                       <- executeIfNormalMode(leaksService.saveLeaks(repository, branch, leaks))
+            _                       <- executeIfNormalMode(warningsService.saveWarnings(repository, branch, warnings))
+            _                       <- executeIfNormalMode(activeBranchesService.markAsActive(repository, branch, report.id))
+            _                       <- executeIfNormalMode(alertingService.alert(report))
+            _                       <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings))
+          } yield if (runMode == Normal) reportWithWarnings else draftReportWithWarnings
       }
+      result.onComplete {
+        _ =>
+          if(savedZipFilePath.toFile.isDirectory)
+            FileUtils.deleteDirectory(savedZipFilePath.toFile)
+          else
+            FileUtils.delete(savedZipFilePath.toFile)
+      }
+      result
     } catch {
       case NonFatal(e) => Future.failed(e)
     }
+  }
 
   private def alertAboutWarnings(
     repository: Repository,
@@ -122,10 +129,10 @@ class ScanningService @Inject()(
     warnings: Seq[Warning]
   )(implicit hc: HeaderCarrier): Future[Unit] =
     teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
-      if (branch.asString == repo.defaultBranch) {
-        alertingService.alertAboutWarnings(author, warnings)
-      }
-    ))
+        if (branch.asString == repo.defaultBranch) {
+          alertingService.alertAboutWarnings(author, warnings)
+        }
+      ))
 
   def queueRequest(p: PushUpdate): Future[Boolean] =
     githubRequestsQueue.pushNew(p).map(_ => true)
@@ -166,11 +173,11 @@ class ScanningService @Inject()(
       archiveUrl    = request.archiveUrl,
       runMode       = request.runMode.getOrElse(Normal)
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
-      .recoverWith {
-        case NonFatal(e) =>
-          logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
-          repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
-      }
+     .recoverWith {
+       case NonFatal(e) =>
+         logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
+         repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
+     }
   }
 
 }
