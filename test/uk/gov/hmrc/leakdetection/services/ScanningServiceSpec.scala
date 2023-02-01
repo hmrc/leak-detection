@@ -191,7 +191,8 @@ class ScanningServiceSpec
       when(
         githubConnector.getZip(
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
+          Branch(eqTo(branch)),
+          any[java.nio.file.Path])) .thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
 
       generateReport
 
@@ -291,10 +292,12 @@ class ScanningServiceSpec
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
+
       when(
         githubConnector.getZip(
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-          Branch(eqTo("main")))).thenThrow(new RuntimeException("Some error"))
+          Branch(eqTo("main")),
+          any[java.nio.file.Path])).thenThrow(new RuntimeException("Some error"))
 
       scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue shouldBe 1
@@ -505,7 +508,8 @@ class ScanningServiceSpec
     when(
       githubConnector.getZip(
         eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
-        Branch(eqTo(branch)))).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
+        Branch(eqTo(branch)),
+        any[java.nio.file.Path])).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))
