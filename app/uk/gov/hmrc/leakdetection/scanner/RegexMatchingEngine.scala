@@ -17,16 +17,19 @@
 package uk.gov.hmrc.leakdetection.scanner
 
 import play.api.Logger
-import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
+import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption, SecretHashConfig}
+import uk.gov.hmrc.leakdetection.services.InMemorySecretHashChecker
 
 import java.io.File
 import java.nio.charset.CodingErrorAction
 import scala.collection.parallel.CollectionConverters._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.io.{Codec, Source}
 
 case class Result(filePath: String, scanResults: MatchedResult)
 
-class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
+class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int, secretHashConfig: SecretHashConfig)
+                         (implicit ec: ExecutionContext){
 
   import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 
@@ -35,58 +38,101 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
   val fileContentScanners = createFileContentScanners(rules)
   val fileNameScanners    = createFileNameScanners(rules)
   val fileExtensionR      = """\.[A-Za-z0-9]+$""".r
+  val secretHashScanner   = new SecretHashScanner(secretHashConfig, new InMemorySecretHashChecker(Set("")))
+
 
   implicit val codec = Codec("UTF-8")
   codec.onMalformedInput(CodingErrorAction.IGNORE)
   codec.onUnmappableCharacter(CodingErrorAction.IGNORE)
 
+  def secretsScanner(file: File, filePath: String, serviceDefinedExemptions: List[RuleExemption]): Future[List[MatchedResult]] = {
+    val source = Source.fromFile(file)
 
-  def run(explodedZipDir: File, serviceDefinedExemptions: List[RuleExemption]): List[MatchedResult] = {
+    val hashResults = try {
+      source.getLines().foldLeft((1, Future.successful(List.empty[MatchedResult]), false)) {
+        case ((lineNumber, matchedResults, toIgnore), line) =>
+          (
+            lineNumber + 1,
+            matchedResults.flatMap{prevResults => secretHashScanner.scanLine(line, lineNumber, filePath, toIgnore, serviceDefinedExemptions).map(currentRes => currentRes ++ prevResults) },
+            line.contains("LDS ignore")
+          )
+      }._2
+    } catch {
+      case ex: Throwable =>
+        logger.error(s"error reading $file", ex)
+        throw ex
+    } finally {
+      source.close()
+    }
 
-    getFiles(explodedZipDir)
+    hashResults
+  }
+
+  def applicableScanners(scanners: Seq[RegexScanner], filePath: String, fileExtension: String) =
+    scanners.filterNot { scanner =>
+      scanner.rule.ignoredExtensions.contains(fileExtension) ||
+        scanner.rule.ignoredFiles.exists(pattern => filePath.matches(pattern))
+    }
+
+  def fileNameScanner(file: File, filePath: String,  serviceDefinedExemptions: List[RuleExemption]): Future[List[MatchedResult]] = {
+    val fileExtension = fileExtensionR.findFirstIn(filePath).getOrElse("")
+    val applicableFileNameScanners    = applicableScanners(fileNameScanners, filePath, fileExtension)
+
+    val fileNameResult = applicableFileNameScanners.flatMap {
+      _.scanFileName(file.getName, filePath, serviceDefinedExemptions)
+    }.toList
+
+    Future.successful(fileNameResult)
+  }
+
+  def fileContentScanner(file: File, filePath: String, serviceDefinedExemptions: List[RuleExemption]): Future[List[MatchedResult]] = {
+    val fileExtension = fileExtensionR.findFirstIn(filePath).getOrElse("")
+    val source = Source.fromFile(file)
+
+    val applicableFileContentScanners = applicableScanners(fileContentScanners, filePath, fileExtension)
+    val contentResults = try {
+      source
+        .getLines()
+        .foldLeft((1, List.empty[MatchedResult], false)) {
+          case ((lineNumber, matches, isInline), line) =>
+            (lineNumber + 1,
+              matches ++ applicableFileContentScanners.flatMap {
+                _.scanLine(line, lineNumber, filePath, isInline, serviceDefinedExemptions)
+              },
+              line.contains("LDS ignore")
+            )
+        }
+        ._2
+    } catch {
+      case ex: Throwable =>
+        logger.error(s"error reading $file", ex)
+        throw ex
+    } finally {
+      source.close()
+    }
+
+    Future.successful(contentResults)
+
+  }
+
+  def run(explodedZipDir: File, serviceDefinedExemptions: List[RuleExemption]): Future[List[MatchedResult]] = {
+    //This now runs sequentially, may want to consider running in parallel in the future.
+    val y: Future[List[MatchedResult]] = getFiles(explodedZipDir)
       .filterNot(_.isDirectory)
-      .par
-      .flatMap { file =>
+      .foldLeft(Future.successful(List.empty[MatchedResult])){ (results, file) =>
         val filePath      = getFilePathRelativeToProjectRoot(explodedZipDir, file)
-        val fileExtension = fileExtensionR.findFirstIn(filePath).getOrElse("")
 
-        def applicableScanners(scanners: Seq[RegexScanner]) =
-          scanners.filterNot { scanner =>
-            scanner.rule.ignoredExtensions.contains(fileExtension) ||
-            scanner.rule.ignoredFiles.exists(pattern => filePath.matches(pattern))
-          }
-
-        val applicableFileContentScanners = applicableScanners(fileContentScanners)
-        val applicableFileNameScanners    = applicableScanners(fileNameScanners)
-
-        val source = Source.fromFile(file)
-
-        val contentResults: Seq[MatchedResult] = try {
-          source
-            .getLines()
-            .foldLeft((1, Seq.empty[MatchedResult], false)) {
-              case ((lineNumber, acc, isInline), line) =>
-                (lineNumber + 1, acc ++ applicableFileContentScanners.flatMap {
-                  _.scanLine(line, lineNumber, filePath, isInline, serviceDefinedExemptions)
-                }, line.contains("LDS ignore"))
-            }
-            ._2
-        } catch {
-          case ex: Throwable =>
-            logger.error(s"error reading $file", ex)
-            throw ex
-        } finally {
-          source.close()
-        }
-
-        val fileNameResult: Seq[MatchedResult] = applicableFileNameScanners.flatMap {
-          _.scanFileName(file.getName, filePath, serviceDefinedExemptions)
-        }
-
-        contentResults ++ fileNameResult
-
+        for {
+          prevResults        <- results
+          secretsMatches     <- secretsScanner(file, filePath, serviceDefinedExemptions)
+          fileNameMatches    <- fileNameScanner(file, filePath, serviceDefinedExemptions)
+          fileContentMatches <- fileContentScanner(file, filePath, serviceDefinedExemptions)
+        } yield secretsMatches ++ fileNameMatches ++ fileContentMatches ++ prevResults
       }
-      .toList
+
+    y
+
+
   }
 
   private def createFileContentScanners(rules: Seq[Rule]): Seq[RegexScanner] =
