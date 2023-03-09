@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import play.api.Logger
 import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption, SecretHashConfig}
-import uk.gov.hmrc.leakdetection.services.InMemorySecretHashChecker
+import uk.gov.hmrc.leakdetection.services.{InMemorySecretHashChecker, MongoSecretHashChecker, SecretHashChecker}
 
 import java.io.File
 import java.nio.charset.CodingErrorAction
@@ -28,7 +28,7 @@ import scala.io.{Codec, Source}
 
 case class Result(filePath: String, scanResults: MatchedResult)
 
-class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int, secretHashConfig: SecretHashConfig)
+class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int, secretHashConfig: SecretHashConfig, secretHashChecker: SecretHashChecker)
                          (implicit ec: ExecutionContext){
 
   import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
@@ -38,7 +38,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int, secretHashConfi
   val fileContentScanners = createFileContentScanners(rules)
   val fileNameScanners    = createFileNameScanners(rules)
   val fileExtensionR      = """\.[A-Za-z0-9]+$""".r
-  val secretHashScanner   = new SecretHashScanner(secretHashConfig, new InMemorySecretHashChecker(Set("")))
+  val secretHashScanner   = new SecretHashScanner(secretHashConfig, secretHashChecker)
 
 
   implicit val codec = Codec("UTF-8")
@@ -117,7 +117,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int, secretHashConfi
 
   def run(explodedZipDir: File, serviceDefinedExemptions: List[RuleExemption]): Future[List[MatchedResult]] = {
     //This now runs sequentially, may want to consider running in parallel in the future.
-    val y: Future[List[MatchedResult]] = getFiles(explodedZipDir)
+    getFiles(explodedZipDir)
       .filterNot(_.isDirectory)
       .foldLeft(Future.successful(List.empty[MatchedResult])){ (results, file) =>
         val filePath      = getFilePathRelativeToProjectRoot(explodedZipDir, file)
@@ -130,7 +130,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int, secretHashConfi
         } yield secretsMatches ++ fileNameMatches ++ fileContentMatches ++ prevResults
       }
 
-    y
+
 
 
   }

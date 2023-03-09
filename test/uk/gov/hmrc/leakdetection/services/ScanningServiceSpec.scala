@@ -455,7 +455,8 @@ class ScanningServiceSpec
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
         warningMessages           = Map.empty,
-        alerts                    = Alerts(aSlackConfig)
+        alerts                    = Alerts(aSlackConfig),
+        secretHashConfig          = SecretHashConfig(minWordSize = 15)
       )
 
     val githubConnector               = mock[GithubConnector]
@@ -518,6 +519,8 @@ class ScanningServiceSpec
     val configuration = Configuration()
 
     val draftService = mock[DraftReportsService]
+    val secretHashChecker = new InMemorySecretHashChecker(Set(""))
+
 
     lazy val scanningService =
       new ScanningService(
@@ -532,7 +535,8 @@ class ScanningServiceSpec
         warningsService,
         activeBranchesService,
         new ExemptionChecker(),
-        teamsAndRepositoriesConnector
+        teamsAndRepositoriesConnector,
+        secretHashChecker
       )
   }
 

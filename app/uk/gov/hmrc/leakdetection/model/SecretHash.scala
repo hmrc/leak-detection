@@ -23,7 +23,7 @@ import java.time.Instant
 
 case class SecretHash(
    hash     : String,
-   timeAdded: Instant
+   timeAdded: Instant = Instant.now()
 )
 
 object SecretHash {

@@ -18,12 +18,23 @@ package uk.gov.hmrc.leakdetection.scanner
 
 import ammonite.ops.{tmp, write}
 import org.mockito.MockitoSugar
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
-import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
+import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption, SecretHashConfig}
 import uk.gov.hmrc.leakdetection.config.Rule.Priority
+import uk.gov.hmrc.leakdetection.services.{InMemorySecretHashChecker, MongoSecretHashChecker}
 
-class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matchers {
+import scala.concurrent.ExecutionContext.Implicits.global
+
+class RegexMatchingEngineSpec extends AnyWordSpec
+  with MockitoSugar
+  with Matchers
+  with ScalaFutures
+  {
+
+    val secretHashConfig = SecretHashConfig(minWordSize = 5)
+    val secretHashChecker = new InMemorySecretHashChecker(Set("673d190b758967621da243f06c350ce68be4276174dc886560239fea923d4a5a")) //hash123 in SHA256
 
   "run" should  {
     "scan all the files in all subdirectories and return a report with correct file paths" in {
@@ -32,6 +43,8 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
       write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again", createFolders = true)
       write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again", createFolders = true)
       write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD", "no match\nto be found in this file\n", createFolders = true)
+      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileE", "match\nto be found on hash123 in this file\n", createFolders = true)
+
 
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1", priority = Rule.Priority.High),
@@ -40,12 +53,12 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         Rule("rule-4", Rule.Scope.FILE_NAME, "fileC", "file with secrets")
       )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(
+      val results = new RegexMatchingEngine(rules, Int.MaxValue, secretHashConfig, secretHashChecker).run(
         explodedZipDir = wd.toNIO.toFile,
         List.empty
-      )
+      ).futureValue
 
-      results should have size 7
+      results should have size 8
 
       results should contain(
         MatchedResult(
@@ -133,6 +146,19 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
           priority    = Rule.Priority.Low
         )
       )
+
+      results should contain(
+        MatchedResult(
+          filePath    = "/dir2/dir3/fileE",
+          scope       = Rule.Scope.FILE_CONTENT,
+          lineText    = "to be found on ******* in this file",
+          lineNumber  = 2,
+          ruleId      = "hashed_secret",
+          description = "Comparison against a known list of hashed secrets",
+          matches     = List(Match(start = 15, end = 22)),
+          priority    = Rule.Priority.High
+        )
+      )
     }
 
     "filter out results that match rules ignoredFiles" in {
@@ -149,7 +175,7 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         Rule("rule-4", Rule.Scope.FILE_NAME, "fileB", "file with more secrets", List("/dir2/fileB"))
       )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+      val results = new RegexMatchingEngine(rules, Int.MaxValue, secretHashConfig, secretHashChecker).run(explodedZipDir = wd.toNIO.toFile, List.empty).futureValue
 
       results should have size 3
 
@@ -203,7 +229,7 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", ignoredContent = List("000", "222"))
       )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+      val results = new RegexMatchingEngine(rules, Int.MaxValue, secretHashConfig, secretHashChecker).run(explodedZipDir = wd.toNIO.toFile, List.empty).futureValue
 
       val aMatchedResult = MatchedResult("", Rule.Scope.FILE_CONTENT, "", 1, "rule-1", "descr 1", List(Match(start = 13, end = 22)), Priority.Low)
       results should contain theSameElementsAs Seq(
@@ -231,7 +257,7 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         Rule("rule-2", Rule.Scope.FILE_NAME, """^.*\.key$""", "leaked secret found in filename")
       )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, exemptions)
+      val results = new RegexMatchingEngine(rules, Int.MaxValue, secretHashConfig, secretHashChecker).run(explodedZipDir = wd.toNIO.toFile, exemptions).futureValue
 
       results should contain theSameElementsAs Seq(
         MatchedResult(
@@ -306,7 +332,7 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         Rule("rule-2", Rule.Scope.FILE_CONTENT, "key=", "leaked secret found for rule 2")
       )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, exemptions)
+      val results = new RegexMatchingEngine(rules, Int.MaxValue, secretHashConfig, secretHashChecker).run(explodedZipDir = wd.toNIO.toFile, exemptions).futureValue
 
       results should contain theSameElementsAs Seq(
         MatchedResult(
@@ -367,7 +393,7 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
 
       val rules = List(Rule("rule", Rule.Scope.FILE_CONTENT, "secret", "leaked secret"))
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+      val results = new RegexMatchingEngine(rules, Int.MaxValue, secretHashConfig, secretHashChecker).run(explodedZipDir = wd.toNIO.toFile, List.empty).futureValue
 
       val aMatchedResult = MatchedResult("/dir/file", "fileContent", "", 0, "rule", "leaked secret", List(), Priority.Low)
       results shouldBe Seq(

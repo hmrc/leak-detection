@@ -56,11 +56,7 @@ class SecretHashScanner(
       )
     } yield matchedResults
 
-    //To do:
-    //Now that we return futures, would be easier if we pass all our words at once into isSecret, and check them, rather than one at a time.
-    //This makes life easier with future traversal.
   }
-  //Pass in string, check to see if string contains a match of known hashes
 
   def shouldScan(word: String): Boolean =
     word.length >= secretHashConfig.minWordSize
@@ -86,8 +82,4 @@ class SecretHashScanner(
     } yield secretHashes.map(hash => hashToWord(hash))
 
   }
-}
-
-object SecretHashScanner {
-
 }

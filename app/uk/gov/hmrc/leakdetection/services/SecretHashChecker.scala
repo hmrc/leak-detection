@@ -18,6 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import uk.gov.hmrc.leakdetection.persistence.SecretHashesRepository
 
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
 trait SecretHashChecker {
@@ -27,11 +28,11 @@ trait SecretHashChecker {
 class InMemorySecretHashChecker(knownHashes: Set[String]) extends SecretHashChecker {
   override def check(hashes: List[String]): Future[List[String]] =
     {
-      println("Here are the words that we are scanning: " + hashes.mkString(","))
       Future.successful(hashes.filter(h => knownHashes.contains(h)))
     }
 }
 
-class MongoSecretHashChecker(secretHashesRepository: SecretHashesRepository) extends SecretHashChecker {
+@Singleton
+class MongoSecretHashChecker @Inject() (secretHashesRepository: SecretHashesRepository) extends SecretHashChecker {
   override def check(hashes: List[String]): Future[List[String]] = secretHashesRepository.isKnownSecretHash(hashes)
 }

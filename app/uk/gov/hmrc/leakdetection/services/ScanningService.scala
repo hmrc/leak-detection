@@ -46,13 +46,14 @@ class ScanningService @Inject()(
   warningsService              : WarningsService,
   activeBranchesService        : ActiveBranchesService,
   exemptionChecker             : ExemptionChecker,
-  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
+  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
+  secretHashChecker            : SecretHashChecker
 )(implicit ec: ExecutionContext) {
 
   private val logger = Logger(getClass)
 
-  lazy val privateMatchingEngine = new RegexMatchingEngine(appConfig.allRules.privateRules, appConfig.maxLineLength, appConfig.secretHashConfig)
-  lazy val publicMatchingEngine  = new RegexMatchingEngine(appConfig.allRules.publicRules, appConfig.maxLineLength, appConfig.secretHashConfig)
+  lazy val privateMatchingEngine = new RegexMatchingEngine(appConfig.allRules.privateRules, appConfig.maxLineLength, appConfig.secretHashConfig, secretHashChecker)
+  lazy val publicMatchingEngine  = new RegexMatchingEngine(appConfig.allRules.publicRules, appConfig.maxLineLength, appConfig.secretHashConfig, secretHashChecker)
 
   def scanRepository(
     repository:    Repository,

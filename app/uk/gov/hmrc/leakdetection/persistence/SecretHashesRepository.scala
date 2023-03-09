@@ -32,29 +32,29 @@ class SecretHashesRepository @Inject()(
                                    mongoComponent: MongoComponent
                                  )(implicit ec: ExecutionContext
                                  ) extends PlayMongoRepository[SecretHash](
-  collectionName = "reports",
+  collectionName = "hashes",
   mongoComponent = mongoComponent,
   domainFormat   = SecretHash.mongoFormat,
   indexes        = Seq(
-    IndexModel(Indexes.hashed("repoName"), IndexOptions().name("repoName-idx").background(true)),
+    IndexModel(Indexes.hashed("hash"), IndexOptions().name("hash-idx").background(true)),
   )
 ) {
 
   def insertHashes(hashes: Seq[SecretHash]): Future[Unit] =
     collection.insertMany(hashes).toFuture().map(_ => ())
 
-  def isKnownSecretHash(hash: String): Future[Boolean] =
-    collection.find(
-      filter =  Filters.equal("hash", hash)
-    ).headOption().map(_.nonEmpty)
+//  def isKnownSecretHash(hash: String): Future[Boolean] =
+//    collection.find(
+//      filter =  Filters.equal("hash", hash)
+//    ).headOption().map(_.nonEmpty)
 
-  def isKnownSecretHash(hashes: Seq[String]): Future[List[String]] =
+  def isKnownSecretHash(hashes: List[String]): Future[List[String]] = {
     collection.find(
-      filter = Filters.in("hash", hashes)
+      filter = Filters.in("hash", hashes: _*)
     ).map(_.hash)
       .toFuture()
       .map(_.toList)
-
+  }
 
 }
 
