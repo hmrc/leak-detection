@@ -128,10 +128,11 @@ class ScanningService @Inject()(
     author: String,
     warnings: Seq[Warning]
   )(implicit hc: HeaderCarrier): Future[Unit] =
-    teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
-        if (branch.asString == repo.defaultBranch) {
+    teamsAndRepositoriesConnector
+      .repo(repository.asString)
+      .map(_.map(repo =>
+        if (branch.asString == repo.defaultBranch)
           alertingService.alertAboutWarnings(author, warnings)
-        }
       ))
 
   def queueRequest(p: PushUpdate): Future[Boolean] =
@@ -140,7 +141,7 @@ class ScanningService @Inject()(
   def queueRescanRequest(p: PushUpdate): Future[Boolean] =
     rescanRequestsQueue.pushNew(p).map(_ => true)
 
-  def scanAll(implicit ec: ExecutionContext): Future[Int] = {
+  def scanAll(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Int] = {
     def processNext(acc: Int): Future[Int] =
       githubRequestsQueue.pullOutstanding.flatMap {
         case None     => Future.successful(acc)
@@ -153,31 +154,47 @@ class ScanningService @Inject()(
     } yield  scanned + rescanned
   }
 
-  def rescanOne(implicit ec: ExecutionContext): Future[Int] =
+  private def rescanOne(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Int] =
     rescanRequestsQueue.pullOutstanding.flatMap {
       case None     => Future.successful(0)
       case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi).map(_.size)
     }
 
-  def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PushUpdate])(workItem: WorkItem[PushUpdate]): Future[Option[Report]] = {
-    val request     = workItem.item
-    implicit val hc: HeaderCarrier = HeaderCarrier()
-    scanRepository(
-      repository    = Repository(request.repositoryName),
-      branch        = Branch(request.branchRef),
-      isPrivate     = request.isPrivate,
-      isArchived    = request.isArchived,
-      repositoryUrl = request.repositoryUrl,
-      commitId      = request.commitId,
-      authorName    = request.authorName,
-      archiveUrl    = request.archiveUrl,
-      runMode       = request.runMode.getOrElse(Normal)
-    ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
-     .recoverWith {
-       case NonFatal(e) =>
-         logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
-         repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
-     }
-  }
-
+  private val maxRetries = appConfig.maxRetries
+  private def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PushUpdate])(workItem: WorkItem[PushUpdate])
+      (implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Option[Report]] =
+    (for {
+      report <- scanRepository(
+                  repository    = Repository(workItem.item.repositoryName)
+                , branch        = Branch(workItem.item.branchRef)
+                , isPrivate     = workItem.item.isPrivate
+                , isArchived    = workItem.item.isArchived
+                , repositoryUrl = workItem.item.repositoryUrl
+                , commitId      = workItem.item.commitId
+                , authorName    = workItem.item.authorName
+                , archiveUrl    = workItem.item.archiveUrl
+                , runMode       = workItem.item.runMode.getOrElse(Normal)
+                )
+      _      <- repo.completeAndDelete(workItem.id)
+    } yield
+      Some(report)
+    ).recoverWith {
+      case e: java.util.concurrent.TimeoutException if workItem.failureCount < maxRetries =>
+        logger.error(s"Failed scan ${workItem.item.repositoryName} on branch ${workItem.item.branchRef} attempt ${workItem.failureCount}/$maxRetries", e)
+        repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
+      case e: java.util.concurrent.TimeoutException =>
+        logger.error(s"Failed scan ${workItem.item.repositoryName} on branch ${workItem.item.branchRef} last attempt ${workItem.failureCount}/$maxRetries - alerting on slack", e)
+        val commitInfo = CommitInfo(
+          repository    = Repository(workItem.item.repositoryName)
+        , branch        = Branch(workItem.item.branchRef)
+        , author        = workItem.item.authorName
+        )
+        for {
+          _ <- alertingService.alertLastScanAttempt(commitInfo)
+          _ <- repo.markAs(workItem.id, ProcessingStatus.PermanentlyFailed).map(_ => None)
+        } yield None
+      case NonFatal(e) =>
+        logger.error(s"Failed scan ${workItem.item.repositoryName} on branch ${workItem.item.branchRef} - unexpected error", e)
+        repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
+    }
 }

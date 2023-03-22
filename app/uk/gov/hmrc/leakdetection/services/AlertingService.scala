@@ -93,6 +93,29 @@ class AlertingService @Inject()(
         .map(_ => ())
     }
 
+  def alertLastScanAttempt(commitInfo: CommitInfo)(implicit hc: HeaderCarrier): Future[Unit] =
+    if (!slackConfig.enabled) {
+      Future.unit
+    } else {
+
+      val alertMessage =
+        slackConfig.lastAttemptMessageText
+          .replace("{repo}", commitInfo.repository.asString)
+          .replace("{branch}", commitInfo.branch.asString)
+
+      val messageDetails =
+        MessageDetails(
+          text        = alertMessage,
+          username    = slackConfig.username,
+          iconEmoji   = slackConfig.iconEmoji,
+          attachments = Nil,
+          showAttachmentAuthor = false)
+
+      Future
+        .traverse(prepareSlackNotifications(messageDetails, commitInfo))(sendSlackMessage)
+        .map(_ => ())
+    }
+
   private def prepareSlackNotifications(
     messageDetails: MessageDetails,
     commitInfo: CommitInfo): Seq[SlackNotificationAndErrorMessage] = {

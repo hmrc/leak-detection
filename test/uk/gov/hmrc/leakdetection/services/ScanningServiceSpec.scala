@@ -455,7 +455,8 @@ class ScanningServiceSpec
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
         warningMessages           = Map.empty,
-        alerts                    = Alerts(aSlackConfig)
+        alerts                    = Alerts(aSlackConfig),
+        maxRetries                = 3
       )
 
     val githubConnector               = mock[GithubConnector]

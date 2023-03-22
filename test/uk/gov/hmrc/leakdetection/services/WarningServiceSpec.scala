@@ -154,7 +154,8 @@ class WarningServiceSpec
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
         warningMessages           = Map.empty,
-        alerts                    = Alerts(aSlackConfig)
+        alerts                    = Alerts(aSlackConfig),
+        maxRetries                = 3
       )
 
     val repoVisibilityChecker = mock[RepoVisibilityChecker]

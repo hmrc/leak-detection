@@ -41,42 +41,31 @@ class AppConfigProvider @Inject()(
 
   private lazy val appConfig =
     AppConfig(
-      allRules =
-        AllRules(
-          publicRules  = configuration.get[Seq[Configuration]]("allRules.publicRules" ).map(toRule).toList,
-          privateRules = configuration.get[Seq[Configuration]]("allRules.privateRules").map(toRule).toList
-        ),
-
-      githubSecrets =
-        GithubSecrets(
-          personalAccessToken = configuration.get[String]("githubSecrets.personalAccessToken"),
-        ),
-
-      maxLineLength =
-        configuration.get[Int]("maxLineLength"),
-
-      clearingCollectionEnabled =
-        configuration.get[Boolean]("clearingCollectionEnabled"),
-
-      warningMessages = {
-        val msgs = configuration.get[Configuration]("warningMessages")
-        msgs.keys.map { k => k -> msgs.get[String](k) }.toMap
-      },
-
-      alerts =
-        Alerts(SlackConfig(
-          enabled             = configuration.get[Boolean    ]("alerts.slack.enabled"),
-          adminChannel        = configuration.get[String     ]("alerts.slack.adminChannel"),
-          defaultAlertChannel = configuration.get[String     ]("alerts.slack.defaultAlertChannel"),
-          username            = configuration.get[String     ]("alerts.slack.username"),
-          iconEmoji           = configuration.get[String     ]("alerts.slack.iconEmoji"),
-          sendToAlertChannel  = configuration.get[Boolean    ]("alerts.slack.sendToAlertChannel"),
-          sendToTeamChannels  = configuration.get[Boolean    ]("alerts.slack.sendToTeamChannels"),
-          messageText         = configuration.get[String     ]("alerts.slack.messageText"),
-          leakDetectionUri    = configuration.get[String     ]("alerts.slack.leakDetectionUri"),
-          warningText         = configuration.get[String     ]("alerts.slack.warningText"),
-          warningsToAlert     = configuration.get[Seq[String]]("alerts.slack.warningsToAlert")
-        ))
+      allRules                  = AllRules(
+                                    publicRules  = configuration.get[Seq[Configuration]]("allRules.publicRules" ).map(toRule).toList,
+                                    privateRules = configuration.get[Seq[Configuration]]("allRules.privateRules").map(toRule).toList
+                                  )
+    , githubSecrets             = GithubSecrets(personalAccessToken = configuration.get[String]("githubSecrets.personalAccessToken"))
+    , maxLineLength             = configuration.get[Int]("maxLineLength")
+    , clearingCollectionEnabled = configuration.get[Boolean]("clearingCollectionEnabled")
+    , warningMessages           = { val msgs = configuration.get[Configuration]("warningMessages")
+                                    msgs.keys.map { k => k -> msgs.get[String](k) }.toMap
+                                  }
+    , alerts                    = Alerts(SlackConfig(
+                                    enabled                = configuration.get[Boolean    ]("alerts.slack.enabled"),
+                                    adminChannel           = configuration.get[String     ]("alerts.slack.adminChannel"),
+                                    defaultAlertChannel    = configuration.get[String     ]("alerts.slack.defaultAlertChannel"),
+                                    username               = configuration.get[String     ]("alerts.slack.username"),
+                                    iconEmoji              = configuration.get[String     ]("alerts.slack.iconEmoji"),
+                                    sendToAlertChannel     = configuration.get[Boolean    ]("alerts.slack.sendToAlertChannel"),
+                                    sendToTeamChannels     = configuration.get[Boolean    ]("alerts.slack.sendToTeamChannels"),
+                                    messageText            = configuration.get[String     ]("alerts.slack.messageText"),
+                                    lastAttemptMessageText = configuration.get[String     ]("alerts.slack.lastAttemptMessageText"),
+                                    leakDetectionUri       = configuration.get[String     ]("alerts.slack.leakDetectionUri"),
+                                    warningText            = configuration.get[String     ]("alerts.slack.warningText"),
+                                    warningsToAlert        = configuration.get[Seq[String]]("alerts.slack.warningsToAlert")
+                                  ))
+    , maxRetries                = configuration.get[Int]("maxRetries")
     )
 
   override def get(): AppConfig =
@@ -89,7 +78,8 @@ final case class AppConfig(
   maxLineLength            : Int,
   clearingCollectionEnabled: Boolean,
   warningMessages          : Map[String, String],
-  alerts                   : Alerts
+  alerts                   : Alerts,
+  maxRetries               : Int
 )
 
 final case class AllRules(
@@ -148,15 +138,16 @@ final case class Alerts(
 )
 
 final case class SlackConfig(
-  enabled            : Boolean,
-  adminChannel       : String,
-  defaultAlertChannel: String,
-  username           : String,
-  iconEmoji          : String,
-  sendToAlertChannel : Boolean,
-  sendToTeamChannels : Boolean,
-  messageText        : String,
-  leakDetectionUri   : String,
-  warningText        : String,
-  warningsToAlert    : Seq[String]
+  enabled               : Boolean,
+  adminChannel          : String,
+  defaultAlertChannel   : String,
+  username              : String,
+  iconEmoji             : String,
+  sendToAlertChannel    : Boolean,
+  sendToTeamChannels    : Boolean,
+  messageText           : String,
+  lastAttemptMessageText: String,
+  leakDetectionUri      : String,
+  warningText           : String,
+  warningsToAlert       : Seq[String]
 )

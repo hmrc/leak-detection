@@ -36,6 +36,8 @@ class ScanRepositoriesScheduler @Inject()(
 ) {
   private val logger = Logger(getClass)
 
+  implicit val hc = uk.gov.hmrc.http.HeaderCarrier()
+
   private def execute(implicit ec: ExecutionContext): Future[Result] =
     scanningService.scanAll.map(count => Result(s"Processed $count github requests"))
 

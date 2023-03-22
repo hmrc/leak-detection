@@ -120,17 +120,18 @@ object ModelFactory {
     aReport(repoName).copy(totalLeaks = 0, rulesViolated = Map.empty)
 
   val aSlackConfig = SlackConfig(
-    enabled             = true,
-    adminChannel        = "#the-admin-channel",
-    defaultAlertChannel = "#the-channel",
-    username            = "leak-detection",
-    iconEmoji           = ":closed_lock_with_key:",
-    sendToAlertChannel  = true,
-    sendToTeamChannels  = true,
-    messageText         = "Do not panic, but there is a leak!",
-    leakDetectionUri    = "https://somewhere",
-    warningText         = "Warning for {repo} with message - {warningMessage}",
-    warningsToAlert     = Seq.empty
+    enabled                = true,
+    adminChannel           = "#the-admin-channel",
+    defaultAlertChannel    = "#the-channel",
+    username               = "leak-detection",
+    iconEmoji              = ":closed_lock_with_key:",
+    sendToAlertChannel     = true,
+    sendToTeamChannels     = true,
+    messageText            = "Do not panic, but there is a leak!",
+    lastAttemptMessageText = "Oh no we can't scan",
+    leakDetectionUri       = "https://somewhere",
+    warningText            = "Warning for {repo} with message - {warningMessage}",
+    warningsToAlert        = Seq.empty
   )
 
   implicit val pushUpdateWrites: Writes[PushUpdate] =
