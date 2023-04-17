@@ -45,7 +45,7 @@ class AlertingService @Inject()(
             if (warning.warningMessageType != FileLevelExemptions.toString)
               Seq.empty
             else
-              Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions".toString))
+              Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions?source=slack-lds".toString))
 
           val messageDetails =
             MessageDetails(
@@ -85,7 +85,7 @@ class AlertingService @Inject()(
           text        = alertMessage,
           username    = slackConfig.username,
           iconEmoji   = slackConfig.iconEmoji,
-          attachments = Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}".toString)),
+          attachments = Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds".toString)),
           showAttachmentAuthor = false)
 
       Future
