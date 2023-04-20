@@ -46,13 +46,14 @@ class ScanningService @Inject()(
   warningsService              : WarningsService,
   activeBranchesService        : ActiveBranchesService,
   exemptionChecker             : ExemptionChecker,
-  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
+  teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
+  secretHashChecker            : SecretHashChecker
 )(implicit ec: ExecutionContext) {
 
   private val logger = Logger(getClass)
 
-  lazy val privateMatchingEngine = new RegexMatchingEngine(appConfig.allRules.privateRules, appConfig.maxLineLength)
-  lazy val publicMatchingEngine  = new RegexMatchingEngine(appConfig.allRules.publicRules, appConfig.maxLineLength)
+  lazy val privateMatchingEngine = new RegexMatchingEngine(appConfig.allRules.privateRules, appConfig.maxLineLength, appConfig.secretHashConfig, secretHashChecker)
+  lazy val publicMatchingEngine  = new RegexMatchingEngine(appConfig.allRules.publicRules, appConfig.maxLineLength, appConfig.secretHashConfig, secretHashChecker)
 
   def scanRepository(
     repository:    Repository,
@@ -91,7 +92,7 @@ class ScanningService @Inject()(
           val exemptions = exemptionParsingResult.getOrElse(List.empty)
 
           for {
-            matched                 <- Future {regexMatchingEngine.run(dir, exemptions)}
+            matched                 <- regexMatchingEngine.run(dir, exemptions)
             results                  = matched.filterNot(_.draft)
             unusedExemptions         = exemptionChecker.run(results, exemptions)
             report                   = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)

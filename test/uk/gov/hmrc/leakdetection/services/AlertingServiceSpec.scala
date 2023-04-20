@@ -343,8 +343,10 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         maxLineLength             = Int.MaxValue,
         clearingCollectionEnabled = false,
         warningMessages           = Map("InvalidEntry" -> "invalid entry message", "FileLevelExemptions" -> "file level exemptions"),
-        alerts                    = Alerts(slackConfig)
-      )
+        alerts                    = Alerts(slackConfig),
+        secretHashConfig          = SecretHashConfig(minWordSize = 15)
+
+    )
 
     lazy val service = new AlertingService(appConfig, slackConnector)(ExecutionContext.global)
   }

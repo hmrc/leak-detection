@@ -24,3 +24,4 @@ DELETE     /admin/draft                                 @uk.gov.hmrc.leakdetecti
 POST       /admin/rescan                                @uk.gov.hmrc.leakdetection.controllers.AdminController.rescan(mode: RunMode ?= Draft)
 POST       /admin/rescan/:repository/:branch            @uk.gov.hmrc.leakdetection.controllers.AdminController.rescanRepo(repository: Repository, branch: Branch, mode: RunMode ?= Draft)
 POST       /admin/rescan/all                            @uk.gov.hmrc.leakdetection.controllers.AdminController.rescanAllRepos(mode: RunMode ?= Draft)
+POST       /admin/secrets/hashed                        @uk.gov.hmrc.leakdetection.controllers.AdminSecretHashController.insertKnownSecretHashes

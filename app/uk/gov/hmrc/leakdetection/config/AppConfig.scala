@@ -76,7 +76,9 @@ class AppConfigProvider @Inject()(
           leakDetectionUri    = configuration.get[String     ]("alerts.slack.leakDetectionUri"),
           warningText         = configuration.get[String     ]("alerts.slack.warningText"),
           warningsToAlert     = configuration.get[Seq[String]]("alerts.slack.warningsToAlert")
-        ))
+        )),
+
+      secretHashConfig = SecretHashConfig(configuration.get[Int](path = "secretHash.minWordSize"))
     )
 
   override def get(): AppConfig =
@@ -89,7 +91,8 @@ final case class AppConfig(
   maxLineLength            : Int,
   clearingCollectionEnabled: Boolean,
   warningMessages          : Map[String, String],
-  alerts                   : Alerts
+  alerts                   : Alerts,
+  secretHashConfig         : SecretHashConfig
 )
 
 final case class AllRules(
