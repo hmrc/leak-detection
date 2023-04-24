@@ -17,7 +17,7 @@ This check is performed if a configuration parameter `alerts.slack.enabledForRep
 If the check is enabled, whenever commit is made to the repository that doesn't contain `repository.yaml` file or the file doesn't contain valid fingerprint, the alert will be sent.
 
 ### Warnings
-LDS can optionally also alert against warnings.  To include an alert for a given warning, simply add it to the `alerts.slack.warningsToAlert` list in `/connf/application.conf`. 
+LDS can optionally also alert against warnings.  To include an alert for a given warning, simply add it to the `alerts.slack.warningsToAlert` list in `/connf/application.conf`.
 
 ## Rules
 The rules are defined within `/conf/application.conf` under the `allRules` section.  There is a set of `privateRules` which are executed on private repositories, and a set of `publicRules` which are executed on public repositories.
@@ -41,7 +41,7 @@ In such case the rule applies to all non-binary files (with filename extension t
 ## Rescanning repositories
 Repositories can be scanned in either `normal` mode or `draft` mode.  If a mode is not provided then the rescan will run in `draft` mode by default.
 
-### normal mode 
+### normal mode
 Any warnings or potential leaks will be visible in the catalogue and alerts will be triggered.
 
 Any rules marked as draft will be ignored.
@@ -56,7 +56,7 @@ No alerts will be triggered and the results of draft scans will be stored in a s
 All rules are checked during a draft run (not just the draft rules).
 
 All rescan endpoints accept the `?mode=:[normal,draft]` query param:
-* To rescan a single repositories branch : POST `/admin/rescan/:repository/:branch` 
+* To rescan a single repositories branch : POST `/admin/rescan/:repository/:branch`
 * To rescan multiple repositories (default branch only) : POST `/admin/rescan`
 
 The repositories to scan must be provided as a JSON list e.g.:
@@ -85,7 +85,7 @@ Without performing a rescan all, any violations within the existing codebase wil
 
 ## Testing in a local environment
 ### Requirements
-* Ensure [sbt](https://www.scala-sbt.org/0.13/docs/Setup.html) is installed.
+* Ensure [sbt](https://www.scala-sbt.org/1.x/docs/Setup.html) is installed.
 * You will also need a GitHub personal access token: https://github.com/settings/tokens
   * Export the GitHub token with `export GITHUB_TOKEN=abc123abc123abc123abc123abc123abc123abc123abc123`.
 * Run `sbt "run -DgithubSecrets.personalAccessToken=bc123abc123abc123abc123abc123abc123abc123abc123"` in the repository.
