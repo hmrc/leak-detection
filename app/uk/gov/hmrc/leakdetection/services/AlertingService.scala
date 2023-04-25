@@ -95,7 +95,7 @@ class AlertingService @Inject()(
 
   private def prepareSlackNotifications(
     messageDetails: MessageDetails,
-    commitInfo: CommitInfo): Seq[SlackNotificationAndErrorMessage] = {
+    commitInfo: CommitInfo): Seq[SlackNotificationRequest] = {
 
     val alertChannelNotification =
       if (slackConfig.sendToAlertChannel) Some(notificationForAlertChannel(messageDetails, commitInfo)) else None
@@ -107,74 +107,22 @@ class AlertingService @Inject()(
 
   }
 
-  private def notificationForTeam(messageDetails: MessageDetails, commitInfo: CommitInfo) = {
-    val author = commitInfo.author
-    val request =
+  private def notificationForTeam(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
       SlackNotificationRequest(
-        channelLookup = ChannelLookup.TeamsOfGithubUser(author),
+        channelLookup = ChannelLookup.TeamsOfGithubUser(commitInfo.author),
         messageDetails = messageDetails
       )
 
-    SlackNotificationAndErrorMessage(
-      request    = request,
-      errorMsg   = s"Error sending message to team channels of user: '$author'",
-      commitInfo = commitInfo)
-  }
-
-  private def notificationForAlertChannel(messageDetails: MessageDetails, commitInfo: CommitInfo) = {
-    val request =
+  private def notificationForAlertChannel(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
       SlackNotificationRequest(
         channelLookup  = ChannelLookup.SlackChannel(slackChannels = List(slackConfig.defaultAlertChannel)),
         messageDetails = messageDetails
       )
 
-    SlackNotificationAndErrorMessage(
-      request    = request,
-      errorMsg   = s"Error sending message to default alert channel: '${slackConfig.defaultAlertChannel}'",
-      commitInfo = commitInfo
-    )
-  }
-
-  private def sendSlackMessage(slackNotificationAndErrorMessage: SlackNotificationAndErrorMessage)(
+  private def sendSlackMessage(slackNotificationRequest: SlackNotificationRequest)(
     implicit hc: HeaderCarrier): Future[Unit] =
-    slackConnector.sendMessage(slackNotificationAndErrorMessage.request).map {
-      case response if response.hasSentMessages => ()
-      case response =>
-        logger.error(s"Errors sending notification: ${response.errors.mkString("[", ",", "]")}")
-        alertAdminsIfNoSlackChannelFound(response.errors, slackNotificationAndErrorMessage.commitInfo)
-    }
-
-  private def alertAdminsIfNoSlackChannelFound(errors: List[SlackNotificationError], commitInfo: CommitInfo)(
-    implicit hc: HeaderCarrier): Future[Unit] = {
-    val errorsToAlert = errors.filterNot { error =>
-      error.code == "repository_not_found" || error.code == "slack_error"
-    }
-    if (errorsToAlert.nonEmpty) {
-      slackConnector
-        .sendMessage(
-          SlackNotificationRequest(
-            channelLookup = ChannelLookup.SlackChannel(List(slackConfig.adminChannel)),
-            messageDetails = MessageDetails(
-              text        = "LDS failed to deliver slack message to intended channels. Errors are shown below:",
-              username    = slackConfig.username,
-              iconEmoji   = slackConfig.iconEmoji,
-              attachments = errorsToAlert.map(e => Attachment(e.message)) :+ commitInfo.toAttachment,
-              showAttachmentAuthor = false
-            )
-          )
-        )
-        .map(_ => ())
-    } else {
-      Future.unit
-    }
-  }
+    slackConnector.sendMessage(slackNotificationRequest).map (_ => ())
 }
-
-final case class SlackNotificationAndErrorMessage(
-  request   : SlackNotificationRequest,
-  errorMsg  : String,
-  commitInfo: CommitInfo
-)
 
 final case class CommitInfo(
   author    : String,
