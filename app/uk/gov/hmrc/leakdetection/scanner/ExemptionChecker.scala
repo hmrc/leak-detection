@@ -30,9 +30,17 @@ class ExemptionChecker @Inject()() {
       .filterNot(exemption =>
         excludedResults.exists(exclusion =>
           exemption.ruleId == exclusion.ruleId &&
-            exemption.filePath == exclusion.filePath &&
+            removeLeadingSlash(exemption.filePath) == removeLeadingSlash(exclusion.filePath) &&
             exemption.text.fold(true)(exclusion.lineText.contains)
         )
       )
+  }
+
+  private def removeLeadingSlash(filePath: String) = {
+    filePath match {
+      case null => filePath
+      case s if s.startsWith("/") => s.substring(1)
+      case _ => filePath
+    }
   }
 }
