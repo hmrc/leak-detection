@@ -30,9 +30,14 @@ class ExemptionChecker @Inject()() {
       .filterNot(exemption =>
         excludedResults.exists(exclusion =>
           exemption.ruleId == exclusion.ruleId &&
-            exemption.filePath == exclusion.filePath &&
+            normalise(exemption.filePath) == normalise(exclusion.filePath) &&
             exemption.text.fold(true)(exclusion.lineText.contains)
         )
       )
+  }
+
+  private def normalise(filePath: String) = filePath match {
+    case s if s.startsWith("/") => s.substring(1)
+    case _ => filePath
   }
 }

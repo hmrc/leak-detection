@@ -83,5 +83,21 @@ class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
 
       results shouldBe Seq(UnusedExemption("rule-1", "/dir/file1", Some("other text")))
     }
+    "correctly handle filepaths with and without leading '/'" in {
+      val exemptions = Seq(
+        RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
+        RuleExemption("rule-2", Seq("/dir/file2", "dir/file3"), None)
+      )
+
+      val matchedResults = Seq(
+        aMatchedResult.copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "with some text that matches", isExcluded = true),
+        aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file2", isExcluded = true),
+        aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file3", isExcluded = true)
+      )
+
+      val results = exemptionChecker.run(matchedResults, exemptions)
+
+      results shouldBe empty
+    }
   }
 }
