@@ -65,7 +65,12 @@ final case class UnusedExemption(
 )
 
 object UnusedExemption {
-  implicit val format: OFormat[UnusedExemption] = Json.format[UnusedExemption]
+  implicit val format: OFormat[UnusedExemption] = {
+    ( (__ \ "ruleId").format[String]
+    ~ ( __ \ "filePath").formatWithDefault[String]("")
+    ~ ( __ \ "text").formatNullable[String]
+    )(UnusedExemption.apply, unlift((UnusedExemption.unapply)))
+  }
 }
 
 final case class Report(
