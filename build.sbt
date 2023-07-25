@@ -13,7 +13,6 @@ lazy val microservice = Project("leak-detection", file("."))
     scalacOptions += "-Yrangepos",
     scalacOptions += "-Wconf:src=routes/.*:s"
   )
-  .settings(publishingSettings: _*)
 
 RoutesKeys.routesImport ++= Seq(
   "uk.gov.hmrc.leakdetection.model.Branch",
