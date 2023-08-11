@@ -1,5 +1,4 @@
 import play.sbt.routes.RoutesKeys
-import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
 
 lazy val microservice = Project("leak-detection", file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
@@ -13,7 +12,6 @@ lazy val microservice = Project("leak-detection", file("."))
     scalacOptions += "-Yrangepos",
     scalacOptions += "-Wconf:src=routes/.*:s"
   )
-  .settings(publishingSettings: _*)
 
 RoutesKeys.routesImport ++= Seq(
   "uk.gov.hmrc.leakdetection.model.Branch",
