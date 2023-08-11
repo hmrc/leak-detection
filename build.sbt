@@ -1,5 +1,4 @@
 import play.sbt.routes.RoutesKeys
-import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
 
 lazy val microservice = Project("leak-detection", file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
