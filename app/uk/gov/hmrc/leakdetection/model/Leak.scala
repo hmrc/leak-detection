@@ -94,8 +94,8 @@ object Leak {
         filePath    = result.filePath,
         scope       = result.scope,
         lineNumber  = result.lineNumber,
-        urlToSource = if(report.commitId == "n/a") url"${report.repoUrl}/blob/${report.branch}${result.filePath}#L${result.lineNumber}".toString
-                      else url"${report.repoUrl}/blame/${report.commitId}${result.filePath}#L${result.lineNumber}".toString,
+        urlToSource = if(report.commitId == "n/a") s"${report.repoUrl}/blame/${report.branch}${result.filePath}#L${result.lineNumber}"
+                      else s"${report.repoUrl}/blame/${report.commitId}${result.filePath}#L${result.lineNumber}",
         lineText    = result.lineText,
         matches     = result.matches,
         priority    = result.priority,
