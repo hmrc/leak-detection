@@ -362,7 +362,8 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     "abc = 123",
     List(Match(3, 7)),
     "high",
-    false
+    false,
+    None
   )
 
   def aRule = Rule(

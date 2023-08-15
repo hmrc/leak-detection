@@ -110,7 +110,7 @@ object ModelFactory {
   }
 
   def aLeak(repoName: String = aString("repositoryName"), branch: String = aString("branch")): Leak =
-    Leak(repoName, branch,Instant.now(), ReportId(aString("reportId")), aString("rule-"), aString(), aString(""), Scope.FILE_CONTENT, aPositiveInt, aString("/"), aString(), few(() => Match( aPositiveInt, aPositiveInt)), Priority.Low, false)
+    Leak(repoName, branch,Instant.now(), ReportId(aString("reportId")), aString("rule-"), aString(), aString(""), Scope.FILE_CONTENT, aPositiveInt, aString("/"), aString(), few(() => Match( aPositiveInt, aPositiveInt)), Priority.Low, false, None)
 
 
   def aReportWithLeaks(repoName: String = aString("repositoryName")): Report =
