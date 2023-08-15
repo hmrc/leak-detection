@@ -70,7 +70,7 @@ class SlackNotificationsConnectorSpec
 
       val slackMessage =
         SlackNotificationRequest(
-          channelLookup  = ChannelLookup.SlackChannel(slackChannels = Nil),
+          channelLookup  = ChannelLookup.GithubRepository(repositoryName = "repo-name"),
           messageDetails = MessageDetails("text", "username", "iconEmoji", Nil, showAttachmentAuthor = false)
         )
 
@@ -83,8 +83,8 @@ class SlackNotificationsConnectorSpec
           .withRequestBody(equalToJson(
             """{
               "channelLookup": {
-                "slackChannels": [],
-                "by"           : "slack-channel"
+                "repositoryName": "repo-name",
+                "by"           : "github-repository"
               },
               "messageDetails": {
                 "text"       : "text",

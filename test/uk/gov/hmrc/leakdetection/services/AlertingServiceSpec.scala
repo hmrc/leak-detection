@@ -36,7 +36,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
   implicit val hc = HeaderCarrier()
 
   "The alerting service" should {
-    "send alerts to both alert channel and team channel if leaks are in the report" in new Fixtures {
+    "send alerts to both owning team channel and the users team channel if leaks are in the report" in new Fixtures {
 
       val report = Report(
         id        = ReportId.random,
@@ -62,8 +62,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         showAttachmentAuthor = false
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+      val expectedMessageToTheTeamOwningTheRepository = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.GithubRepository("repo-name"),
         messageDetails = messageDetails
       )
 
@@ -72,7 +72,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         messageDetails = messageDetails
       )
 
-      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTheTeamOwningTheRepository))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
 
@@ -94,8 +94,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
       service.alert(report).futureValue
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+      val expectedMessageToTeamOwningTheRepository = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.GithubRepository("repo-name"),
         messageDetails = MessageDetails(
           text        = "Do not panic, but there is a leak!",
           username    = "leak-detection",
@@ -105,7 +105,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         )
       )
 
-      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamOwningTheRepository))(any)
     }
 
     "not send leak alerts to slack if not enabled" in new Fixtures {
@@ -216,12 +216,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         messageDetails = messageDetails
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+      val expectedMessageToTeamOwningTheRepository = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.GithubRepository("a-repo"),
         messageDetails = messageDetails
       )
 
-      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamOwningTheRepository))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
 
@@ -249,12 +249,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         messageDetails = messageDetails
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+      val expectedMessageToTeamOwningTheRepo = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.GithubRepository("repo"),
         messageDetails = messageDetails
       )
 
-      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamOwningTheRepo))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
 
@@ -277,12 +277,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         messageDetails = messageDetails
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
+      val expectedMessageToTeamsOwningTheRepo = SlackNotificationRequest(
+        channelLookup  = ChannelLookup.GithubRepository("a-repo"),
         messageDetails = messageDetails
       )
 
-      verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
+      verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamsOwningTheRepo))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToTeamChannel))(any)
     }
   }

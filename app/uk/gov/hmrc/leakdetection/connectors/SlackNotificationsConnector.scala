@@ -92,13 +92,13 @@ object ChannelLookup {
     by            : String = "teams-of-github-user"
   ) extends ChannelLookup
 
-  final case class SlackChannel(
-    slackChannels: List[String],
-    by           : String = "slack-channel"
+  final case class GithubRepository(
+    repositoryName: String,
+    by: String = "github-repository"
   ) extends ChannelLookup
 
   implicit val writes: Writes[ChannelLookup] = Writes {
-    case s: SlackChannel      => Json.toJson(s)(Json.writes[SlackChannel])
+    case s: GithubRepository      => Json.toJson(s)(Json.writes[GithubRepository])
     case s: TeamsOfGithubUser => Json.toJson(s)(Json.writes[TeamsOfGithubUser])
   }
 }
