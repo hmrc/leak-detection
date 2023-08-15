@@ -98,3 +98,27 @@ object RepositoryEvent {
     ~ (__ \ "action"             ).read[String]
     )(RepositoryEvent.apply _)
 }
+final case class GitBlameRange(
+  startingLine : Int,
+  endingLine   : Int,
+  oid          : String,
+  author       : String)
+
+object GitBlameRange {
+  val gitBlameFormats: Format[GitBlameRange] =
+    ( (__ \ "startingLine").format[Int]
+      ~ (__ \ "endingLine").format[Int]
+      ~ (__ \ "commit" \ "oid").format[String]
+      ~ (__ \ "commit" \ "author" \ "name").format[String])(apply, unlift(unapply))
+}
+
+final case class GitBlame(ranges: Seq[GitBlameRange])
+
+object GitBlame {
+  implicit val rb = GitBlameRange.gitBlameFormats
+
+  implicit val reads: Reads[GitBlame] =
+    (__ \ "data" \ "repositoryOwner" \ "repository" \ "object" \ "blame" \ "ranges").read[List[GitBlameRange]].map { l => GitBlame(l)}
+
+  implicit val writes = Json.writes[GitBlame]
+}

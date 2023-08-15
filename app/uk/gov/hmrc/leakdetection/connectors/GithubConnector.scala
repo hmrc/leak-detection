@@ -21,11 +21,11 @@ import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import com.kenshoo.play.metrics.Metrics
 import org.zeroturnaround.zip.ZipUtil
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpReads, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.leakdetection.model.Branch
+import uk.gov.hmrc.leakdetection.model.{Branch, GitBlame, Repository}
 
 import java.io.File
 import java.net.URL
@@ -91,6 +91,19 @@ class GithubConnector @Inject()(
           Future.failed(new RuntimeException(s"Error downloading the zip file from $zipUrl received status ${error.statusCode}", error))
       }
   }
+
+  def getBlame(repository: Repository, branch: Branch, file: String): Future[GitBlame] = {
+    val blameQuery = getBlameQuery
+      .withVariable("repo", JsString(repository.asString))
+      .withVariable("branch", JsString(branch.asString))
+      .withVariable("file", JsString(if (file.startsWith("/")) file.substring(1) else file))
+    httpClientV2
+      .post(url"$githubUrl/graphql")
+      .withBody(blameQuery.asJson)
+      .setHeader("Authorization" -> s"token $githubToken")
+      .withProxy
+      .execute[GitBlame]
+  }
 }
 
 final case class BranchNotFound(branchName: Branch)
@@ -102,4 +115,53 @@ object GithubConnector {
     val urlEncodedBranchName = URLEncoder.encode(branch.asString, "UTF-8")
     new URL(archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/refs/heads/$urlEncodedBranchName"))
   }
+
+  val getBlameQuery: GraphqlQuery =
+    GraphqlQuery(
+      s"""
+        query($$repo: String!, $$branch: String, $$file: String!) {
+          repositoryOwner(login: "hmrc") {
+            repository(name: $$repo) {
+              object(expression: $$branch) {
+                ... on Commit {
+                  blame(path: $$file) {
+                    ranges {
+                      startingLine
+                      endingLine
+                      age
+                      commit {
+                        oid
+                        author {
+                          name
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      """
+    )
 }
+
+final case class GraphqlQuery(
+  query: String,
+  variables: Map[String, JsValue] = Map.empty) {
+
+  def withVariable(name: String, value: JsValue): GraphqlQuery =
+    copy(variables = variables + (name -> value))
+
+  def asJson: JsValue =
+    JsObject(
+      Map(
+        "query" -> JsString(query),
+        "variables" -> JsObject(variables)
+      )
+    )
+
+  def asJsonString: String =
+    Json.stringify(asJson)
+}
+

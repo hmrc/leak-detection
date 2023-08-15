@@ -504,12 +504,13 @@ class ScanningServiceSpec
     when(warningsService.checkForWarnings(any, any, any, any, any, any)).thenReturn(Seq.empty)
     when(activeBranchesService.markAsActive(any[Repository], any[Branch], any[ReportId])).thenReturn(Future.successful(()))
     when(teamsAndRepositoriesConnector.repo(any)).thenReturn(Future.successful(Some(RepositoryInfo("", true, false, "main"))))
-
+    when(githubConnector.getBlame(any[Repository], any[Branch], any[String])).thenReturn(Future.successful(GitBlame(Seq())))
     when(
       githubConnector.getZip(
         eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
         Branch(eqTo(branch)),
         any[java.nio.file.Path])).thenReturn(Future.successful(Right(unzippedTmpDirectory.toFile)))
+
 
     val alertingService = mock[AlertingService]
     when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))

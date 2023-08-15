@@ -25,7 +25,7 @@ import uk.gov.hmrc.leakdetection.connectors.{BranchNotFound, GithubConnector, Te
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
-import uk.gov.hmrc.leakdetection.scanner.{ExemptionChecker, RegexMatchingEngine}
+import uk.gov.hmrc.leakdetection.scanner.{ExemptionChecker, MatchedResult, RegexMatchingEngine}
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
 
 import java.nio.file.Files
@@ -93,10 +93,11 @@ class ScanningService @Inject()(
           for {
             matched                 <- Future {regexMatchingEngine.run(dir, exemptions)}
             results                  = matched.filterNot(_.draft)
-            unusedExemptions         = exemptionChecker.run(results, exemptions)
-            report                   = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, results, unusedExemptions)
+            resultsWithCommitId     <- addCommitId(repository, branch, results)
+            unusedExemptions         = exemptionChecker.run(resultsWithCommitId, exemptions)
+            report                   = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, resultsWithCommitId, unusedExemptions)
             draftReport              = Report.createFromMatchedResults(repository.asString, repositoryUrl, commitId, authorName, branch.asString, matched, unusedExemptions)
-            leaks                    = Leak.createFromMatchedResults(report, results)
+            leaks                    = Leak.createFromMatchedResults(report, resultsWithCommitId)
             warnings                 = warningsService.checkForWarnings(report, dir, isPrivate, isArchived, exemptions, exemptionParsingResult.left.toSeq)
             reportWithWarnings       = report.copy(totalWarnings = warnings.length)
             draftReportWithWarnings  = draftReport.copy(totalWarnings = warnings.length)
@@ -180,4 +181,40 @@ class ScanningService @Inject()(
      }
   }
 
+  private def addCommitId(
+      repository: Repository,
+      branch: Branch,
+      results: List[MatchedResult]): Future[List[MatchedResult]] = {
+    for {
+      blameToFileSeq <- getBlameByFile(repository, branch, results)
+      blameToFileMap = blameToFileSeq.toMap
+      resultsWithCommitID = results.map(r => {
+        val commitIds = getCommitIdForLine(r.lineNumber, blameToFileMap.get(r.filePath))
+        r.copy(commitId = commitIds)
+      })
+      _ = logger.info("HELLO")
+    } yield resultsWithCommitID
+  }
+
+  private def getBlameByFile(
+      repository: Repository,
+      branch: Branch,
+      results: List[MatchedResult]): Future[Seq[(String, GitBlame)]] = {
+    val files = results.map(_.filePath).toSet
+    val fileToBlameTuple = files.map(f => (f -> githubConnector.getBlame(repository, branch, f))).toSeq
+    Future.sequence(
+      fileToBlameTuple.map { case (s1, fut_s2) => fut_s2.map { s2 => (s1, s2) } }
+    )
+  }
+
+  private def getCommitIdForLine(lineNumber: Int, blame: Option[GitBlame]): Option[String] = {
+    blame match {
+      case Some(value) =>
+        val found = value.ranges.find(range => range.startingLine >= lineNumber && range.endingLine <= lineNumber)
+        found.map(_.oid)
+      case None =>
+        None
+    }
+
+  }
 }

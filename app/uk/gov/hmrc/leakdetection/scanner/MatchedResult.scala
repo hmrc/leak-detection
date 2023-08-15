@@ -29,7 +29,8 @@ final case class MatchedResult(
   matches    : List[Match],
   priority   : String,
   draft      : Boolean = false,
-  isExcluded : Boolean = false
+  isExcluded : Boolean = false,
+  commitId   : Option[String] = None
 )
 
 final case class Match(

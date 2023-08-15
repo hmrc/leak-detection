@@ -22,7 +22,6 @@ import java.time.Instant
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
-import uk.gov.hmrc.http.StringContextOps
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
 case class Leak(
@@ -39,7 +38,8 @@ case class Leak(
   lineText   : String,
   matches    : List[Match],
   priority   : String,
-  isExcluded : Boolean
+  isExcluded : Boolean,
+  commitId: Option[String]
 )
 
 object Leak {
@@ -60,6 +60,7 @@ object Leak {
     ~ (__ \ "matches").format[List[Match]]
     ~ (__ \ "priority").format[String]
     ~ (__ \ "isExcluded").format[Boolean]
+    ~ (__ \ "commitId").formatNullable[String]
     )(Leak.apply, unlift(Leak.unapply))
   }
 
@@ -79,27 +80,33 @@ object Leak {
     ~ (__ \ "matches").format[List[Match]]
     ~ (__ \ "priority").format[String]
     ~ (__ \ "isExcluded").formatWithDefault[Boolean](false)
+    ~ (__ \ "commitId").formatNullable[String]
     )(Leak.apply, unlift(Leak.unapply))
   }
 
   def createFromMatchedResults(report: Report, results: List[MatchedResult]): List[Leak] =
-    results.map(result =>
+    results.map(result => {
+      val commitId = result.commitId
       Leak(
-        repoName    = report.repoName,
-        branch      = report.branch,
-        timestamp   = report.timestamp,
-        reportId    = report.id,
-        ruleId      = result.ruleId,
+        repoName = report.repoName,
+        branch = report.branch,
+        timestamp = report.timestamp,
+        reportId = report.id,
+        ruleId = result.ruleId,
         description = result.description,
-        filePath    = result.filePath,
-        scope       = result.scope,
-        lineNumber  = result.lineNumber,
-        urlToSource = if(report.commitId == "n/a") s"${report.repoUrl}/blame/${report.branch}${result.filePath}#L${result.lineNumber}"
-                      else s"${report.repoUrl}/blame/${report.commitId}${result.filePath}#L${result.lineNumber}",
-        lineText    = result.lineText,
-        matches     = result.matches,
-        priority    = result.priority,
-        isExcluded  = result.isExcluded
+        filePath = result.filePath,
+        scope = result.scope,
+        lineNumber = result.lineNumber,
+        urlToSource = commitId match {
+          case Some(commitId) => s"${report.repoUrl}/blame/${commitId}${result.filePath}#L${result.lineNumber}"
+          case None => s"${report.repoUrl}/blame/${report.branch}${result.filePath}#L${result.lineNumber}"
+        },
+        commitId = commitId,
+        lineText = result.lineText,
+        matches = result.matches,
+        priority = result.priority,
+        isExcluded = result.isExcluded
       )
+    }
     )
 }
