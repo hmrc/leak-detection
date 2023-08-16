@@ -36,6 +36,8 @@ class AlertingService @Inject()(
 
   private val slackConfig = appConfig.alerts.slack
 
+  type ErrorMessage = String
+
   def alertAboutWarnings(author: String, warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] = {
     if (slackConfig.enabled) {
       warnings.map(warning =>
@@ -59,17 +61,14 @@ class AlertingService @Inject()(
             )
 
           val commitInfo = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
-
-          for {
-            _ <- if (slackConfig.sendToAlertChannel) sendSlackMessage(notificationForAlertChannel(messageDetails, commitInfo)) else Future.unit
-            _ <- if (slackConfig.sendToTeamChannels) sendSlackMessage(notificationForTeam(messageDetails, commitInfo))         else Future.unit
-          } yield ()
+          processSlackChannelMessages(messageDetails, commitInfo)
         }
       )
     }
-    // TODO do we really want to suppress errors with sendSlackMessage? We don't for `alert(Report)`
     Future.unit
   }
+
+
 
   def alert(report: Report)(implicit hc: HeaderCarrier): Future[Unit] =
     if (!slackConfig.enabled || report.rulesViolated.isEmpty) {
@@ -89,12 +88,32 @@ class AlertingService @Inject()(
           attachments = Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds".toString)),
           showAttachmentAuthor = false)
 
-      for {
-        _ <- if (slackConfig.sendToAlertChannel) sendSlackMessage(notificationForAlertChannel(messageDetails, CommitInfo.fromReport(report))) else Future.unit
-        _ <- if (slackConfig.sendToTeamChannels) sendSlackMessage(notificationForTeam(messageDetails, CommitInfo.fromReport(report)))         else Future.unit
-      } yield ()
+      processSlackChannelMessages(messageDetails, CommitInfo.fromReport(report))
     }
 
+  private def processSlackChannelMessages(messageDetails: MessageDetails, commitInfo: CommitInfo)(implicit hc: HeaderCarrier): Future[Unit] = {
+   val result = {
+    for {
+      _ <- sendSlackMessage(slackConfig.sendToAlertChannel, notificationForAlertChannel(messageDetails, commitInfo))
+      sentToRepositoryChannel <- sendSlackMessage(slackConfig.sendToRepositoryChannel, notificationForRepository(messageDetails, commitInfo))
+    } yield (sentToRepositoryChannel)
+   }
+
+    result.map{ success => if(!success) {
+      logger.warn("Failed to notify the Github Team falling back to notifying the User's Team")
+      sendSlackMessage(slackConfig.sendToRepositoryChannel, notificationForTeam(messageDetails, commitInfo))
+     } else {
+      Future.successful(())
+     }
+    }
+
+  }
+
+  private def notificationForRepository(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
+    SlackNotificationRequest(
+      channelLookup = ChannelLookup.GithubRepository(commitInfo.repository.asString),
+      messageDetails = messageDetails
+    )
   private def notificationForTeam(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
       SlackNotificationRequest(
         channelLookup = ChannelLookup.TeamsOfGithubUser(commitInfo.author),
@@ -107,11 +126,18 @@ class AlertingService @Inject()(
         messageDetails = messageDetails
       )
 
-  private def sendSlackMessage(slackNotificationRequest: SlackNotificationRequest)(
-    implicit hc: HeaderCarrier): Future[Unit] =
-    slackConnector.sendMessage(slackNotificationRequest).map {
-      case response if response.hasSentMessages => ()
-      case response => logger.error(s"Errors sending notification: ${response.errors.mkString("[", ",", "]")}")
+  private def sendSlackMessage(enabled: Boolean, slackNotificationRequest: SlackNotificationRequest)(
+    implicit hc: HeaderCarrier): Future[Boolean] =
+    if (enabled) {
+      slackConnector.sendMessage(slackNotificationRequest).map {
+        case response if response.hasSentMessages => true
+        case response =>
+          logger.error(s"Errors sending notification: ${response.errors.mkString("[", ",", "]")}")
+          false
+      }
+    } else {
+      logger.info(s"Slack notifications disabled for ${slackNotificationRequest.channelLookup.by}")
+      Future.successful(true)
     }
 }
 
