@@ -126,7 +126,7 @@ object ModelFactory {
     username            = "leak-detection",
     iconEmoji           = ":closed_lock_with_key:",
     sendToAlertChannel  = true,
-    sendToTeamChannels  = true,
+    sendToRepositoryChannel  = true,
     messageText         = "Do not panic, but there is a leak!",
     leakDetectionUri    = "https://somewhere",
     warningText         = "Warning for {repo} with message - {warningMessage}",
