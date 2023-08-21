@@ -91,36 +91,30 @@ class AlertingService @Inject()(
       processSlackChannelMessages(messageDetails, CommitInfo.fromReport(report))
     }
 
-  private def processSlackChannelMessages(messageDetails: MessageDetails, commitInfo: CommitInfo)(implicit hc: HeaderCarrier): Future[Unit] = {
-   val result = {
+  private def processSlackChannelMessages(messageDetails: MessageDetails, commitInfo: CommitInfo)(implicit hc: HeaderCarrier): Future[Unit] =
     for {
-      _ <- sendSlackMessage(slackConfig.sendToAlertChannel, notificationForAlertChannel(messageDetails, commitInfo))
-      sentToRepositoryChannel <- sendSlackMessage(slackConfig.sendToRepositoryChannel, notificationForRepository(messageDetails, commitInfo))
-    } yield (sentToRepositoryChannel)
-   }
+      _ <- sendSlackMessage(slackConfig.alertChannelEnabled, mkNotificationForAlertChannel(messageDetails, commitInfo))
+      sentToRepositoryChannel <- sendSlackMessage(slackConfig.repositoryChannelEnabled, mkNotificationForRepository(messageDetails, commitInfo))
+      _ <- if(sentToRepositoryChannel) Future.unit else {
+        logger.warn("Failed to notify the Github Team falling back to notifying the User's Team")
+        sendSlackMessage(slackConfig.repositoryChannelEnabled, mkNotificationForTeam(messageDetails, commitInfo))
+      }
+    } yield ()
 
-    result.map{ success => if(!success) {
-      logger.warn("Failed to notify the Github Team falling back to notifying the User's Team")
-      sendSlackMessage(slackConfig.sendToRepositoryChannel, notificationForTeam(messageDetails, commitInfo))
-     } else {
-      Future.successful(())
-     }
-    }
 
-  }
 
-  private def notificationForRepository(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
+  private def mkNotificationForRepository(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
     SlackNotificationRequest(
       channelLookup = ChannelLookup.GithubRepository(commitInfo.repository.asString),
       messageDetails = messageDetails
     )
-  private def notificationForTeam(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
+  private def mkNotificationForTeam(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
       SlackNotificationRequest(
         channelLookup = ChannelLookup.TeamsOfGithubUser(commitInfo.author),
         messageDetails = messageDetails
       )
 
-  private def notificationForAlertChannel(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
+  private def mkNotificationForAlertChannel(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
       SlackNotificationRequest(
         channelLookup  = ChannelLookup.SlackChannel(slackChannels = List(slackConfig.defaultAlertChannel)),
         messageDetails = messageDetails
