@@ -16,20 +16,19 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import org.mockito.{ArgumentCaptor, ArgumentMatchersSugar, MockitoSugar}
+import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.leakdetection.ModelFactory
 import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.connectors._
 import uk.gov.hmrc.leakdetection.model._
 
 import java.time.Instant
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
-import scala.jdk.CollectionConverters._
 
 class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatchersSugar with ScalaFutures with MockitoSugar {
 
@@ -366,12 +365,15 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
     lazy val appConfig =
       AppConfig(
-        allRules                  = AllRules(Nil, Nil),
-        githubSecrets             = GithubSecrets("token"),
-        maxLineLength             = Int.MaxValue,
-        clearingCollectionEnabled = false,
-        warningMessages           = Map("InvalidEntry" -> "invalid entry message", "FileLevelExemptions" -> "file level exemptions"),
-        alerts                    = Alerts(slackConfig)
+        allRules                    = AllRules(Nil, Nil),
+        githubSecrets               = GithubSecrets("token"),
+        maxLineLength               = Int.MaxValue,
+        clearingCollectionEnabled   = false,
+        warningMessages             = Map("InvalidEntry" -> "invalid entry message", "FileLevelExemptions" -> "file level exemptions"),
+        alerts                      = Alerts(slackConfig),
+        timeoutBackoff              = 1.second,
+        timeoutBackOffMax           = 1.second,
+        timeoutFailureLogAfterCount = 2
       )
 
     lazy val service = new AlertingService(appConfig, slackConnector)(ExecutionContext.global)

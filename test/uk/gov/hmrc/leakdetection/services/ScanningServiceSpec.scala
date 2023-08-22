@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import akka.stream.IOOperationIncompleteException
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
 import org.mockito.captor.ArgCaptor
@@ -41,8 +42,10 @@ import uk.gov.hmrc.mongo.workitem.ProcessingStatus
 import java.io.{File, PrintWriter}
 import java.nio.file.Files
 import java.time.{Duration, Instant}
+import java.util.concurrent.TimeoutException
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
 
 class ScanningServiceSpec
   extends AnyWordSpec
@@ -266,7 +269,8 @@ class ScanningServiceSpec
 
   "The service" should {
     "process all queued requests" in new TestSetup {
-      scanningService.queueRequest(request).futureValue
+      when(reportsService.reportExists(any)).thenReturn(Future.successful(false))
+      scanningService.queueDistinctRequest(request).futureValue
       queue.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
@@ -286,25 +290,54 @@ class ScanningServiceSpec
       rescanQueue.collection.countDocuments().toFuture().futureValue shouldBe 1
     }
 
-    "recover from exceptions expanding the zip and mark the item as failed" in new TestSetup {
-      scanningService.queueRequest(request).futureValue
+    "not process duplicate requests when report exists" in new TestSetup {
+      when(reportsService.reportExists(any))
+        .thenReturn(Future.successful(false), Future.successful(true))
+      scanningService.queueDistinctRequest(request).futureValue
       queue.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
+      scanningService.scanAll.futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 0
+
+      scanningService.queueDistinctRequest(request).futureValue
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 0
+      scanningService.scanAll.futureValue shouldBe 0
+    }
+
+    "not process duplicate requests when request already queued" in new TestSetup {
+      when(reportsService.reportExists(any)).thenReturn(Future.successful(false))
+      scanningService.queueDistinctRequest(request).futureValue
+      scanningService.queueDistinctRequest(request).futureValue
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 1
+
+      Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
+
+      scanningService.scanAll.futureValue shouldBe 1
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 0
+    }
+
+    "recover from exceptions expanding the zip and mark the item as failed" in new TestSetup {
+      when(reportsService.reportExists(any)).thenReturn(Future.successful(false))
+      scanningService.queueDistinctRequest(request).futureValue
+      queue.collection.countDocuments().toFuture().futureValue shouldBe 1
+
+      Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
       when(
         githubConnector.getZip(
           eqTo("https://api.github.com/repos/hmrc/repoName/{archive_format}{/ref}"),
           Branch(eqTo("main")),
-          any[java.nio.file.Path])).thenThrow(new RuntimeException("Some error"))
+          any[java.nio.file.Path])).thenThrow(new IOOperationIncompleteException(1, new TimeoutException("Some error")))
 
       scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue shouldBe 1
     }
 
     "recover from exceptions saving a report and mark the item as failed" in new TestSetup {
-      scanningService.queueRequest(request).futureValue
+      when(reportsService.reportExists(any)).thenReturn(Future.successful(false))
+      scanningService.queueDistinctRequest(request).futureValue
       queue.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
@@ -316,12 +349,14 @@ class ScanningServiceSpec
     }
 
     "recover from failures and mark the item as failed" in new TestSetup {
-      scanningService.queueRequest(request).futureValue
+      when(reportsService.reportExists(any)).thenReturn(Future.successful(false))
+      scanningService.queueDistinctRequest(request).futureValue
       queue.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       Thread.sleep(1) // the request is pulled from the queue only if current time is > than the insertion time
 
       when(reportsService.saveReport(any)).thenReturn(Future.failed(new RuntimeException("Some error")))
+
 
       scanningService.scanAll.futureValue shouldBe 0
       queue.count(ProcessingStatus.Failed).futureValue shouldBe 1
@@ -330,7 +365,7 @@ class ScanningServiceSpec
 
   trait TestSetup {
 
-    val now         = Instant.now() // new DateTime(0, DateTimeZone.UTC)
+    val now         = Instant.now()
     val id          = ReportId.random
     implicit val hc = HeaderCarrier()
 
@@ -450,12 +485,15 @@ class ScanningServiceSpec
 
     lazy val appConfig =
       AppConfig(
-        allRules                  = AllRules(Nil, privateRules),
-        githubSecrets             = githubSecrets,
-        maxLineLength             = Int.MaxValue,
-        clearingCollectionEnabled = false,
-        warningMessages           = Map.empty,
-        alerts                    = Alerts(aSlackConfig)
+        allRules                    = AllRules(Nil, privateRules),
+        githubSecrets               = githubSecrets,
+        maxLineLength               = Int.MaxValue,
+        clearingCollectionEnabled   = false,
+        warningMessages             = Map.empty,
+        alerts                      = Alerts(aSlackConfig),
+        timeoutBackoff              = 1.second,
+        timeoutBackOffMax           = 1.second,
+        timeoutFailureLogAfterCount = 2
       )
 
     val githubConnector               = mock[GithubConnector]

@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.model
 
-import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
-
-import java.time.Instant
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
+import uk.gov.hmrc.leakdetection.scanner.{Match, MatchedResult}
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
+
+import java.time.Instant
 
 case class Leak(
   repoName   : String,

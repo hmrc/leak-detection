@@ -55,4 +55,8 @@ class ReportsService @Inject()(
 
   def saveReport(report: Report): Future[Unit] =
     reportsRepository.saveReport(report)
+
+  def reportExists(pushUpdate: PushUpdate): Future[Boolean] =
+    reportsRepository.findByCommitIdAndBranch(pushUpdate.commitId, pushUpdate.branchRef).map(_.isDefined)
+
 }

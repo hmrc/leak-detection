@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.leakdetection.connectors.GithubConnector
@@ -36,7 +35,6 @@ class AdminController @Inject()(
 )(implicit
   ec: ExecutionContext
 ) extends BackendController(cc) {
-  private val logger = Logger(getClass)
 
   def rescanRepo(repository: Repository, branch: Branch, runMode: RunMode) = Action.async { implicit request =>
     implicit val rf: Format[Report] = Report.apiFormat

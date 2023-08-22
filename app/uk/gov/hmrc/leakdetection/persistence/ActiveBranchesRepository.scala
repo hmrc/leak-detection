@@ -40,6 +40,8 @@ class ActiveBranchesRepository @Inject()(
   )
 ) with Logging {
 
+  override lazy val requiresTtlIndex: Boolean = false
+
   def findAll(): Future[Seq[ActiveBranch]] =
     collection
       .find()

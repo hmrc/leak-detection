@@ -28,10 +28,10 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
   "run" should  {
     "scan all the files in all subdirectories and return a report with correct file paths" in {
       val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD", "no match\nto be found in this file\n", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir1") / "fileA", "matching on: secretA\nmatching on: secretA again", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "fileB", "\nmatching on: secretB\nmatching on: secretB again", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "dir3" / "fileD", "no match\nto be found in this file\n", createFolders = true)
 
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1", priority = Rule.Priority.High),
@@ -137,10 +137,10 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
 
     "filter out results that match rules ignoredFiles" in {
       val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / 'dir1 / "fileA", "matching on: secretA\nmatching on: secretA again", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir2 / "fileB", "\nmatching on: secretB\nmatching on: secretB again", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir2 / "dir3" / "fileD", "no match\nto be found in this file\n", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir1") / "fileA", "matching on: secretA\nmatching on: secretA again", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "fileB", "\nmatching on: secretB\nmatching on: secretB again", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "dir3" / "fileD", "no match\nto be found in this file\n", createFolders = true)
 
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "secretA", "descr 1", List("/dir1/fileA")),
@@ -194,10 +194,10 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
 
     "flag as excluded if all results match with at least one rules ignoredContent" in {
       val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / "fileA", "matching on: AA000000A", createFolders = true)
-      write(wd / 'zip_file_name_xyz / "fileB", "matching on: AA111111A", createFolders = true)
-      write(wd / 'zip_file_name_xyz / "fileC", "matching on: AA000000A and AA111111A", createFolders = true)
-      write(wd / 'zip_file_name_xyz / "fileD", "matching on: AA000000A and AA000111A", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / "fileA", "matching on: AA000000A", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / "fileB", "matching on: AA111111A", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / "fileC", "matching on: AA000000A and AA111111A", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / "fileD", "matching on: AA000000A and AA000111A", createFolders = true)
 
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", ignoredContent = List("000", "222"))
@@ -221,10 +221,10 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
       )
 
       val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / 'dir / "file1", "secret=false-positive\neven if multiple matches for secret=real-secret", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir / "file2", "secret=other-value", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir / "file3", "secret=anything", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir / "file4.key", "", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file1", "secret=false-positive\neven if multiple matches for secret=real-secret", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file2", "secret=other-value", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file3", "secret=anything", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file4.key", "", createFolders = true)
 
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
@@ -298,8 +298,8 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
       )
 
       val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / 'dir / "file1", "no match to be found on: secret=false-positive\nmatch should be found on secret=real-secret\nrule 2 match should still be found on: key=false-positive", createFolders = true)
-      write(wd / 'zip_file_name_xyz / 'dir / "file2", "match should be found on: secret=false-positive in this file", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file1", "no match to be found on: secret=false-positive\nmatch should be found on secret=real-secret\nrule 2 match should still be found on: key=false-positive", createFolders = true)
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file2", "match should be found on: secret=false-positive in this file", createFolders = true)
 
       val rules = List(
         Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
@@ -355,7 +355,7 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
 
     "flag in-line exceptions as excluded" in {
       val wd = tmp.dir()
-      write(wd / 'zip_file_name_xyz / 'dir / "file",
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file",
         "first match on: secret\n" +
           "//LDS ignore\n" +
           "ignore match on: secret\n" +

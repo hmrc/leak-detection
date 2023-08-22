@@ -16,13 +16,14 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import play.api.libs.json.Json
+import play.api.Logger
+import play.api.libs.json.{Json, OFormat}
 import play.api.libs.json.Json.toJson
-import play.api.mvc.ControllerComponents
+import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
-import uk.gov.hmrc.leakdetection.model.{GithubRequest, PushDelete, PushUpdate, Repository, RepositoryEvent, RunMode}
-import uk.gov.hmrc.leakdetection.services.{ActiveBranchesService, LeaksService, ReportsService, RescanService, ScanningService, WarningsService}
+import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.services._
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.{Inject, Singleton}
@@ -43,9 +44,11 @@ class WebhookController @Inject()(
   ec: ExecutionContext
 ) extends BackendController(cc) {
 
-  implicit val responseF = Json.format[WebhookResponse]
+  private val logger = Logger(getClass)
 
-  def processGithubWebhook() =
+  implicit val responseF: OFormat[WebhookResponse] = Json.format[WebhookResponse]
+
+  def processGithubWebhook(): Action[GithubRequest] =
     Action.async(parse.json[GithubRequest](GithubRequest.githubReads)) { implicit request =>
       request.body match {
 
@@ -55,8 +58,12 @@ class WebhookController @Inject()(
           )
 
         case pushUpdate: PushUpdate =>
-          scanningService.queueRequest(pushUpdate).map { _ =>
-            Ok(toJson(WebhookResponse("Request successfully queued")))
+          scanningService.queueDistinctRequest(pushUpdate).map { duplicate =>
+            if (duplicate) {
+              logger.info(s"Duplicate github webhook event - repo: ${pushUpdate.repositoryName}, branch: ${pushUpdate.branchRef}, commit: ${pushUpdate.commitId}")
+              Ok(toJson(WebhookResponse("Duplicate request ignored")))
+            } else
+              Ok(toJson(WebhookResponse("Request successfully queued")))
           }
 
         case pushDelete: PushDelete =>

@@ -46,6 +46,8 @@ class LeakRepository @Inject()(
     )
 ) with Logging {
 
+  override lazy val requiresTtlIndex: Boolean = false
+
   // TODO: use transactions
   def update(repo: String, branch: String, violations: Seq[Leak]): Future[LeakUpdateResult] =
     for {

@@ -29,6 +29,8 @@ import uk.gov.hmrc.leakdetection.scanner.{ExemptionChecker, MatchedResult, Regex
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
 
 import java.nio.file.Files
+import java.time.Instant
+import java.util.concurrent.TimeoutException
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -135,8 +137,12 @@ class ScanningService @Inject()(
         }
       ))
 
-  def queueRequest(p: PushUpdate): Future[Boolean] =
-    githubRequestsQueue.pushNew(p).map(_ => true)
+  def queueDistinctRequest(p: PushUpdate): Future[Boolean] = for {
+    itemAlreadyQueued <- githubRequestsQueue.findByCommitIdAndBranch(p).map(_.isDefined)
+    reportExists      <- reportsService.reportExists(p)
+    duplicate          = itemAlreadyQueued || reportExists
+    _                 <- if (!duplicate) githubRequestsQueue.pushNew(p) else Future.unit
+  } yield duplicate
 
   def queueRescanRequest(p: PushUpdate): Future[Boolean] =
     rescanRequestsQueue.pushNew(p).map(_ => true)
@@ -175,9 +181,15 @@ class ScanningService @Inject()(
       runMode       = request.runMode.getOrElse(Normal)
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
      .recoverWith {
+       case e: akka.stream.IOOperationIncompleteException if e.getCause.isInstanceOf[TimeoutException] =>
+         val backOffMillis = Math.min(workItem.failureCount * appConfig.timeoutBackoff.toMillis, appConfig.timeoutBackOffMax.toMillis)
+         if (workItem.failureCount > 2) {
+           logger.error(s"Failed scan due to timeouts - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}, retry count: ${workItem.failureCount}, timeoutMillis: $backOffMillis", e)
+         }
+         repo.markAs(workItem.id, ProcessingStatus.Failed, Some(Instant.now().plusMillis(backOffMillis))).map(_ => None)
        case NonFatal(e) =>
-         logger.error(s"Failed scan ${request.repositoryName} on branch ${request.branchRef}", e)
-         repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
+         logger.error(s"Failed scan - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}, retry count: ${workItem.failureCount}", e)
+           repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
      }
   }
 
