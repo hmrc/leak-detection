@@ -204,7 +204,6 @@ class ScanningService @Inject()(
         val commitIds = getCommitIdForLine(r.lineNumber, blameToFileMap.get(r.filePath))
         r.copy(commitId = commitIds)
       })
-      _ = logger.info("HELLO")
     } yield resultsWithCommitID
   }
 
