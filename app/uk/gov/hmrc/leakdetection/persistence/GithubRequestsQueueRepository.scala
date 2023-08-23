@@ -16,14 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
-import java.time.{Duration, Instant}
-import javax.inject.{Inject, Singleton}
+import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import play.api.Configuration
 import play.api.libs.json.__
 import uk.gov.hmrc.leakdetection.model.{PushUpdate, RunMode}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
 
+import java.time.{Duration, Instant}
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 object MongoPushUpdateFormats {
@@ -51,10 +52,14 @@ class GithubRequestsQueueRepository @Inject()(
   collectionName = "githubRequestsQueue",
   mongoComponent = mongoComponent,
   itemFormat     = MongoPushUpdateFormats.formats,
-  workItemFields = WorkItemFields.default
+  workItemFields = WorkItemFields.default,
+  extraIndexes   = Seq(IndexModel(Indexes.compoundIndex(Indexes.hashed("item.commitId"), Indexes.ascending("item.branchRef")), IndexOptions().name("commitId-branch-idx").background(true)))
 ) {
+
+  override lazy val requiresTtlIndex: Boolean = false
+
   override def now(): Instant =
-    Instant.now
+    Instant.now()
 
   lazy val retryIntervalMillis =
     configuration.getMillis("queue.retryAfter")
@@ -67,4 +72,13 @@ class GithubRequestsQueueRepository @Inject()(
       failedBefore    = now().minusMillis(retryIntervalMillis.toInt),
       availableBefore = now()
     )
+
+  def findByCommitIdAndBranch(pushUpdate: PushUpdate): Future[Option[WorkItem[PushUpdate]]]  = {
+    collection
+      .find(filter = Filters.and(
+        Filters.eq("item.commitId", pushUpdate.commitId),
+        Filters.eq("item.branchRef", pushUpdate.branchRef))
+      )
+      .headOption()
+  }
 }

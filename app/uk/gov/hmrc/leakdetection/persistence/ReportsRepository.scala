@@ -37,31 +37,19 @@ class ReportsRepository @Inject()(
   domainFormat   = Report.mongoFormat,
   indexes        = Seq(
                      IndexModel(Indexes.hashed("repoName"), IndexOptions().name("repoName-idx").background(true)),
-                     IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true))
+                     IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true)),
+                     IndexModel(Indexes.compoundIndex(Indexes.hashed("commitId"), Indexes.ascending("branchRef")), IndexOptions().name("commitId-branch-idx").background(true))
                    )
 ) {
+
+  override lazy val requiresTtlIndex: Boolean = false
+  private val               hasLeaks: Bson    =  Filters.gt("totalLeaks",  0)
 
   def saveReport(report: Report): Future[Unit] =
     collection
       .insertOne(report)
       .toFuture()
       .map(_ => ())
-
-  def updateReport(report: Report): Future[Unit] =
-    collection
-      .replaceOne(
-        filter      = Filters.equal("_id", report.id.value),
-        replacement = report
-      )
-      .toFuture()
-      .map { res =>
-        if (res.getModifiedCount == 1)
-          ()
-        else
-          throw new Exception(s"Error saving following report in db: $report")
-      }
-
-  private val hasLeaks =  Filters.gt("totalLeaks",  0)
 
   def findLatestReport(repository: Repository, branch: Branch): Future[Option[Report]] =
     collection
@@ -89,6 +77,14 @@ class ReportsRepository @Inject()(
   def findByReportId(reportId: ReportId): Future[Option[Report]] =
     collection
       .find(Filters.eq("_id", reportId.value))
+      .headOption()
+
+  def findByCommitIdAndBranch(commitId: String, branch: String): Future[Option[Report]] =
+    collection
+      .find(filter = Filters.and(
+        Filters.eq("commitId", commitId),
+        Filters.eq("branch", branch))
+      )
       .headOption()
 
   def removeAll(): Future[Long] =

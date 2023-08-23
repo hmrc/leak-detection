@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.{Report, Repository}
-import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
+import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, DefaultPlayMongoRepositorySupport, PlayMongoRepositorySupport}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -32,7 +32,7 @@ import scala.util.Random
 class ReportsRepositorySpec
     extends AnyWordSpec
     with Matchers
-    //with DefaultPlayMongoRepositorySupport[Report] // TODO we have non-indexed queries...
+    with DefaultPlayMongoRepositorySupport[Report]
     with PlayMongoRepositorySupport[Report]
     with CleanMongoCollectionSupport
     with ScalaFutures
@@ -67,6 +67,17 @@ class ReportsRepositorySpec
       val foundReports = repository.findUnresolvedWithProblems(Repository(repoName)).futureValue
 
       foundReports should contain theSameElementsAs reportsWithUnresolvedProblems
+    }
+
+    "find a report by commitId and branchRef" in {
+      val repoName = "repo"
+      val report = aReportWithLeaks(repoName)
+
+      repository.collection.insertMany(Seq(report)).toFuture().futureValue
+
+      val result = repository.findByCommitIdAndBranch(report.commitId, report.branch).futureValue.get
+
+      result shouldBe report
     }
 
   }

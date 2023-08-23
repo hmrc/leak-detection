@@ -32,6 +32,7 @@ import java.nio.file.Files
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.DurationInt
 
 class WarningServiceSpec
   extends AnyWordSpec
@@ -149,12 +150,15 @@ class WarningServiceSpec
 
     lazy val appConfig =
       AppConfig(
-        allRules                  = AllRules(Nil, List(fileContentRule, fileNameRule)),
-        githubSecrets             = GithubSecrets(""),
-        maxLineLength             = Int.MaxValue,
-        clearingCollectionEnabled = false,
-        warningMessages           = Map.empty,
-        alerts                    = Alerts(aSlackConfig)
+        allRules                    = AllRules(Nil, List(fileContentRule, fileNameRule)),
+        githubSecrets               = GithubSecrets(""),
+        maxLineLength               = Int.MaxValue,
+        clearingCollectionEnabled   = false,
+        warningMessages             = Map.empty,
+        alerts                      = Alerts(aSlackConfig),
+        timeoutBackoff              = 1.second,
+        timeoutBackOffMax           = 1.second,
+        timeoutFailureLogAfterCount = 2
       )
 
     val repoVisibilityChecker = mock[RepoVisibilityChecker]

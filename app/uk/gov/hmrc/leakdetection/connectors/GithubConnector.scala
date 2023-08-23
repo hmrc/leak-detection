@@ -31,6 +31,7 @@ import java.io.File
 import java.net.URL
 import java.nio.file.Path
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -45,12 +46,13 @@ class GithubConnector @Inject()(
   import GithubConnector._
   import HttpReads.Implicits._
 
-  private val githubToken = config.get[String]("githubSecrets.personalAccessToken")
-  private val githubUrl   = config.get[String]("github.url")
+  private val githubToken          = config.get[String]("githubSecrets.personalAccessToken")
+  private val githubUrl            = config.get[String]("github.url")
+  private val zipDownloadTimeout   = config.get[Duration]("github.zipDownloadTimeout")
 
   private lazy val registry = metrics.defaultRegistry
 
-  implicit private val hc = HeaderCarrier()
+  implicit private val hc: HeaderCarrier = HeaderCarrier()
 
   def getRateLimit(): Future[JsValue] =
      httpClientV2
@@ -71,11 +73,11 @@ class GithubConnector @Inject()(
       .get(zipUrl)
       .setHeader("Authorization" -> s"token $githubToken")
       .withProxy
+      .transform(_.withRequestTimeout(zipDownloadTimeout))
       .stream[Either[UpstreamErrorResponse, Source[ByteString, _]]]
       .flatMap {
         case Right(source) =>
           registry.counter(s"github.open.zip.success").inc()
-
           logger.debug(s"Saving $archiveUrl to $savedZipFilePath")
           source.runWith(FileIO.toPath(savedZipFilePath)).map { _ =>
             val savedZipFile = savedZipFilePath.toFile

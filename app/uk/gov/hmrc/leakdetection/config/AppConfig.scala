@@ -20,6 +20,7 @@ import play.api.Configuration
 import play.api.libs.json.{Format, Json}
 
 import javax.inject.{Inject, Provider, Singleton}
+import scala.concurrent.duration.Duration
 
 @Singleton
 class AppConfigProvider @Inject()(
@@ -65,18 +66,21 @@ class AppConfigProvider @Inject()(
 
       alerts =
         Alerts(SlackConfig(
-          enabled             = configuration.get[Boolean    ]("alerts.slack.enabled"),
-          adminChannel        = configuration.get[String     ]("alerts.slack.adminChannel"),
-          defaultAlertChannel = configuration.get[String     ]("alerts.slack.defaultAlertChannel"),
-          username            = configuration.get[String     ]("alerts.slack.username"),
-          iconEmoji           = configuration.get[String     ]("alerts.slack.iconEmoji"),
-          alertChannelEnabled  = configuration.get[Boolean    ]("alerts.slack.alertChannel.enabled"),
-          repositoryChannelEnabled  = configuration.get[Boolean    ]("alerts.slack.repositoryChannel.enabled"),
-          messageText         = configuration.get[String     ]("alerts.slack.messageText"),
-          leakDetectionUri    = configuration.get[String     ]("alerts.slack.leakDetectionUri"),
-          warningText         = configuration.get[String     ]("alerts.slack.warningText"),
-          warningsToAlert     = configuration.get[Seq[String]]("alerts.slack.warningsToAlert")
-        ))
+          enabled                  = configuration.get[Boolean    ]("alerts.slack.enabled"),
+          adminChannel             = configuration.get[String     ]("alerts.slack.adminChannel"),
+          defaultAlertChannel      = configuration.get[String     ]("alerts.slack.defaultAlertChannel"),
+          username                 = configuration.get[String     ]("alerts.slack.username"),
+          iconEmoji                = configuration.get[String     ]("alerts.slack.iconEmoji"),
+          alertChannelEnabled      = configuration.get[Boolean    ]("alerts.slack.alertChannel.enabled"),
+          repositoryChannelEnabled = configuration.get[Boolean    ]("alerts.slack.repositoryChannel.enabled"),
+          messageText              = configuration.get[String     ]("alerts.slack.messageText"),
+          leakDetectionUri         = configuration.get[String     ]("alerts.slack.leakDetectionUri"),
+          warningText              = configuration.get[String     ]("alerts.slack.warningText"),
+          warningsToAlert          = configuration.get[Seq[String]]("alerts.slack.warningsToAlert")
+        )),
+      timeoutBackoff               = configuration.get[Duration]("queue.timeoutBackOff"),
+      timeoutBackOffMax            = configuration.get[Duration]("queue.timeoutBackOffMax"),
+      timeoutFailureLogAfterCount  = configuration.get[Int ]("queue.timeoutFailureLogAfterCount")
     )
 
   override def get(): AppConfig =
@@ -84,12 +88,15 @@ class AppConfigProvider @Inject()(
 }
 
 final case class AppConfig(
-  allRules                 : AllRules,
-  githubSecrets            : GithubSecrets,
-  maxLineLength            : Int,
-  clearingCollectionEnabled: Boolean,
-  warningMessages          : Map[String, String],
-  alerts                   : Alerts
+  allRules                   : AllRules,
+  githubSecrets              : GithubSecrets,
+  maxLineLength              : Int,
+  clearingCollectionEnabled  : Boolean,
+  warningMessages            : Map[String, String],
+  alerts                     : Alerts,
+  timeoutBackoff             : Duration,
+  timeoutBackOffMax          : Duration,
+  timeoutFailureLogAfterCount: Int
 )
 
 final case class AllRules(

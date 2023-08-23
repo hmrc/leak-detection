@@ -47,19 +47,19 @@ class GithubRequestsQueueRepositorySpec
 
   "The github request queue repository" should {
     "ensure indexes are created" in {
-      repository.collection.listIndexes().toFuture().futureValue.size shouldBe 4
+      repository.collection.listIndexes().toFuture().futureValue.size shouldBe 5
     }
 
     "be able to save and reload a github request" in {
       val pushUpdate = aPushUpdate
-      val workItem   = repository.pushNew(pushUpdate, anInstant).futureValue
+      val workItemId   = repository.pushNew(pushUpdate, anInstant).futureValue.id
 
-      repository.findById(workItem.id).futureValue.get should have(
-        'item (pushUpdate),
-        'status (ProcessingStatus.ToDo),
-        'receivedAt (anInstant),
-        'updatedAt (anInstant)
-      )
+      val workItem = repository.findById(workItemId).futureValue.get
+
+      workItem.item shouldBe pushUpdate
+      workItem.status shouldBe ProcessingStatus.ToDo
+      workItem.receivedAt shouldBe anInstant
+      workItem.updatedAt shouldBe anInstant
     }
 
     "be able to save the same requests twice" in {
@@ -71,11 +71,23 @@ class GithubRequestsQueueRepositorySpec
       requests should have(size(2))
 
       every(requests) should have(
-        'item (pushUpdate),
-        'status (ProcessingStatus.ToDo),
-        'receivedAt (anInstant),
-        'updatedAt (anInstant)
+        Symbol("item") (pushUpdate),
+        Symbol("status") (ProcessingStatus.ToDo),
+        Symbol("receivedAt") (anInstant),
+        Symbol("updatedAt") (anInstant)
       )
+    }
+
+    "be able to retrieve a queued request by commitId and branchRef" in {
+      val pushUpdate = aPushUpdate
+      repository.pushNew(pushUpdate, anInstant).futureValue
+
+      val workItem = repository.findByCommitIdAndBranch(pushUpdate).futureValue.get
+
+      workItem.item shouldBe pushUpdate
+      workItem.status shouldBe ProcessingStatus.ToDo
+      workItem.receivedAt shouldBe anInstant
+      workItem.updatedAt shouldBe anInstant
     }
   }
 }

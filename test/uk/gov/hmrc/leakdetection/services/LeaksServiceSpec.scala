@@ -71,7 +71,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(Seq.empty))
     repository.collection.insertMany(leaks).toFuture().futureValue
 
-    leaksService.metrics.futureValue should contain allOf(
+    leaksService.metrics.futureValue should contain.allOf(
       "reports.total" -> leaks.length,
       "reports.unresolved" -> leaks.length
     )
@@ -88,7 +88,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
     when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
-    leaksService.metrics.futureValue should contain allOf(
+    leaksService.metrics.futureValue should contain.allOf(
       "reports.teams.t1.unresolved" -> 2,
       "reports.teams.t2.unresolved" -> 1
     )
@@ -102,7 +102,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
       Team("T2 with spaces", now, now, now, Some(Map("services" -> Seq("r2")))))
     when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
 
-    leaksService.metrics.futureValue.keys should contain allOf(
+    leaksService.metrics.futureValue.keys should contain.allOf(
       "reports.teams.t1.unresolved",
       "reports.teams.t2_with_spaces.unresolved"
     )
@@ -123,7 +123,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
 
     when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq("r1"))
 
-    leaksService.metrics.futureValue should contain allOf(
+    leaksService.metrics.futureValue should contain.allOf(
       "reports.teams.t1.unresolved" -> 0,
       "reports.teams.t2.unresolved" -> leak2.length
     )
