@@ -72,7 +72,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-alert-channel"))))
       when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
 
-      service.alert(report).futureValue
+      service.alert(report, isPrivate = true).futureValue
 
       verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToGithubRepositoryChannel))(any)
@@ -119,7 +119,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
 
 
-      service.alert(report).futureValue
+      service.alert(report, isPrivate = true).futureValue
 
       verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
     }
@@ -142,7 +142,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         unusedExemptions = Seq.empty
       )
 
-      service.alert(report).futureValue
+      service.alert(report, isPrivate = true).futureValue
 
       verifyZeroInteractions(slackConnector)
 
@@ -163,7 +163,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         unusedExemptions = Seq.empty
       )
 
-      service.alert(report).futureValue
+      service.alert(report, isPrivate = true).futureValue
 
       verifyZeroInteractions(slackConnector)
 
@@ -184,7 +184,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         unusedExemptions = Seq.empty
       )
 
-      service.alert(report).futureValue
+      service.alert(report, isPrivate = true).futureValue
 
       verifyZeroInteractions(slackConnector)
 
@@ -236,7 +236,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
         when(slackConnector.sendMessage(expectedMessageToTeamChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
 
-        service.alert(report).futureValue
+        service.alert(report, isPrivate = true).futureValue
 
         val expectedNumberOfMessages = 3 // 1 for alert channel, 1 for the Github team channel, 1 for team channel
         verify(slackConnector, times(expectedNumberOfMessages)).sendMessage(any)(any)
@@ -248,7 +248,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       override val slackConfig =  aSlackConfig.copy(enabled = false, warningsToAlert = Seq(InvalidEntry.toString))
 
       val author = "me"
-      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), InvalidEntry.toString))).futureValue
+      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), InvalidEntry.toString)), isPrivate = true).futureValue
 
       verifyZeroInteractions(slackConnector)
     }
@@ -280,14 +280,14 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-alert-channel"))))
       when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
 
-      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), InvalidEntry.toString))).futureValue
+      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), InvalidEntry.toString)), isPrivate = true).futureValue
 
       verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToGithubRepositoryChannel))(any)
     }
 
     "not send warning alerts if not in warning alert list" in new Fixtures {
-      service.alertAboutWarnings("author-doesnt-matter", Seq(Warning("repo-doesnt-matter", "branch-doesnt-matter", Instant.now(), ReportId("reportId"), UnusedExemptions.toString))).futureValue
+      service.alertAboutWarnings("author-doesnt-matter", Seq(Warning("repo-doesnt-matter", "branch-doesnt-matter", Instant.now(), ReportId("reportId"), UnusedExemptions.toString)), isPrivate = true).futureValue
 
       verifyZeroInteractions(slackConnector)
     }
@@ -317,7 +317,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
 
 
-      service.alertAboutWarnings("author", Seq(Warning("repo", "main", Instant.now, ReportId("reportId"), FileLevelExemptions.toString))).futureValue
+      service.alertAboutWarnings("author", Seq(Warning("repo", "main", Instant.now, ReportId("reportId"), FileLevelExemptions.toString)), isPrivate = true).futureValue
 
       verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToGithubRepositoryChannel))(any)
@@ -349,7 +349,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("#the-channel"))))
       when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
 
-      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), MissingEntry.toString))).futureValue
+      service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), MissingEntry.toString)), isPrivate = true).futureValue
 
       verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToGithubRepositoryChannel))(any)

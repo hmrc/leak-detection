@@ -176,7 +176,7 @@ class ScanningServiceSpec
 
       file2.getName.contains("id_rsa") shouldBe true
       generateReport.totalLeaks shouldBe 2
-      verify(alertingService).alert(any[Report])(any)
+      verify(alertingService).alert(any[Report], anyBoolean)(any)
     }
 
     "send a warning alert if there were problems" in new TestSetup {
@@ -184,7 +184,7 @@ class ScanningServiceSpec
 
       generateReport
 
-      verify(alertingService).alertAboutWarnings(any, any)(any)
+      verify(alertingService).alertAboutWarnings(any, any, anyBoolean)(any)
     }
 
     "not send alerts if the branch is not main" in new TestSetup {
@@ -199,7 +199,7 @@ class ScanningServiceSpec
 
       generateReport
 
-      verify(alertingService, times(0)).alertAboutWarnings(any, any)(any)
+      verify(alertingService, times(0)).alertAboutWarnings(any, any, anyBoolean)(any)
     }
 
     "scan in draft mode" should {
@@ -551,8 +551,8 @@ class ScanningServiceSpec
 
 
     val alertingService = mock[AlertingService]
-    when(alertingService.alert(any)(any)).thenReturn(Future.successful(()))
-    when(alertingService.alertAboutWarnings(any, any)(any)).thenReturn(Future.successful(()))
+    when(alertingService.alert(any, anyBoolean)(any)).thenReturn(Future.successful(()))
+    when(alertingService.alertAboutWarnings(any, any, anyBoolean)(any)).thenReturn(Future.successful(()))
 
     val configuration = Configuration()
 
