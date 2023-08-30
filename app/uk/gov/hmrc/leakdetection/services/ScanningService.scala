@@ -108,8 +108,8 @@ class ScanningService @Inject()(
             _                       <- executeIfNormalMode(leaksService.saveLeaks(repository, branch, leaks))
             _                       <- executeIfNormalMode(warningsService.saveWarnings(repository, branch, warnings))
             _                       <- executeIfNormalMode(activeBranchesService.markAsActive(repository, branch, report.id))
-            _                       <- executeIfNormalMode(alertingService.alert(report))
-            _                       <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings))
+            _                       <- executeIfNormalMode(alertingService.alert(report, isPrivate))
+            _                       <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings, isPrivate))
           } yield if (runMode == Normal) reportWithWarnings else draftReportWithWarnings
       }
       result.onComplete {
@@ -127,13 +127,14 @@ class ScanningService @Inject()(
 
   private def alertAboutWarnings(
     repository: Repository,
-    branch: Branch,
-    author: String,
-    warnings: Seq[Warning]
+    branch    : Branch,
+    author    : String,
+    warnings  : Seq[Warning],
+    isPrivate : Boolean
   )(implicit hc: HeaderCarrier): Future[Unit] =
     teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
         if (branch.asString == repo.defaultBranch) {
-          alertingService.alertAboutWarnings(author, warnings)
+          alertingService.alertAboutWarnings(author, warnings, isPrivate)
         }
       ))
 

@@ -38,7 +38,7 @@ class AlertingService @Inject()(
 
   type ErrorMessage = String
 
-  def alertAboutWarnings(author: String, warnings: Seq[Warning])(implicit hc: HeaderCarrier): Future[Unit] = {
+  def alertAboutWarnings(author: String, warnings: Seq[Warning], isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] = {
     if (slackConfig.enabled) {
       warnings.map(warning =>
         if (slackConfig.warningsToAlert.contains(warning.warningMessageType)) {
@@ -53,7 +53,8 @@ class AlertingService @Inject()(
             MessageDetails(
               text                 = slackConfig.warningText
                                        .replace("{repo}", warning.repoName)
-                                       .replace("{warningMessage}", warningMessage),
+                                       .replace("{warningMessage}", warningMessage)
+                                       .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate)),
               username             = slackConfig.username,
               iconEmoji            = slackConfig.iconEmoji,
               attachments          = attachments,
@@ -61,7 +62,7 @@ class AlertingService @Inject()(
             )
 
           val commitInfo = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
-          processSlackChannelMessages(messageDetails, commitInfo)
+           processSlackChannelMessages(messageDetails, commitInfo)
         }
       )
     }
@@ -70,7 +71,7 @@ class AlertingService @Inject()(
 
 
 
-  def alert(report: Report)(implicit hc: HeaderCarrier): Future[Unit] =
+  def alert(report: Report, isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
     if (!slackConfig.enabled || report.rulesViolated.isEmpty) {
       Future.unit
     } else {
@@ -79,6 +80,7 @@ class AlertingService @Inject()(
         slackConfig.messageText
           .replace("{repo}", report.repoName)
           .replace("{branch}", report.branch)
+          .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
 
       val messageDetails =
         MessageDetails(
@@ -161,4 +163,9 @@ object CommitInfo {
       branch     = Branch(report.branch),
       repository = Repository(report.repoName)
     )
+}
+
+object RepoVisibility {
+  def repoVisibility(isPrivate: Boolean): String =
+    if (isPrivate) "Private" else "*Public*"
 }
