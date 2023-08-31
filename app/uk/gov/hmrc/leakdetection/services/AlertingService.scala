@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.services
 
+import cats.implicits._
 import play.api.Logger
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.leakdetection.config.AppConfig
@@ -38,44 +39,41 @@ class AlertingService @Inject()(
 
   type ErrorMessage = String
 
-  def alertAboutWarnings(author: String, warnings: Seq[Warning], isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] = {
-    if (slackConfig.enabled) {
-      warnings.map(warning =>
-        if (slackConfig.warningsToAlert.contains(warning.warningMessageType)) {
-          val warningMessage = appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType)
-          val attachments =
-            if (warning.warningMessageType != FileLevelExemptions.toString)
-              Seq.empty
-            else
-              Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions?source=slack-lds".toString))
+  def alertAboutWarnings(author: String, warnings: Seq[Warning], isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+    warnings
+      .filter(warning => slackConfig.enabled && slackConfig.warningsToAlert.contains(warning.warningMessageType))
+      .traverse_ { warning =>
 
-          val messageDetails =
-            MessageDetails(
-              text                 = slackConfig.warningText
-                                       .replace("{repo}", warning.repoName)
-                                       .replace("{warningMessage}", warningMessage)
-                                       .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate)),
-              username             = slackConfig.username,
-              iconEmoji            = slackConfig.iconEmoji,
-              attachments          = attachments,
-              showAttachmentAuthor = false
-            )
+        val warningMessage =
+          appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType)
 
-          val commitInfo = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
-           processSlackChannelMessages(messageDetails, commitInfo)
-        }
-      )
-    }
-    Future.unit
-  }
+        val attachments =
+          if (warning.warningMessageType != FileLevelExemptions.toString)
+            Seq.empty
+          else
+            Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions?source=slack-lds".toString))
 
+        val messageDetails =
+          MessageDetails(
+            username             = slackConfig.username,
+            iconEmoji            = slackConfig.iconEmoji,
+            attachments          = attachments,
+            showAttachmentAuthor = false,
+            text                 = slackConfig.warningText
+                                     .replace("{repo}", warning.repoName)
+                                     .replace("{warningMessage}", warningMessage)
+                                     .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate)),
+          )
 
+        val commitInfo = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
+
+        processSlackChannelMessages(messageDetails, commitInfo)
+      }
 
   def alert(report: Report, isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (!slackConfig.enabled || report.rulesViolated.isEmpty) {
+    if (!slackConfig.enabled || report.rulesViolated.isEmpty)
       Future.unit
-    } else {
-
+    else {
       val alertMessage =
         slackConfig.messageText
           .replace("{repo}", report.repoName)
@@ -84,35 +82,38 @@ class AlertingService @Inject()(
 
       val messageDetails =
         MessageDetails(
-          text        = alertMessage,
-          username    = slackConfig.username,
-          iconEmoji   = slackConfig.iconEmoji,
-          attachments = Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds".toString)),
-          showAttachmentAuthor = false)
+          text                 = alertMessage,
+          username             = slackConfig.username,
+          iconEmoji            = slackConfig.iconEmoji,
+          attachments          = Seq(Attachment(url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds".toString)),
+          showAttachmentAuthor = false
+        )
 
       processSlackChannelMessages(messageDetails, CommitInfo.fromReport(report))
     }
 
   private def processSlackChannelMessages(messageDetails: MessageDetails, commitInfo: CommitInfo)(implicit hc: HeaderCarrier): Future[Unit] =
     for {
-      _ <- sendSlackMessage(slackConfig.alertChannelEnabled, mkNotificationForAlertChannel(messageDetails, commitInfo))
+      _                       <- sendSlackMessage(slackConfig.alertChannelEnabled, mkNotificationForAlertChannel(messageDetails, commitInfo))
       sentToRepositoryChannel <- sendSlackMessage(slackConfig.repositoryChannelEnabled, mkNotificationForRepository(messageDetails, commitInfo))
-      _ <- if(sentToRepositoryChannel) Future.unit else {
-        logger.warn("Failed to notify the Github Team falling back to notifying the User's Team")
-        sendSlackMessage(slackConfig.repositoryChannelEnabled, mkNotificationForTeam(messageDetails, commitInfo))
-      }
+      _                       <- if (sentToRepositoryChannel)
+                                   Future.unit
+                                 else {
+                                   logger.warn("Failed to notify the Github Team falling back to notifying the User's Team")
+                                   sendSlackMessage(slackConfig.repositoryChannelEnabled, mkNotificationForTeam(messageDetails, commitInfo))
+                                 }
     } yield ()
 
 
 
   private def mkNotificationForRepository(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
     SlackNotificationRequest(
-      channelLookup = ChannelLookup.GithubRepository(commitInfo.repository.asString),
+      channelLookup  = ChannelLookup.GithubRepository(commitInfo.repository.asString),
       messageDetails = messageDetails
     )
   private def mkNotificationForTeam(messageDetails: MessageDetails, commitInfo: CommitInfo): SlackNotificationRequest =
       SlackNotificationRequest(
-        channelLookup = ChannelLookup.TeamsOfGithubUser(commitInfo.author),
+        channelLookup  = ChannelLookup.TeamsOfGithubUser(commitInfo.author),
         messageDetails = messageDetails
       )
 
@@ -146,9 +147,9 @@ final case class CommitInfo(
     Attachment(
       text = "",
       fields = List(
-        Attachment.Field(title = "author", value     = author, short     = true),
-        Attachment.Field(title = "branch", value     = branch.asString, short     = true),
-        Attachment.Field(title = "repository", value = repository.asString, short = true)
+        Attachment.Field(title = "author",     value = author,              short  = true),
+        Attachment.Field(title = "branch",     value = branch.asString,     short  = true),
+        Attachment.Field(title = "repository", value = repository.asString, short  = true)
       )
     )
 
