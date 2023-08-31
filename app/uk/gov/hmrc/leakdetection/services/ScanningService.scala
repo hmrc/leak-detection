@@ -131,12 +131,11 @@ class ScanningService @Inject()(
     author    : String,
     warnings  : Seq[Warning],
     isPrivate : Boolean
-  )(implicit hc: HeaderCarrier): Future[Unit] =
-    teamsAndRepositoriesConnector.repo(repository.asString).map(_.map(repo =>
-        if (branch.asString == repo.defaultBranch) {
-          alertingService.alertAboutWarnings(author, warnings, isPrivate)
-        }
-      ))
+    )(implicit hc: HeaderCarrier): Future[Unit] =
+    teamsAndRepositoriesConnector.repo(repository.asString).flatMap {
+      case Some(repo) if repo.defaultBranch == branch.asString => alertingService.alertAboutWarnings(author, warnings, isPrivate)
+      case _                                                   => Future.unit
+    }
 
   def queueDistinctRequest(p: PushUpdate): Future[Boolean] = for {
     itemAlreadyQueued <- githubRequestsQueue.findByCommitIdAndBranch(p).map(_.isDefined)
