@@ -168,5 +168,5 @@ object CommitInfo {
 
 object RepoVisibility {
   def repoVisibility(isPrivate: Boolean): String =
-    if (isPrivate) "Private" else "*Public*"
+    if (isPrivate) "Private" else ":alert: `Public` :alert:"
 }
