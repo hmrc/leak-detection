@@ -39,7 +39,7 @@ class SlackNotificationsConnector @Inject()(
   val url: String = servicesConfig.baseUrl("slack-notifications")
 
   private val authToken =
-    configuration.get[String]("alerts.slack.auth-token")
+    configuration.get[String]("internal-auth.token")
 
   def sendMessage(message: SlackNotificationsConnector.Message)(implicit hc: HeaderCarrier): Future[SlackNotificationsConnector.MessageResponse] = {
     httpClientV2

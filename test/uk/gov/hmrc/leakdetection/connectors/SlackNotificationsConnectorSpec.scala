@@ -56,7 +56,7 @@ class SlackNotificationsConnectorSpec
 
       val configuration =
         Configuration(
-          "alerts.slack.auth-token"                        -> "PLACEHOLDER",
+          "internal-auth.token"                            -> "PLACEHOLDER",
           "microservice.services.slack-notifications.host" -> wireMockHost,
           "microservice.services.slack-notifications.port" -> wireMockPort
         )
