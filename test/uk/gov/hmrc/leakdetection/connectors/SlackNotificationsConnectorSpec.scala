@@ -21,7 +21,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
@@ -36,12 +36,12 @@ class SlackNotificationsConnectorSpec
       with HttpClientV2Support {
 
   "Connector" should {
-    "use basic auth" in {
+    "use internal auth config token" in {
       val hc               = HeaderCarrier(authorization = None)
-      val expectedResponse = SlackNotificationResponse(errors = Nil)
+      val expectedResponse = SlackNotificationsConnector.MessageResponse(errors = Nil)
 
       stubFor(
-        post(urlEqualTo("/slack-notifications/notification"))
+        post(urlEqualTo("/slack-notifications/v2/notification"))
           .willReturn(
             aResponse()
               .withStatus(200)
@@ -56,8 +56,7 @@ class SlackNotificationsConnectorSpec
 
       val configuration =
         Configuration(
-          "alerts.slack.basicAuth.username"                -> "leak-detection",
-          "alerts.slack.basicAuth.password"                -> "development-only",
+          "internal-auth.token"                            -> "PLACEHOLDER",
           "microservice.services.slack-notifications.host" -> wireMockHost,
           "microservice.services.slack-notifications.port" -> wireMockPort
         )
@@ -68,34 +67,44 @@ class SlackNotificationsConnectorSpec
         new ServicesConfig(configuration)
       )
 
-      val slackMessage =
-        SlackNotificationRequest(
-          channelLookup  = ChannelLookup.SlackChannel(slackChannels = Nil),
-          messageDetails = MessageDetails("text", "username", "iconEmoji", Nil, showAttachmentAuthor = false)
-        )
+      val slackMessage = SlackNotificationsConnector.Message(
+        displayName   = "username"
+      , emoji         = "iconEmoji"
+      , text          = "text"
+      , blocks        = SlackNotificationsConnector.Message.toBlocks(message = "message", referenceUrl = Some((url"http://some/path", "link title")))
+      , channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(slackChannels = Nil)
+      )
 
       val response = connector.sendMessage(slackMessage)(hc).futureValue
 
       response shouldBe expectedResponse
 
       verify(
-        postRequestedFor(urlEqualTo("/slack-notifications/notification"))
+        postRequestedFor(urlEqualTo("/slack-notifications/v2/notification"))
           .withRequestBody(equalToJson(
             """{
-              "channelLookup": {
-                "slackChannels": [],
-                "by"           : "slack-channel"
-              },
-              "messageDetails": {
-                "text"       : "text",
-                "username"   : "username",
-                "iconEmoji"  : "iconEmoji",
-                "attachments": [],
-                "showAttachmentAuthor": false
+              "displayName" : "username",
+              "emoji" : "iconEmoji",
+              "text" : "text",
+              "blocks" : [ {
+                "type" : "section",
+                "text" : {
+                  "type" : "mrkdwn",
+                  "text" : "message"
+                }
+              }, {
+                "type" : "divider"
+              }, {
+                "type" : "mrkdwn",
+                "text" : "<http://some/path|link title>"
+              } ],
+              "channelLookup" : {
+                "slackChannels" : [ ],
+                "by" : "slack-channel"
               }
             }"""
           ))
-          .withHeader("Authorization", equalTo("Basic bGVhay1kZXRlY3Rpb246ZGV2ZWxvcG1lbnQtb25seQ==")) // leak-detection:development-only base64 encoded
+          .withHeader("Authorization", equalTo("PLACEHOLDER")) // leak-detection:development-only base64 encoded
       )
     }
   }

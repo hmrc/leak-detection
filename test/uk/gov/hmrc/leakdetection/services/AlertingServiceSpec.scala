@@ -20,7 +20,7 @@ import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
 import uk.gov.hmrc.leakdetection.config._
 import uk.gov.hmrc.leakdetection.connectors._
@@ -36,7 +36,6 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
   "The alerting service" should {
     "send alerts to both alert channel and github repository channel if leaks are in the report" in new Fixtures {
-
       val report = Report(
         id        = ReportId.random,
         repoName  = "repo-name",
@@ -51,37 +50,33 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         unusedExemptions = Seq.empty
       )
 
-      val messageDetails = MessageDetails(
-        text        = "Do not panic, but there is a leak!",
-        username    = "leak-detection",
-        iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(Attachment(s"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds")),
-        showAttachmentAuthor = false
+      val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
+        displayName   = "leak-detection",
+        emoji         = ":closed_lock_with_key:",
+        text          = "Do not panic, but there is a leak!",
+        blocks        = SlackNotificationsConnector.Message.toBlocks(
+                          "Do not panic, but there is a leak!",
+                          Some((url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds", "View in Catalogue"))
+                        ),
+        channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
-        messageDetails = messageDetails
+      val expectedMessageToGithubRepositoryChannel = expectedMessageToAlertChannel.copy(
+        channelLookup = SlackNotificationsConnector.ChannelLookup.GithubRepository(report.repoName)
       )
 
-      val expectedMessageToGithubRepositoryChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.GithubRepository(report.repoName),
-        messageDetails = messageDetails
-      )
-
-      when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-alert-channel"))))
-      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
+      when(slackConnector.sendMessage(expectedMessageToAlertChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-alert-channel"))))
+      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-team-channel"))))
 
       service.alert(report, isPrivate = true).futureValue
 
       verify(slackConnector).sendMessage(eqTo(expectedMessageToAlertChannel))(any)
       verify(slackConnector).sendMessage(eqTo(expectedMessageToGithubRepositoryChannel))(any)
-
-
     }
 
     "correctly encode the url for the report attachment" in new Fixtures {
-
       val report = Report(
         id            = ReportId.random,
         repoName      = "repo-name",
@@ -96,28 +91,25 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         unusedExemptions = Seq.empty
       )
 
-
-      private val messageDetails: MessageDetails = MessageDetails(
-        text = "Do not panic, but there is a leak!",
-        username = "leak-detection",
-        iconEmoji = ":closed_lock_with_key:",
-        attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds")),
-        showAttachmentAuthor = false
+      val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
+        displayName   = "leak-detection",
+        emoji         = ":closed_lock_with_key:",
+        text          = "Do not panic, but there is a leak!",
+        blocks        = SlackNotificationsConnector.Message.toBlocks(
+                          "Do not panic, but there is a leak!",
+                          Some((url"https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds", "View in Catalogue"))
+                        ),
+        channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
-        messageDetails = messageDetails
+      val expectedMessageToGithubRepositoryChannel = expectedMessageToAlertChannel.copy(
+        channelLookup = SlackNotificationsConnector.ChannelLookup.GithubRepository(report.repoName)
       )
 
-      val expectedMessageToGithubRepositoryChannel = SlackNotificationRequest(
-        channelLookup = ChannelLookup.GithubRepository(report.repoName),
-        messageDetails = messageDetails
-      )
-
-      when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-alert-channel"))))
-      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
-
+      when(slackConnector.sendMessage(expectedMessageToAlertChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-alert-channel"))))
+      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-team-channel"))))
 
       service.alert(report, isPrivate = true).futureValue
 
@@ -125,7 +117,6 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     }
 
     "not send leak alerts to slack if not enabled" in new Fixtures {
-
       override val slackConfig =  aSlackConfig.copy(enabled = false)
 
       val report = Report(
@@ -145,10 +136,9 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       service.alert(report, isPrivate = true).futureValue
 
       verifyZeroInteractions(slackConnector)
-
     }
-    "not send alerts to slack if there are no leaks" in new Fixtures {
 
+    "not send alerts to slack if there are no leaks" in new Fixtures {
       val report = Report(
         id            = ReportId.random,
         repoName      = "a-repo",
@@ -166,10 +156,9 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       service.alert(report, isPrivate = true).futureValue
 
       verifyZeroInteractions(slackConnector)
-
     }
-    "not send alerts to slack if only excluded leaks" in new Fixtures {
 
+    "not send alerts to slack if only excluded leaks" in new Fixtures {
       val report = Report(
         id            = ReportId.random,
         repoName      = "a-repo",
@@ -187,11 +176,10 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       service.alert(report, isPrivate = true).futureValue
 
       verifyZeroInteractions(slackConnector)
-
     }
+
     "handle slack notifications errors" when {
       "the message to the Github repository channel fails then fallback to the Users Team Channel" in new Fixtures {
-
         val report = Report(
           id = ReportId.random,
           repoName = "repo-name",
@@ -206,35 +194,37 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
           unusedExemptions = Seq.empty
         )
 
-        val messageDetails = MessageDetails(
-          text = "Do not panic, but there is a leak!",
-          username = "leak-detection",
-          iconEmoji = ":closed_lock_with_key:",
-          attachments = Seq(Attachment(s"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds")),
-          showAttachmentAuthor = false
+        val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
+          displayName   = "leak-detection",
+          emoji         = ":closed_lock_with_key:",
+          text          = "Do not panic, but there is a leak!",
+          blocks        = SlackNotificationsConnector.Message.toBlocks(
+                            "Do not panic, but there is a leak!",
+                            Some((url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds", "View in Catalogue"))
+                          ),
+          channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
         )
 
-        val expectedMessageToAlertChannel = SlackNotificationRequest(
-          channelLookup = ChannelLookup.SlackChannel(slackChannels = List("#the-channel")),
-          messageDetails = messageDetails
+        val expectedMessageToGithubRepositoryChannel = expectedMessageToAlertChannel.copy(
+          channelLookup = SlackNotificationsConnector.ChannelLookup.GithubRepository(report.repoName)
         )
 
-        val expectedMessageToGithubRepositoryChannel = SlackNotificationRequest(
-          channelLookup = ChannelLookup.GithubRepository(report.repoName),
-          messageDetails = messageDetails
+        val expectedMessageToTeamChannel = expectedMessageToAlertChannel.copy(
+          channelLookup = SlackNotificationsConnector.ChannelLookup.TeamsOfGithubUser("me")
         )
 
-        val expectedMessageToTeamChannel = SlackNotificationRequest(
-          channelLookup = ChannelLookup.TeamsOfGithubUser("me"),
-          messageDetails = messageDetails
-        )
+        when(slackConnector.sendMessage(expectedMessageToAlertChannel))
+          .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("#the-channel"))))
 
-        when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("#the-channel"))))
+        when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel))
+          .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(
+            successfullySentTo = Seq.empty,
+            errors = List(SlackNotificationsConnector.SlackNotificationError("slack_channel_not_found",
+            message = ""))))
+          )
 
-        when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc))
-          .thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq.empty, errors = List(SlackNotificationError("slack_channel_not_found", message = "")))))
-
-        when(slackConnector.sendMessage(expectedMessageToTeamChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
+        when(slackConnector.sendMessage(expectedMessageToTeamChannel))
+          .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-team-channel"))))
 
         service.alert(report, isPrivate = true).futureValue
 
@@ -258,27 +248,25 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
       val author = "me"
 
-
-      val messageDetails = MessageDetails(
-        text        = "Warning for a-repo with message - invalid entry message",
-        username    = "leak-detection",
-        iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(),
-        showAttachmentAuthor = false
+      val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
+        displayName   = "leak-detection",
+        emoji         = ":closed_lock_with_key:",
+        text          = "Warning for a-repo with message - invalid entry message",
+        blocks        = SlackNotificationsConnector.Message.toBlocks(
+                          "Warning for a-repo with message - invalid entry message",
+                          None
+                        ),
+        channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
-      val expectedMessageToGithubRepositoryChannel = SlackNotificationRequest(
-        channelLookup = ChannelLookup.GithubRepository("a-repo"),
-        messageDetails = messageDetails
+      val expectedMessageToGithubRepositoryChannel = expectedMessageToAlertChannel.copy(
+        channelLookup = SlackNotificationsConnector.ChannelLookup.GithubRepository("a-repo")
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
-        messageDetails = messageDetails
-      )
-
-      when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-alert-channel"))))
-      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
+      when(slackConnector.sendMessage(expectedMessageToAlertChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-alert-channel"))))
+      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-team-channel"))))
 
       service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), InvalidEntry.toString)), isPrivate = true).futureValue
 
@@ -295,27 +283,25 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
     "send an alert with attachments if file level exemption warnings" in new Fixtures {
       override val slackConfig =  aSlackConfig.copy(warningsToAlert = Seq(FileLevelExemptions.toString))
 
-
-      val messageDetails = MessageDetails(
-        text        = "Warning for repo with message - file level exemptions",
-        username    = "leak-detection",
-        iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(Attachment("https://somewhere/leak-detection/repositories/repo/main/exemptions?source=slack-lds")),
-        showAttachmentAuthor = false
+      val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
+        displayName   = "leak-detection",
+        emoji         = ":closed_lock_with_key:",
+        text          = "Warning for repo with message - file level exemptions",
+        blocks        = SlackNotificationsConnector.Message.toBlocks(
+                          "Warning for repo with message - file level exemptions",
+                          Some((url"https://somewhere/leak-detection/repositories/repo/main/exemptions?source=slack-lds", "View in Catalogue"))
+                        ),
+        channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
-      val expectedMessageToGithubRepositoryChannel = SlackNotificationRequest(
-        channelLookup = ChannelLookup.GithubRepository("repo"),
-        messageDetails = messageDetails
+      val expectedMessageToGithubRepositoryChannel = expectedMessageToAlertChannel.copy(
+        channelLookup = SlackNotificationsConnector.ChannelLookup.GithubRepository("repo")
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
-        messageDetails = messageDetails
-      )
-      when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-alert-channel"))))
-      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
-
+      when(slackConnector.sendMessage(expectedMessageToAlertChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-alert-channel"))))
+      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-team-channel"))))
 
       service.alertAboutWarnings("author", Seq(Warning("repo", "main", Instant.now, ReportId("reportId"), FileLevelExemptions.toString)), isPrivate = true).futureValue
 
@@ -328,26 +314,25 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
 
       val author = "me"
 
-      val messageDetails = MessageDetails(
-        text        = "Warning for a-repo with message - MissingEntry",
-        username    = "leak-detection",
-        iconEmoji   = ":closed_lock_with_key:",
-        attachments = Seq(),
-        showAttachmentAuthor = false
+      val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
+        displayName   = "leak-detection",
+        emoji         = ":closed_lock_with_key:",
+        text          = "Warning for a-repo with message - MissingEntry",
+        blocks        = SlackNotificationsConnector.Message.toBlocks(
+                          "Warning for a-repo with message - MissingEntry",
+                          None
+                        ),
+        channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
-      val expectedMessageToGithubRepositoryChannel = SlackNotificationRequest(
-        channelLookup = ChannelLookup.GithubRepository("a-repo"),
-        messageDetails = messageDetails
+      val expectedMessageToGithubRepositoryChannel = expectedMessageToAlertChannel.copy(
+        channelLookup = SlackNotificationsConnector.ChannelLookup.GithubRepository("a-repo")
       )
 
-      val expectedMessageToAlertChannel = SlackNotificationRequest(
-        channelLookup  = ChannelLookup.SlackChannel(List("#the-channel")),
-        messageDetails = messageDetails
-      )
-
-      when(slackConnector.sendMessage(expectedMessageToAlertChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("#the-channel"))))
-      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel)(hc)).thenReturn(Future.successful(SlackNotificationResponse(successfullySentTo = Seq("some-team-channel"))))
+      when(slackConnector.sendMessage(expectedMessageToAlertChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("#the-channel"))))
+      when(slackConnector.sendMessage(expectedMessageToGithubRepositoryChannel))
+        .thenReturn(Future.successful(SlackNotificationsConnector.MessageResponse(successfullySentTo = Seq("some-team-channel"))))
 
       service.alertAboutWarnings(author = author, Seq(Warning("a-repo", "a-branch", Instant.now(), ReportId("reportId"), MissingEntry.toString)), isPrivate = true).futureValue
 
@@ -357,11 +342,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
   }
 
   trait Fixtures {
-
     val slackConnector = mock[SlackNotificationsConnector]
-
-
-    val slackConfig = aSlackConfig
+    val slackConfig    = aSlackConfig
 
     lazy val appConfig =
       AppConfig(
