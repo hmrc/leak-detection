@@ -95,8 +95,11 @@ class SlackNotificationsConnectorSpec
               }, {
                 "type" : "divider"
               }, {
-                "type" : "mrkdwn",
-                "text" : "<http://some/path|link title>"
+                "type" : "section",
+                "text" : {
+                  "type" : "mrkdwn",
+                  "text" : "<http://some/path|link title>"
+                }
               } ],
               "channelLookup" : {
                 "slackChannels" : [ ],
