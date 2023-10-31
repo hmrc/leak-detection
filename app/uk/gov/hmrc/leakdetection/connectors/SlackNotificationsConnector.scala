@@ -75,17 +75,17 @@ object SlackNotificationsConnector {
       ~ (__ \ "channelLookup").write[ChannelLookup](ChannelLookup.writes)
       )(unlift(Message.unapply))
 
-  def toBlocks(message: String, referenceUrl: Option[(java.net.URL, String)]): Seq[JsObject] =
-    Json.obj(
-      "type" -> JsString("section")
-    , "text" -> Json.obj("type" -> JsString("mrkdwn"), "text" -> JsString(message))
-    ) :: (referenceUrl match {
-      case Some((url, title)) =>
-        Json.obj("type" -> JsString("divider"))                                      ::
-        Json.obj("type" -> JsString("mrkdwn"), "text" -> JsString(s"<$url|$title>")) ::
+    def toBlocks(message: String, referenceUrl: Option[(java.net.URL, String)]): Seq[JsObject] =
+      jsSection(message) :: (referenceUrl.fold(List.empty[JsObject]){ case (url, title) =>
+        Json.obj("type" -> JsString("divider")) ::
+        jsSection(s"<$url|$title>")             ::
         Nil
-      case None               => Nil
-    })
+      })
+
+    private def jsSection(mrkdwn: String): JsObject = Json.obj(
+      "type" -> JsString("section")
+    , "text" -> Json.obj("type" -> JsString("mrkdwn"), "text" -> JsString(mrkdwn))
+    )
   }
 
   sealed trait ChannelLookup { def by: String }
