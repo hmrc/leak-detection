@@ -43,17 +43,16 @@ class AlertingService @Inject()(
     warnings
       .filter(warning => slackConfig.enabled && slackConfig.warningsToAlert.contains(warning.warningMessageType))
       .traverse_ { warning =>
-        val msg = slackConfig.warningText
-                             .replace("{repo}", warning.repoName)
-                             .replace("{warningMessage}", appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))
-                             .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
 
         processSlackChannelMessages(
           displayName = slackConfig.username
         , emoji       = slackConfig.iconEmoji
-        , text        = msg
+        , text        = s"Leak Detection had a problem scanning repo: ${warning.repoName} on branch: ${warning.branch} - ${warning.warningMessageType}"
         , blocks      = SlackNotificationsConnector.Message.toBlocks(
-                          message      = msg
+                          message      = slackConfig.warningText
+                                                    .replace("{repo}", warning.repoName)
+                                                    .replace("{warningMessage}", appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))
+                                                    .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
                         , referenceUrl = Option
                                           .when(warning.warningMessageType == FileLevelExemptions.toString)(
                                             (url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions?source=slack-lds", "View in Catalogue")
@@ -66,23 +65,20 @@ class AlertingService @Inject()(
   def alert(report: Report, isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
     if (!slackConfig.enabled || report.rulesViolated.isEmpty)
       Future.unit
-    else {
-      val msg = slackConfig.messageText
-                           .replace("{repo}", report.repoName)
-                           .replace("{branch}", report.branch)
-                           .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
-
+    else
       processSlackChannelMessages(
         displayName = slackConfig.username
       , emoji       = slackConfig.iconEmoji
-      , text        = msg
+      , text        = s"Something sensitive seems to have been pushed for repo: ${report.repoName} on branch: ${report.branch}"
       , blocks      = SlackNotificationsConnector.Message.toBlocks(
-                        message      = msg
+                        message      = slackConfig.messageText
+                                                  .replace("{repo}", report.repoName)
+                                                  .replace("{branch}", report.branch)
+                                                  .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
                       , referenceUrl = Some((url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds", "View in Catalogue"))
                       )
       , commitInfo  = CommitInfo.fromReport(report)
       )
-    }
 
   private def processSlackChannelMessages(displayName: String, emoji: String, text: String, blocks: Seq[play.api.libs.json.JsObject], commitInfo: CommitInfo)(implicit hc: HeaderCarrier): Future[Unit] =
     for {
