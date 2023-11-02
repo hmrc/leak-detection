@@ -53,7 +53,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
-        text          = "Do not panic, but there is a leak!",
+        text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
         blocks        = SlackNotificationsConnector.Message.toBlocks(
                           "Do not panic, but there is a leak!",
                           Some((url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds", "View in Catalogue"))
@@ -94,7 +94,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
-        text          = "Do not panic, but there is a leak!",
+        text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: branch/that/needs/encoding",
         blocks        = SlackNotificationsConnector.Message.toBlocks(
                           "Do not panic, but there is a leak!",
                           Some((url"https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds", "View in Catalogue"))
@@ -197,7 +197,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
           displayName   = "leak-detection",
           emoji         = ":closed_lock_with_key:",
-          text          = "Do not panic, but there is a leak!",
+          text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
           blocks        = SlackNotificationsConnector.Message.toBlocks(
                             "Do not panic, but there is a leak!",
                             Some((url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds", "View in Catalogue"))
@@ -251,7 +251,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
-        text          = "Warning for a-repo with message - invalid entry message",
+        text          = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch - InvalidEntry",
         blocks        = SlackNotificationsConnector.Message.toBlocks(
                           "Warning for a-repo with message - invalid entry message",
                           None
@@ -286,7 +286,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
-        text          = "Warning for repo with message - file level exemptions",
+        text          = "Leak Detection had a problem scanning repo: repo on branch: main - FileLevelExemptions",
         blocks        = SlackNotificationsConnector.Message.toBlocks(
                           "Warning for repo with message - file level exemptions",
                           Some((url"https://somewhere/leak-detection/repositories/repo/main/exemptions?source=slack-lds", "View in Catalogue"))
@@ -317,7 +317,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
-        text          = "Warning for a-repo with message - MissingEntry",
+        text          = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch - MissingEntry",
         blocks        = SlackNotificationsConnector.Message.toBlocks(
                           "Warning for a-repo with message - MissingEntry",
                           None
