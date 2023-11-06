@@ -76,6 +76,7 @@ class AppConfigProvider @Inject()(
           messageText              = configuration.get[String     ]("alerts.slack.messageText"),
           leakDetectionUri         = configuration.get[String     ]("alerts.slack.leakDetectionUri"),
           warningText              = configuration.get[String     ]("alerts.slack.warningText"),
+          seeReportText            = configuration.get[String     ]("alerts.slack.seeReportText"),
           warningsToAlert          = configuration.get[Seq[String]]("alerts.slack.warningsToAlert")
         )),
       timeoutBackoff               = configuration.get[Duration]("queue.timeoutBackOff"),
@@ -165,5 +166,6 @@ final case class SlackConfig(
   messageText        : String,
   leakDetectionUri   : String,
   warningText        : String,
+  seeReportText      : String,
   warningsToAlert    : Seq[String]
 )

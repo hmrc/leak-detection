@@ -130,6 +130,7 @@ object ModelFactory {
     messageText         = "Do not panic, but there is a leak!",
     leakDetectionUri    = "https://somewhere",
     warningText         = "Warning for {repo} with message - {warningMessage}",
+    seeReportText       = " See {reportLink}",
     warningsToAlert     = Seq.empty
   )
 
