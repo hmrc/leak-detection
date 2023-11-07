@@ -21,7 +21,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
-import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
@@ -71,7 +71,7 @@ class SlackNotificationsConnectorSpec
         displayName   = "username"
       , emoji         = "iconEmoji"
       , text          = "text"
-      , blocks        = SlackNotificationsConnector.Message.toBlocks(message = "message", referenceUrl = Some((url"http://some/path", "link title")))
+      , blocks        = SlackNotificationsConnector.Message.toBlocks(mrkdwn = "some markdown string")
       , channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(slackChannels = Nil)
       )
 
@@ -90,15 +90,7 @@ class SlackNotificationsConnectorSpec
                 "type" : "section",
                 "text" : {
                   "type" : "mrkdwn",
-                  "text" : "message"
-                }
-              }, {
-                "type" : "divider"
-              }, {
-                "type" : "section",
-                "text" : {
-                  "type" : "mrkdwn",
-                  "text" : "<http://some/path|link title>"
+                  "text" : "some markdown string"
                 }
               } ],
               "channelLookup" : {

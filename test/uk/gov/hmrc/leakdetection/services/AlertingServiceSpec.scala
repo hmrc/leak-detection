@@ -54,10 +54,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
         text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
-        blocks        = SlackNotificationsConnector.Message.toBlocks(
-                          "Do not panic, but there is a leak!",
-                          Some((url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds", "View in Catalogue"))
-                        ),
+        blocks        = SlackNotificationsConnector.Message.toBlocks(s"Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"}"),
         channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
@@ -95,10 +92,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
         text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: branch/that/needs/encoding",
-        blocks        = SlackNotificationsConnector.Message.toBlocks(
-                          "Do not panic, but there is a leak!",
-                          Some((url"https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds", "View in Catalogue"))
-                        ),
+        blocks        = SlackNotificationsConnector.Message.toBlocks(s"Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds"}"),
         channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
@@ -198,10 +192,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
           displayName   = "leak-detection",
           emoji         = ":closed_lock_with_key:",
           text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
-          blocks        = SlackNotificationsConnector.Message.toBlocks(
-                            "Do not panic, but there is a leak!",
-                            Some((url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds", "View in Catalogue"))
-                          ),
+          blocks        = SlackNotificationsConnector.Message.toBlocks(s"Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"}"),
           channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
         )
 
@@ -251,11 +242,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
-        text          = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch - InvalidEntry",
-        blocks        = SlackNotificationsConnector.Message.toBlocks(
-                          "Warning for a-repo with message - invalid entry message",
-                          None
-                        ),
+        text          = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch",
+        blocks        = SlackNotificationsConnector.Message.toBlocks("Warning for a-repo with message - invalid entry message"),
         channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
@@ -280,17 +268,14 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       verifyZeroInteractions(slackConnector)
     }
 
-    "send an alert with attachments if file level exemption warnings" in new Fixtures {
+    "send an alert with report url if file level exemption warnings" in new Fixtures {
       override val slackConfig =  aSlackConfig.copy(warningsToAlert = Seq(FileLevelExemptions.toString))
 
       val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
-        text          = "Leak Detection had a problem scanning repo: repo on branch: main - FileLevelExemptions",
-        blocks        = SlackNotificationsConnector.Message.toBlocks(
-                          "Warning for repo with message - file level exemptions",
-                          Some((url"https://somewhere/leak-detection/repositories/repo/main/exemptions?source=slack-lds", "View in Catalogue"))
-                        ),
+        text          = "Leak Detection had a problem scanning repo: repo on branch: main",
+        blocks        = SlackNotificationsConnector.Message.toBlocks(s"Warning for repo with message - file level exemptions See ${url"https://somewhere/leak-detection/repositories/repo/main/exemptions?source=slack-lds"}"),
         channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 
@@ -317,11 +302,8 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatcher
       val expectedMessageToAlertChannel = SlackNotificationsConnector.Message(
         displayName   = "leak-detection",
         emoji         = ":closed_lock_with_key:",
-        text          = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch - MissingEntry",
-        blocks        = SlackNotificationsConnector.Message.toBlocks(
-                          "Warning for a-repo with message - MissingEntry",
-                          None
-                        ),
+        text          = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch",
+        blocks        = SlackNotificationsConnector.Message.toBlocks("Warning for a-repo with message - MissingEntry"),
         channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
       )
 

@@ -43,20 +43,16 @@ class AlertingService @Inject()(
     warnings
       .filter(warning => slackConfig.enabled && slackConfig.warningsToAlert.contains(warning.warningMessageType))
       .traverse_ { warning =>
-
         processSlackChannelMessages(
           displayName = slackConfig.username
         , emoji       = slackConfig.iconEmoji
-        , text        = s"Leak Detection had a problem scanning repo: ${warning.repoName} on branch: ${warning.branch} - ${warning.warningMessageType}"
+        , text        = s"Leak Detection had a problem scanning repo: ${warning.repoName} on branch: ${warning.branch}"
         , blocks      = SlackNotificationsConnector.Message.toBlocks(
-                          message      = slackConfig.warningText
-                                                    .replace("{repo}", warning.repoName)
-                                                    .replace("{warningMessage}", appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))
-                                                    .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
-                        , referenceUrl = Option
-                                          .when(warning.warningMessageType == FileLevelExemptions.toString)(
-                                            (url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions?source=slack-lds", "View in Catalogue")
-                                          )
+                          (slackConfig.warningText + (if (warning.warningMessageType == FileLevelExemptions.toString) slackConfig.seeReportText else ""))
+                            .replace("{repo}"          , warning.repoName)
+                            .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
+                            .replace("{warningMessage}", appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))
+                            .replace("{reportLink}"    , url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${warning.repoName}/${warning.branch}/exemptions?source=slack-lds".toString)
                         )
         , commitInfo  = CommitInfo(author, Branch(warning.branch), Repository(warning.repoName))
         )
@@ -71,11 +67,11 @@ class AlertingService @Inject()(
       , emoji       = slackConfig.iconEmoji
       , text        = s"Something sensitive seems to have been pushed for repo: ${report.repoName} on branch: ${report.branch}"
       , blocks      = SlackNotificationsConnector.Message.toBlocks(
-                        message      = slackConfig.messageText
-                                                  .replace("{repo}", report.repoName)
-                                                  .replace("{branch}", report.branch)
-                                                  .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
-                      , referenceUrl = Some((url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds", "View in Catalogue"))
+                        (slackConfig.messageText + slackConfig.seeReportText)
+                          .replace("{repo}"          , report.repoName)
+                          .replace("{branch}"        , report.branch)
+                          .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
+                          .replace("{reportLink}"    , url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds".toString)
                       )
       , commitInfo  = CommitInfo.fromReport(report)
       )
