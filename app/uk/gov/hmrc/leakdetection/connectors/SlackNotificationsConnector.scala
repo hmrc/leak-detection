@@ -41,12 +41,14 @@ class SlackNotificationsConnector @Inject()(
   private val authToken =
     configuration.get[String]("internal-auth.token")
 
-  def sendMessage(message: SlackNotificationsConnector.Message)(implicit hc: HeaderCarrier): Future[SlackNotificationsConnector.MessageResponse] = {
+  def sendMessage(message: SlackNotificationsConnector.Message)(implicit hc: HeaderCarrier): Future[SlackNotificationsConnector.SlackNotificationResponse] = {
+    implicit val snrReads: Reads[SlackNotificationsConnector.SlackNotificationResponse] =
+      SlackNotificationsConnector.SlackNotificationResponse.reads
     httpClientV2
       .post(url"$url/slack-notifications/v2/notification")
       .setHeader("Authorization" -> authToken)
       .withBody(Json.toJson(message)(SlackNotificationsConnector.Message.writes))
-      .execute[SlackNotificationsConnector.MessageResponse]
+      .execute[SlackNotificationsConnector.SlackNotificationResponse]
       .recoverWith {
         case NonFatal(ex) =>
           logger.error(s"Unable to notify ${message.channelLookup} on Slack", ex)
@@ -107,25 +109,26 @@ object SlackNotificationsConnector {
     }
   }
 
+
   final case class SlackNotificationError(
-    code   : String,
+    code: String,
     message: String
   )
 
-  object SlackNotificationError {
-    implicit val format: OFormat[SlackNotificationError] =
-      Json.format[SlackNotificationError]
-  }
+  final case class SlackNotificationResponse(
+    errors: List[SlackNotificationError]
+  )
 
-  final case class MessageResponse(
-    successfullySentTo: Seq[String]                  = Nil,
-    errors            : List[SlackNotificationError] = Nil
-  ) {
-    def hasSentMessages: Boolean = successfullySentTo.nonEmpty
-  }
+  object SlackNotificationResponse {
+    val reads: Reads[SlackNotificationResponse] = {
+      implicit val sneReads: Reads[SlackNotificationError] =
+        ( (__ \ "code"   ).read[String]
+        ~ (__ \ "message").read[String]
+        )(SlackNotificationError.apply _)
 
-  object MessageResponse {
-    implicit val format: OFormat[MessageResponse] =
-      Json.format[MessageResponse]
+      (__ \ "errors")
+        .readWithDefault[List[SlackNotificationError]](List.empty)
+        .map(SlackNotificationResponse.apply)
+    }
   }
 }

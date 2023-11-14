@@ -98,7 +98,7 @@ class AlertingService @Inject()(
   private def sendSlackMessage(enabled: Boolean, slackMessage: SlackNotificationsConnector.Message)(implicit hc: HeaderCarrier): Future[Boolean] =
     if (enabled)
       slackConnector.sendMessage(slackMessage).map {
-        case rsp if rsp.hasSentMessages => true
+        case rsp if rsp.errors.isEmpty  => true
         case rsp                        => logger.error(s"Errors sending notification: ${rsp.errors.mkString("[", ",", "]")}")
                                            false
       }
