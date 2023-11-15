@@ -38,19 +38,14 @@ class SlackNotificationsConnectorSpec
   "Connector" should {
     "use internal auth config token" in {
       val hc               = HeaderCarrier(authorization = None)
-      val expectedResponse = SlackNotificationsConnector.MessageResponse(errors = Nil)
+      val expectedResponse = SlackNotificationsConnector.SlackNotificationResponse(errors = Nil)
 
       stubFor(
         post(urlEqualTo("/slack-notifications/v2/notification"))
           .willReturn(
             aResponse()
               .withStatus(200)
-              .withBody("""
-                {
-                  "successfullySentTo": [],
-                  "errors": []
-                }"""
-              )
+              .withBody("""{ "msgId": "3ae36a2e-43ca-46a7-bba4-72b3fdd4a132" }""")
           )
       )
 
