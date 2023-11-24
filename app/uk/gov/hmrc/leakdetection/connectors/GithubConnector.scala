@@ -16,10 +16,10 @@
 
 package uk.gov.hmrc.leakdetection.connectors
 
-import akka.stream.Materializer
-import akka.stream.scaladsl.{FileIO, Source}
-import akka.util.ByteString
-import com.kenshoo.play.metrics.Metrics
+import com.codahale.metrics.MetricRegistry
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.{FileIO, Source}
+import org.apache.pekko.util.ByteString
 import org.zeroturnaround.zip.ZipUtil
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 import play.api.{Configuration, Logging}
@@ -36,9 +36,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class GithubConnector @Inject()(
-  config      : Configuration,
-  httpClientV2: HttpClientV2,
-  metrics     : Metrics
+  config         : Configuration,
+  httpClientV2   : HttpClientV2,
+  metricsRegistry: MetricRegistry
 )(implicit
   ec : ExecutionContext,
   mat: Materializer
@@ -49,8 +49,6 @@ class GithubConnector @Inject()(
   private val githubToken          = config.get[String]("githubSecrets.personalAccessToken")
   private val githubUrl            = config.get[String]("github.url")
   private val zipDownloadTimeout   = config.get[Duration]("github.zipDownloadTimeout")
-
-  private lazy val registry = metrics.defaultRegistry
 
   implicit private val hc: HeaderCarrier = HeaderCarrier()
 
@@ -77,7 +75,7 @@ class GithubConnector @Inject()(
       .stream[Either[UpstreamErrorResponse, Source[ByteString, _]]]
       .flatMap {
         case Right(source) =>
-          registry.counter(s"github.open.zip.success").inc()
+          metricsRegistry.counter(s"github.open.zip.success").inc()
           logger.debug(s"Saving $archiveUrl to $savedZipFilePath")
           source.runWith(FileIO.toPath(savedZipFilePath)).map { _ =>
             val savedZipFile = savedZipFilePath.toFile
@@ -89,7 +87,7 @@ class GithubConnector @Inject()(
         case Left(UpstreamErrorResponse.WithStatusCode(404)) =>
           Future.successful(Left(BranchNotFound(branch)))
         case Left(error) =>
-          registry.counter(s"github.open.zip.failure").inc()
+          metricsRegistry.counter(s"github.open.zip.failure").inc()
           Future.failed(new RuntimeException(s"Error downloading the zip file from $zipUrl received status ${error.statusCode}", error))
       }
   }

@@ -32,7 +32,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class AlertingServiceSpec extends AnyWordSpec with Matchers with ArgumentMatchersSugar with ScalaFutures with MockitoSugar {
 
-  implicit val hc = HeaderCarrier()
+  implicit val hc: HeaderCarrier = HeaderCarrier()
 
   "The alerting service" should {
     "send alerts to both alert channel and github repository channel if leaks are in the report" in new Fixtures {

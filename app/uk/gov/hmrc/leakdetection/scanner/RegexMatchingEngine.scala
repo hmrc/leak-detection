@@ -36,7 +36,7 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
   val fileNameScanners    = createFileNameScanners(rules)
   val fileExtensionR      = """\.[A-Za-z0-9]+$""".r
 
-  implicit val codec = Codec("UTF-8")
+  implicit val codec: Codec = Codec("UTF-8")
   codec.onMalformedInput(CodingErrorAction.IGNORE)
   codec.onUnmappableCharacter(CodingErrorAction.IGNORE)
 

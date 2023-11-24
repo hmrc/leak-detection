@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import java.time.{Duration => JDuration}
-import akka.util.Timeout
+import org.apache.pekko.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Sorts}
@@ -29,7 +29,7 @@ import org.scalatestplus.play.guice.GuiceOneAppPerTest
 import play.api._
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json, OFormat}
 import play.api.test.Helpers.CONTENT_TYPE
 import play.api.test.{FakeRequest, Helpers}
 import uk.gov.hmrc.leakdetection.{GithubStub, ModelFactory}
@@ -43,7 +43,6 @@ import uk.gov.hmrc.mongo.test.MongoSupport
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import play.api.libs.json.JsObject
 
 class E2eTests
     extends AnyFeatureSpec
@@ -55,8 +54,8 @@ class E2eTests
     with BeforeAndAfterEach
     with Eventually {
 
-  implicit val responseF = Json.format[WebhookResponse]
-  implicit val timeout   = Timeout(10.seconds)
+  implicit val responseF: OFormat[WebhookResponse] = Json.format[WebhookResponse]
+  implicit val timeout: Timeout = Timeout(10.seconds)
 
   Feature("Verifying Github commits") {
     Scenario("happy path") {

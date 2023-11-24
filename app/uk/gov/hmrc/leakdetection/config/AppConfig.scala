@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.config
 
 import play.api.Configuration
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, Json, OFormat}
 
 import javax.inject.{Inject, Provider, Singleton}
 import scala.concurrent.duration.Duration
@@ -106,7 +106,7 @@ final case class AllRules(
 )
 
 object AllRules {
-  implicit val format = Json.format[AllRules]
+  implicit val format: OFormat[AllRules] = Json.format[AllRules]
 }
 
 final case class Rule(
@@ -147,7 +147,7 @@ final case class RuleExemption(
 )
 
 object RuleExemption {
-  implicit val format = Json.format[RuleExemption]
+  implicit val format: OFormat[RuleExemption] = Json.format[RuleExemption]
 }
 
 

@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.scheduled
 
 import javax.inject.Inject
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import play.api.{Configuration, Logger}
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.leakdetection.services.ScanningService

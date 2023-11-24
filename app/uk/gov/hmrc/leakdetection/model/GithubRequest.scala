@@ -45,7 +45,7 @@ final case class PushUpdate(
 ) extends GithubRequest
 
 object PushUpdate {
-  implicit val rmr = RunMode.format
+  implicit val rmr: Format[RunMode] = RunMode.format
   val githubReads: Reads[GithubRequest] =
     (__ \ "deleted")
       .read[Boolean]
@@ -115,10 +115,10 @@ object GitBlameRange {
 final case class GitBlame(ranges: Seq[GitBlameRange])
 
 object GitBlame {
-  implicit val rb = GitBlameRange.gitBlameFormats
+  implicit val rb: Format[GitBlameRange] = GitBlameRange.gitBlameFormats
 
   implicit val reads: Reads[GitBlame] =
     (__ \ "data" \ "repositoryOwner" \ "repository" \ "object" \ "blame" \ "ranges").read[List[GitBlameRange]].map { l => GitBlame(l)}
 
-  implicit val writes = Json.writes[GitBlame]
+  implicit val writes: OWrites[GitBlame] = Json.writes[GitBlame]
 }

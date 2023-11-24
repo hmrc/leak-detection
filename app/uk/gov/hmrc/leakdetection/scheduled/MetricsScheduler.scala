@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.scheduled
 
-import akka.actor.ActorSystem
-import com.kenshoo.play.metrics.Metrics
+import com.codahale.metrics.MetricRegistry
+import org.apache.pekko.actor.ActorSystem
 import play.api.{Configuration, Logger}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.services.LeaksService
@@ -31,7 +31,7 @@ import scala.concurrent.duration._
 class MetricsScheduler @Inject()(
   actorSystem                  : ActorSystem,
   configuration                : Configuration,
-  metrics                      : Metrics,
+  metrics                      : MetricRegistry,
   githubRequestsQueueRepository: GithubRequestsQueueRepository,
   leaksService                 : LeaksService,
   lockRepository               : LockRepository,
@@ -56,7 +56,7 @@ class MetricsScheduler @Inject()(
     metricSources    = List(githubRequestsQueueRepository, leaksService),
     lockService      = lock,
     metricRepository = metricRepository,
-    metricRegistry   = metrics.defaultRegistry
+    metricRegistry   = metrics
   )
 
   actorSystem.scheduler.scheduleWithFixedDelay(1.minute, refreshIntervalMillis.milliseconds){ () =>

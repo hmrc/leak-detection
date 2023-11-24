@@ -5,7 +5,7 @@ lazy val microservice = Project("leak-detection", file("."))
   .disablePlugins(JUnitXmlReportPlugin)
   .settings(
     majorVersion := 0,
-    scalaVersion := "2.13.10",
+    scalaVersion := "2.13.12",
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
     PlayKeys.playDefaultPort := 8855,
     resolvers     += Resolver.jcenterRepo,

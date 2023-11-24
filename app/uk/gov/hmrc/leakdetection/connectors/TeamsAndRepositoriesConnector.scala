@@ -36,7 +36,7 @@ case class Team(
 }
 
 object Team {
-  implicit val format = Json.format[Team]
+  implicit val format: OFormat[Team] = Json.format[Team]
 }
 
 case class RepositoryInfo(
@@ -47,7 +47,7 @@ case class RepositoryInfo(
 )
 
 object RepositoryInfo {
-  implicit val format = Json.format[RepositoryInfo]
+  implicit val format: OFormat[RepositoryInfo] = Json.format[RepositoryInfo]
 }
 
 @Singleton
@@ -58,7 +58,7 @@ class TeamsAndRepositoriesConnector @Inject()(
   import HttpReads.Implicits._
 
   lazy private val baseUrl = servicesConfig.baseUrl("teams-and-repositories")
-  implicit private val hc = HeaderCarrier()
+  implicit private val hc: HeaderCarrier = HeaderCarrier()
 
   def teamsWithRepositories(): Future[Seq[Team]] =
     httpClientV2

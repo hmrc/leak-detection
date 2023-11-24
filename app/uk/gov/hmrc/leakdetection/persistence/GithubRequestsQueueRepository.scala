@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.persistence
 
 import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import play.api.Configuration
-import play.api.libs.json.__
+import play.api.libs.json.{Format, __}
 import uk.gov.hmrc.leakdetection.model.{PushUpdate, RunMode}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
@@ -29,7 +29,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object MongoPushUpdateFormats {
   import play.api.libs.functional.syntax._
-  implicit val rmf = RunMode.format
+  implicit val rmf: Format[RunMode] = RunMode.format
   val formats =
     ( (__ \ "repositoryName").format[String]
     ~ (__ \ "isPrivate"     ).format[Boolean]

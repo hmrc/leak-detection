@@ -46,7 +46,7 @@ case class RepositorySummary(
 )
 
 object RepositorySummary {
-  implicit val rf = BranchSummary.format
+  implicit val rf: OFormat[BranchSummary] = BranchSummary.format
   val format = Json.format[RepositorySummary]
 }
 
