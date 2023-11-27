@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import play.api.libs.json.Json
+import play.api.libs.json.{Format, Json}
 import play.api.mvc.ControllerComponents
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.leakdetection.services.{DraftReportsService, RuleService}
@@ -32,7 +32,7 @@ class DraftReportController @Inject()(
 )(implicit
   ec: ExecutionContext
 ) extends BackendController(cc) {
-  implicit val rf = Report.apiFormat
+  implicit val rf: Format[Report] = Report.apiFormat
 
   def findDraftReports(rule: Option[String]) = Action.async {
     rule match {

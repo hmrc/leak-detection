@@ -45,7 +45,7 @@ class ReportsServiceSpec
 
   override val repository = new ReportsRepository(mongoComponent)
 
-  implicit val hc = new HeaderCarrier()
+  implicit val hc: HeaderCarrier = new HeaderCarrier()
 
   private val configuration: Configuration = Configuration(
     "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",

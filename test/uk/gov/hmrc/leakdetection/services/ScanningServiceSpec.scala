@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import akka.stream.IOOperationIncompleteException
+import org.apache.pekko.stream.IOOperationIncompleteException
 import ammonite.ops.Path
 import com.typesafe.config.ConfigFactory
 import org.mockito.captor.ArgCaptor
@@ -367,7 +367,7 @@ class ScanningServiceSpec
 
     val now         = Instant.now()
     val id          = ReportId.random
-    implicit val hc = HeaderCarrier()
+    implicit val hc: HeaderCarrier = HeaderCarrier()
 
     def generateReport = performScan(Normal)
 
@@ -575,9 +575,9 @@ class ScanningServiceSpec
       )
   }
 
-  def write(content: String, destination: File) =
+  def write(content: String, destination: File): PrintWriter =
     new PrintWriter(destination) {
-      write(content);
+      this.write(content);
       close()
     }
 }

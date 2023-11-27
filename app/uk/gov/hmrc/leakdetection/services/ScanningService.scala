@@ -181,7 +181,7 @@ class ScanningService @Inject()(
       runMode       = request.runMode.getOrElse(Normal)
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
      .recoverWith {
-       case e: akka.stream.IOOperationIncompleteException if e.getCause.isInstanceOf[TimeoutException] =>
+       case e: org.apache.pekko.stream.IOOperationIncompleteException if e.getCause.isInstanceOf[TimeoutException] =>
          val backOffMillis = Math.min(workItem.failureCount * appConfig.timeoutBackoff.toMillis, appConfig.timeoutBackOffMax.toMillis)
          if (workItem.failureCount > 2) {
            logger.error(s"Failed scan due to timeouts - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}, retry count: ${workItem.failureCount}, timeoutMillis: $backOffMillis", e)

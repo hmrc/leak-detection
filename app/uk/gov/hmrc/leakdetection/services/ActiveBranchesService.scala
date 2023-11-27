@@ -33,13 +33,15 @@ class ActiveBranchesService @Inject()(
     repoName.fold(activeBranchesRepository.findAll())(activeBranchesRepository.findForRepo)
 
   def markAsActive(repository: Repository, branch: Branch, reportId: ReportId): Future[Unit] =
-    activeBranchesRepository
-      .find(repository.asString, branch.asString)
-      .map(
-        _
-          .map(a => activeBranchesRepository.update(a.copy(updated = Instant.now(), reportId = reportId.value)))
-          .getOrElse(activeBranchesRepository.create(ActiveBranch(repository.asString, branch.asString, reportId.value)))
-       )
+    for {
+      optBranch <- activeBranchesRepository.find(repository.asString, branch.asString)
+      result    <- optBranch match {
+                     case Some(activeBranch) =>
+                       activeBranchesRepository.update(activeBranch.copy(updated = Instant.now(), reportId = reportId.value))
+                     case None =>
+                       activeBranchesRepository.create(ActiveBranch(repository.asString, branch.asString, reportId.value))
+                   }
+    } yield result
 
   def clearBranch(repoName: String, branchName: String): Future[Unit] =
     activeBranchesRepository.delete(repoName, branchName)

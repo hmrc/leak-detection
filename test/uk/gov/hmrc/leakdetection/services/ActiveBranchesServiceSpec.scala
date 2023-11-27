@@ -68,7 +68,7 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
       repository.collection.countDocuments().toFuture().futureValue shouldBe 0
     }
     "mark active branches" when {
-      "active branch does not exit" in {
+      "active branch does not exist" in {
         service.markAsActive(Repository("repo"), Branch("branch"), ReportId("reportId")).futureValue
 
         val persistedValues = repository.collection.find().toFuture().futureValue
@@ -100,5 +100,5 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
     }
   }
 
-  def anActiveBranch = ActiveBranch("repo", "branch", "reportId")
+  def anActiveBranch: ActiveBranch = ActiveBranch("repo", "branch", "reportId")
 }
