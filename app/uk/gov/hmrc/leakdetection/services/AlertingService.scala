@@ -39,6 +39,23 @@ class AlertingService @Inject()(
 
   type ErrorMessage = String
 
+  def alertAboutFailure(repository: Repository, branch: Branch, author: String,  message: String, isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+    if (!slackConfig.enabled)
+      Future.unit
+    else
+      processSlackChannelMessages(
+        displayName = slackConfig.username
+      , emoji       = slackConfig.iconEmoji
+      , text        = s"Leak Detection had a problem scanning repo: ${repository.asString} on branch: ${branch.asString}"
+      , blocks      = SlackNotificationsConnector.Message.toBlocks(
+                        slackConfig.failureText
+                          .replace("{repo}"          , repository.asString)
+                          .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
+                          .replace("{failureMessage}", message)
+                      )
+      , commitInfo  = CommitInfo(author, branch, repository)
+      )
+
   def alertAboutWarnings(author: String, warnings: Seq[Warning], isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
     warnings
       .filter(warning => slackConfig.enabled && slackConfig.warningsToAlert.contains(warning.warningMessageType))

@@ -129,6 +129,7 @@ object ModelFactory {
     repositoryChannelEnabled  = true,
     messageText         = "Do not panic, but there is a leak!",
     leakDetectionUri    = "https://somewhere",
+    failureText         = "Failure for {repo} with message - {failureMessage}",
     warningText         = "Warning for {repo} with message - {warningMessage}",
     seeReportText       = " See {reportLink}",
     warningsToAlert     = Seq.empty

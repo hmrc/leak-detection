@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.connectors
 
 import com.codahale.metrics.MetricRegistry
 import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.scaladsl.{FileIO, Source}
+import org.apache.pekko.stream.scaladsl.{FileIO, Keep, Sink, Source}
 import org.apache.pekko.util.ByteString
 import org.zeroturnaround.zip.ZipUtil
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
@@ -46,9 +46,11 @@ class GithubConnector @Inject()(
   import GithubConnector._
   import HttpReads.Implicits._
 
-  private val githubToken          = config.get[String]("githubSecrets.personalAccessToken")
-  private val githubUrl            = config.get[String]("github.url")
-  private val zipDownloadTimeout   = config.get[Duration]("github.zipDownloadTimeout")
+  private val githubToken        = config.get[String  ]("githubSecrets.personalAccessToken")
+  private val githubUrl          = config.get[String  ]("github.url")
+  private val zipDownloadTimeout = config.get[Duration]("github.zipDownloadTimeout")
+  private val zipDownloadMaxSize = config.get[Int     ]("github.zipDownloadMaxSize")
+
 
   implicit private val hc: HeaderCarrier = HeaderCarrier()
 
@@ -58,6 +60,17 @@ class GithubConnector @Inject()(
       .setHeader("Authorization" -> s"token $githubToken")
       .withProxy
       .execute[JsValue]
+
+  private val preventLargeDownloads = {
+    val count = new java.util.concurrent.atomic.AtomicInteger()
+    Sink
+      .foreach[ByteString] { bs =>
+        val mbs = count.updateAndGet(_ + (bs.length / 1000000))
+
+        if (mbs >= zipDownloadMaxSize) throw new LargeDownloadException(s"Download stopped after: $mbs MBs because over max size: $zipDownloadMaxSize MBs")
+        else                           ()
+      }
+  }
 
   def getZip(
     archiveUrl      : String,
@@ -77,13 +90,16 @@ class GithubConnector @Inject()(
         case Right(source) =>
           metricsRegistry.counter(s"github.open.zip.success").inc()
           logger.debug(s"Saving $archiveUrl to $savedZipFilePath")
-          source.runWith(FileIO.toPath(savedZipFilePath)).map { _ =>
-            val savedZipFile = savedZipFilePath.toFile
-            logger.info(s"Saved file: ${savedZipFilePath}")
-            ZipUtil.explode(savedZipFile)
-            logger.info(s"zip process complete, free disk space ${savedZipFilePath.toFile.getFreeSpace}")
-            Right(savedZipFile)
-          }
+          source
+            .alsoToMat(preventLargeDownloads)(Keep.none)
+            .runWith(FileIO.toPath(savedZipFilePath))
+            .map { _ =>
+              val savedZipFile = savedZipFilePath.toFile
+              logger.info(s"Saved file: ${savedZipFilePath}")
+              ZipUtil.explode(savedZipFile)
+              logger.info(s"zip process complete, free disk space ${savedZipFilePath.toFile.getFreeSpace}")
+              Right(savedZipFile)
+            }
         case Left(UpstreamErrorResponse.WithStatusCode(404)) =>
           Future.successful(Left(BranchNotFound(branch)))
         case Left(error) =>
@@ -106,13 +122,15 @@ class GithubConnector @Inject()(
   }
 }
 
-final case class BranchNotFound(branchName: Branch)
 
 object GithubConnector {
-  import java.net.URLEncoder
+
+  case class LargeDownloadException(message: String) extends Exception(message)
+
+  final case class BranchNotFound(name: Branch)
 
   def getArtifactUrl(archiveUrl: String, branch: Branch): URL = {
-    val urlEncodedBranchName = URLEncoder.encode(branch.asString, "UTF-8")
+    val urlEncodedBranchName = java.net.URLEncoder.encode(branch.asString, "UTF-8")
     new URL(archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/refs/heads/$urlEncodedBranchName"))
   }
 
