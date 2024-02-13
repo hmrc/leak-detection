@@ -21,7 +21,7 @@ import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.AppConfig
-import uk.gov.hmrc.leakdetection.connectors.{BranchNotFound, GithubConnector, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.{GithubConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
@@ -66,12 +66,12 @@ class ScanningService @Inject()(
     authorName:    String,
     archiveUrl:    String,
     runMode:       RunMode
-)(implicit hc: HeaderCarrier): Future[Report] = {
+  )(implicit hc: HeaderCarrier): Future[Report] = {
     val savedZipFilePath = Files.createTempFile("unzipped_", "")
     try {
       val zip = githubConnector.getZip(archiveUrl, branch, savedZipFilePath)
       val result = zip.flatMap {
-        case Left(BranchNotFound(_)) =>
+        case Left(GithubConnector.BranchNotFound(_)) =>
           val pushDelete = PushDelete(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, repositoryUrl = repositoryUrl)
           for {
             _      <- activeBranchesService.clearBranch(pushDelete.repositoryName, pushDelete.branchRef)
@@ -79,14 +79,11 @@ class ScanningService @Inject()(
             _      <- warningsService.clearBranchWarnings(pushDelete.repositoryName, pushDelete.branchRef)
             report <- reportsService.clearReportsAfterBranchDeleted(pushDelete)
           } yield report
-
         case Right(dir) =>
-          val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
-
-          def executeIfDraftMode(function: => Future[Unit]): Future[Unit] = if (runMode == Draft) function else Future.unit
-
+          def executeIfDraftMode(function: => Future[Unit] ): Future[Unit] = if (runMode == Draft ) function else Future.unit
           def executeIfNormalMode(function: => Future[Unit]): Future[Unit] = if (runMode == Normal) function else Future.unit
 
+          val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
           val exemptionParsingResult = RulesExemptionParser
             .parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
 
@@ -109,7 +106,7 @@ class ScanningService @Inject()(
             _                       <- executeIfNormalMode(warningsService.saveWarnings(repository, branch, warnings))
             _                       <- executeIfNormalMode(activeBranchesService.markAsActive(repository, branch, report.id))
             _                       <- executeIfNormalMode(alertingService.alert(report, isPrivate))
-            _                       <- executeIfNormalMode(alertAboutWarnings(repository, branch, authorName, warnings, isPrivate))
+            _                       <- executeIfNormalMode(whenDefaultBranch(repository, branch)(alertingService.alertAboutWarnings(authorName, warnings, isPrivate)))
           } yield if (runMode == Normal) reportWithWarnings else draftReportWithWarnings
       }
       result.onComplete {
@@ -125,17 +122,13 @@ class ScanningService @Inject()(
     }
   }
 
-  private def alertAboutWarnings(
-    repository: Repository,
-    branch    : Branch,
-    author    : String,
-    warnings  : Seq[Warning],
-    isPrivate : Boolean
-    )(implicit hc: HeaderCarrier): Future[Unit] =
-    teamsAndRepositoriesConnector.repo(repository.asString).flatMap {
-      case Some(repo) if repo.defaultBranch == branch.asString => alertingService.alertAboutWarnings(author, warnings, isPrivate)
-      case _                                                   => Future.unit
-    }
+  private def whenDefaultBranch(repository: Repository, branch: Branch)(f: => Future[Unit]): Future[Unit] =
+    teamsAndRepositoriesConnector
+      .repo(repository.asString)
+      .flatMap {
+        case Some(repo) if repo.defaultBranch == branch.asString => f
+        case _                                                   => Future.unit
+      }
 
   def queueDistinctRequest(p: PushUpdate): Future[Boolean] = for {
     itemAlreadyQueued <- githubRequestsQueue.findByCommitIdAndBranch(p).map(_.isDefined)
@@ -143,9 +136,6 @@ class ScanningService @Inject()(
     duplicate          = itemAlreadyQueued || reportExists
     _                 <- if (!duplicate) githubRequestsQueue.pushNew(p) else Future.unit
   } yield duplicate
-
-  def queueRescanRequest(p: PushUpdate): Future[Boolean] =
-    rescanRequestsQueue.pushNew(p).map(_ => true)
 
   def scanAll(implicit ec: ExecutionContext): Future[Int] = {
     def processNext(acc: Int): Future[Int] =
@@ -160,13 +150,13 @@ class ScanningService @Inject()(
     } yield  scanned + rescanned
   }
 
-  def rescanOne(implicit ec: ExecutionContext): Future[Int] =
+  private def rescanOne(implicit ec: ExecutionContext): Future[Int] =
     rescanRequestsQueue.pullOutstanding.flatMap {
       case None     => Future.successful(0)
       case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi).map(_.size)
     }
 
-  def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PushUpdate])(workItem: WorkItem[PushUpdate]): Future[Option[Report]] = {
+  private def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PushUpdate])(workItem: WorkItem[PushUpdate]): Future[Option[Report]] = {
     val request     = workItem.item
     implicit val hc: HeaderCarrier = HeaderCarrier()
     scanRepository(
@@ -181,6 +171,14 @@ class ScanningService @Inject()(
       runMode       = request.runMode.getOrElse(Normal)
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
      .recoverWith {
+       case e: GithubConnector.LargeDownloadException =>
+         val repository = Repository(request.repositoryName)
+         val branch     = Branch(request.branchRef)
+         for {
+           _ <- whenDefaultBranch(repository, branch)(alertingService.alertAboutFailure(repository, branch, request.authorName, e.message, request.isPrivate))
+           _ <- repo.markAs(workItem.id, ProcessingStatus.PermanentlyFailed)
+           _ =  logger.error(s"Failed scan due to large download exception - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}", e)
+         } yield None
        case e: org.apache.pekko.stream.IOOperationIncompleteException if e.getCause.isInstanceOf[TimeoutException] =>
          val backOffMillis = Math.min(workItem.failureCount * appConfig.timeoutBackoff.toMillis, appConfig.timeoutBackOffMax.toMillis)
          if (workItem.failureCount > 2) {
@@ -189,7 +187,7 @@ class ScanningService @Inject()(
          repo.markAs(workItem.id, ProcessingStatus.Failed, Some(Instant.now().plusMillis(backOffMillis))).map(_ => None)
        case NonFatal(e) =>
          logger.error(s"Failed scan - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}, retry count: ${workItem.failureCount}", e)
-           repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
+         repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
      }
   }
 

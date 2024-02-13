@@ -75,6 +75,7 @@ class AppConfigProvider @Inject()(
           repositoryChannelEnabled = configuration.get[Boolean    ]("alerts.slack.repositoryChannel.enabled"),
           messageText              = configuration.get[String     ]("alerts.slack.messageText"),
           leakDetectionUri         = configuration.get[String     ]("alerts.slack.leakDetectionUri"),
+          failureText              = configuration.get[String     ]("alerts.slack.failureText"),
           warningText              = configuration.get[String     ]("alerts.slack.warningText"),
           seeReportText            = configuration.get[String     ]("alerts.slack.seeReportText"),
           warningsToAlert          = configuration.get[Seq[String]]("alerts.slack.warningsToAlert")
@@ -165,6 +166,7 @@ final case class SlackConfig(
   repositoryChannelEnabled : Boolean,
   messageText        : String,
   leakDetectionUri   : String,
+  failureText        : String,
   warningText        : String,
   seeReportText      : String,
   warningsToAlert    : Seq[String]

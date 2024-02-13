@@ -279,17 +279,6 @@ class ScanningServiceSpec
       queue.collection.countDocuments().toFuture().futureValue shouldBe 0
     }
 
-    "process one rescan request per scanAll cycle" in new TestSetup {
-      scanningService.queueRescanRequest(request).futureValue
-      scanningService.queueRescanRequest(request.copy(repositoryName = "another-repo")).futureValue
-      queue.collection.countDocuments().toFuture().futureValue shouldBe 0
-      rescanQueue.collection.countDocuments().toFuture().futureValue shouldBe 2
-
-      scanningService.scanAll.futureValue shouldBe 1
-
-      rescanQueue.collection.countDocuments().toFuture().futureValue shouldBe 1
-    }
-
     "not process duplicate requests when report exists" in new TestSetup {
       when(reportsService.reportExists(any))
         .thenReturn(Future.successful(false), Future.successful(true))
