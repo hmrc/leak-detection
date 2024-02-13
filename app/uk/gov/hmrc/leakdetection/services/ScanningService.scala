@@ -156,6 +156,7 @@ class ScanningService @Inject()(
       case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi).map(_.size)
     }
 
+  import org.apache.pekko.stream.IOOperationIncompleteException
   private def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PushUpdate])(workItem: WorkItem[PushUpdate]): Future[Option[Report]] = {
     val request     = workItem.item
     implicit val hc: HeaderCarrier = HeaderCarrier()
@@ -171,15 +172,15 @@ class ScanningService @Inject()(
       runMode       = request.runMode.getOrElse(Normal)
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
      .recoverWith {
-       case e: GithubConnector.LargeDownloadException =>
+       case e: IOOperationIncompleteException if e.getCause.isInstanceOf[GithubConnector.LargeDownloadException] =>
          val repository = Repository(request.repositoryName)
          val branch     = Branch(request.branchRef)
          for {
-           _ <- whenDefaultBranch(repository, branch)(alertingService.alertAboutFailure(repository, branch, request.authorName, e.message, request.isPrivate))
+           _ <- whenDefaultBranch(repository, branch)(alertingService.alertAboutFailure(repository, branch, request.authorName, e.getCause.getMessage, request.isPrivate))
            _ <- repo.markAs(workItem.id, ProcessingStatus.PermanentlyFailed)
            _ =  logger.error(s"Failed scan due to large download exception - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}", e)
          } yield None
-       case e: org.apache.pekko.stream.IOOperationIncompleteException if e.getCause.isInstanceOf[TimeoutException] =>
+       case e: IOOperationIncompleteException if e.getCause.isInstanceOf[TimeoutException] =>
          val backOffMillis = Math.min(workItem.failureCount * appConfig.timeoutBackoff.toMillis, appConfig.timeoutBackOffMax.toMillis)
          if (workItem.failureCount > 2) {
            logger.error(s"Failed scan due to timeouts - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}, retry count: ${workItem.failureCount}, timeoutMillis: $backOffMillis", e)
