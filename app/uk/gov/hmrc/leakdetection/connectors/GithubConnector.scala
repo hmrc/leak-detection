@@ -65,7 +65,7 @@ class GithubConnector @Inject()(
     val count = new java.util.concurrent.atomic.AtomicInteger()
     Sink
       .foreach[ByteString] { bs =>
-        val mbs = count.updateAndGet(_ + (bs.length / 1000000))
+        val mbs = count.updateAndGet(_ + bs.length) / 1000000
 
         if (mbs >= zipDownloadMaxSize) throw new LargeDownloadException(s"Download stopped after: $mbs MBs because over max size: $zipDownloadMaxSize MBs")
         else                           ()
