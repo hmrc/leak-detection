@@ -51,7 +51,6 @@ class GithubConnector @Inject()(
   private val zipDownloadTimeout = config.get[Duration]("github.zipDownloadTimeout")
   private val zipDownloadMaxSize = config.get[Int     ]("github.zipDownloadMaxSize")
 
-
   implicit private val hc: HeaderCarrier = HeaderCarrier()
 
   def getRateLimit(): Future[JsValue] =
@@ -61,16 +60,12 @@ class GithubConnector @Inject()(
       .withProxy
       .execute[JsValue]
 
-  private def preventLargeDownloads() = {
-    val count = new java.util.concurrent.atomic.AtomicInteger()
+  private val preventLargeDownloads =
     Sink
-      .foreach[ByteString] { bs =>
-        val mbs = count.updateAndGet(_ + bs.length) / 1000000
-
-        if (mbs >= zipDownloadMaxSize) throw new LargeDownloadException(s"Download stopped because over max size: $zipDownloadMaxSize MBs")
-        else                           ()
+      .fold[Long, ByteString](0L) {
+        case (acc, _ ) if (acc / 1000000) >= zipDownloadMaxSize => throw new LargeDownloadException(s"Download stopped because over max size: $zipDownloadMaxSize MBs")
+        case (acc, bs)                                          => (acc + bs.length)
       }
-  }
 
   def getZip(
     archiveUrl      : String,
@@ -91,7 +86,7 @@ class GithubConnector @Inject()(
           metricsRegistry.counter(s"github.open.zip.success").inc()
           logger.debug(s"Saving $archiveUrl to $savedZipFilePath")
           source
-            .alsoToMat(preventLargeDownloads())(Keep.none)
+            .alsoToMat(preventLargeDownloads)(Keep.none)
             .runWith(FileIO.toPath(savedZipFilePath))
             .map { _ =>
               val savedZipFile = savedZipFilePath.toFile
