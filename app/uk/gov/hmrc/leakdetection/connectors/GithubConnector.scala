@@ -61,7 +61,7 @@ class GithubConnector @Inject()(
       .withProxy
       .execute[JsValue]
 
-  private val preventLargeDownloads = {
+  private def preventLargeDownloads() = {
     val count = new java.util.concurrent.atomic.AtomicInteger()
     Sink
       .foreach[ByteString] { bs =>
@@ -91,7 +91,7 @@ class GithubConnector @Inject()(
           metricsRegistry.counter(s"github.open.zip.success").inc()
           logger.debug(s"Saving $archiveUrl to $savedZipFilePath")
           source
-            .alsoToMat(preventLargeDownloads)(Keep.none)
+            .alsoToMat(preventLargeDownloads())(Keep.none)
             .runWith(FileIO.toPath(savedZipFilePath))
             .map { _ =>
               val savedZipFile = savedZipFilePath.toFile
