@@ -377,6 +377,42 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         aMatchedResult.copy(lineText = "ignore another match on: secret", lineNumber = 6, matches = List(Match(25, 31)), isExcluded = true),
       )
     }
+
+    "handle fileContent rules that may span multiple lines" in {
+      val wd = tmp.dir()
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file",
+        "sso.encryption.key:\n" +
+          "ENC[GPG,blah]",
+        createFolders = true
+      )
+
+      val rules = List(
+        Rule("sso_encryption_key", Rule.Scope.FILE_CONTENT, """sso\.encryption\.key\s*(=|:|->)\s*(?!(\s*ENC\[))""", "Unencrypted sso.encryption.key")
+      )
+
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+
+      results shouldBe Nil
+    }
+
+    "not filter out genuine hits" in {
+      val wd = tmp.dir()
+      write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file",
+        "sso.encryption.key:\n" +
+          "myplaintextkey",
+        createFolders = true
+      )
+
+      val rules = List(
+        Rule("sso_encryption_key", Rule.Scope.FILE_CONTENT, """sso\.encryption\.key\s*(=|:|->)\s*(?!(\s*ENC\[))""", "Unencrypted sso.encryption.key")
+      )
+
+      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+
+      results shouldBe Seq(
+        MatchedResult("/dir/file", "fileContent", "sso.encryption.key:", 1, "sso_encryption_key", "Unencrypted sso.encryption.key", List(Match(0, 19)), "low", false, false, None)
+      )
+    }
   }
 
 }
