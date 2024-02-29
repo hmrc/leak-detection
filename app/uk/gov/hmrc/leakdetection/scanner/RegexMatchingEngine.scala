@@ -83,10 +83,41 @@ class RegexMatchingEngine(rules: List[Rule], maxLineLength: Int) {
           _.scanFileName(file.getName, filePath, serviceDefinedExemptions)
         }
 
-        contentResults ++ fileNameResult
+        checkForMultiline(file, contentResults) ++ fileNameResult
 
       }
       .toList
+  }
+
+  private def checkForMultiline(file: File, results: Seq[MatchedResult]): Seq[MatchedResult] = {
+    val source = Source.fromFile(file)
+
+    try {
+      val lines = source.getLines().toList.zipWithIndex.map{ case (line, idx) => (idx + 1, line) }.toMap
+
+      results.flatMap { result =>
+        val matchedLine = result.lineText
+        val nextLine = lines.getOrElse(result.lineNumber + 1, default = "")
+
+        val scanner = fileContentScanners.find(_.rule.id == result.ruleId)
+
+        scanner.flatMap(
+          _.scanLine(
+            line                     = matchedLine + nextLine,
+            lineNumber               = result.lineNumber,
+            filePath                 = result.filePath,
+            inlineExemption          = false,
+            serviceDefinedExemptions = Seq.empty
+          )
+        ).fold(Seq.empty[MatchedResult])(_ => Seq(result))
+      }
+    } catch {
+      case ex: Throwable =>
+        logger.error(s"error reading $file", ex)
+        throw ex
+    } finally {
+      source.close()
+    }
   }
 
   private def createFileContentScanners(rules: Seq[Rule]): Seq[RegexScanner] =
