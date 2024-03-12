@@ -77,6 +77,7 @@ class ScanningService @Inject()(
             _      <- activeBranchesService.clearBranch(pushDelete.repositoryName, pushDelete.branchRef)
             _      <- leaksService.clearBranchLeaks(pushDelete.repositoryName, pushDelete.branchRef)
             _      <- warningsService.clearBranchWarnings(pushDelete.repositoryName, pushDelete.branchRef)
+            _      <- rescanRequestsQueue.delete(pushDelete.repositoryName, pushDelete.branchRef)
             report <- reportsService.clearReportsAfterBranchDeleted(pushDelete)
           } yield report
         case Right(dir) =>
