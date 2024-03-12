@@ -74,7 +74,7 @@ class RescanService @Inject()(
       _         = logger.info(s"Re-triggered $inserts rescans")
     } yield ()
 
-  def rescanArchivedBranches(repository: Repository, runMode: RunMode) =
+  def rescanArchivedBranches(repository: Repository, runMode: RunMode): Future[Unit] =
     for {
       branches    <- activeBranchesService.getActiveBranches(Some(repository.asString)).map(_.map(_.branch))
       repoDetails <- teamsAndRepos.repo(repository.asString)
@@ -83,6 +83,9 @@ class RescanService @Inject()(
       inserts     <- rescanQueue.pushNewBatch(payloads).map(_.length)
       _           =  logger.info(s"Re-triggered $inserts rescans")
     } yield ()
+
+  def clearBranch(repositoryName: String, branchRef: String): Future[Unit] =
+    rescanQueue.delete(repositoryName, branchRef)
 
   private def repoToPayload(repoInfo: RepositoryInfo, runMode: RunMode): PushUpdate =
     PushUpdate(
