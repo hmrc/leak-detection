@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.persistence
 
+import org.mongodb.scala.model.Filters
 import play.api.Configuration
 import uk.gov.hmrc.leakdetection.model.PushUpdate
 import uk.gov.hmrc.mongo.MongoComponent
@@ -51,4 +52,15 @@ class RescanRequestsQueueRepository @Inject()(
       failedBefore    = now().minusMillis(retryIntervalMillis.toInt),
       availableBefore = now()
     )
+
+  def delete(repositoryName: String, branchRef: String): Future[Unit] =
+    collection
+      .deleteMany(
+        filter = Filters.and(
+          Filters.equal("item.repositoryName", repositoryName),
+          Filters.equal("item.branchRef", branchRef)
+        )
+      )
+      .toFuture()
+      .map(_ => ())
 }

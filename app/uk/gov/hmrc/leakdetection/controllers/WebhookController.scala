@@ -72,6 +72,7 @@ class WebhookController @Inject()(
             _ <- reportsService.clearReportsAfterBranchDeleted(pushDelete)
             _ <- leakService.clearBranchLeaks(pushDelete.repositoryName, pushDelete.branchRef)
             _ <- warningsService.clearBranchWarnings(pushDelete.repositoryName, pushDelete.branchRef)
+            _ <- rescanService.clearBranch(pushDelete.repositoryName, pushDelete.branchRef)
           } yield Ok (toJson (WebhookResponse(s"${pushDelete.repositoryName}/${pushDelete.branchRef} deleted")))
 
         case repositoryEvent: RepositoryEvent if repositoryEvent.action.equalsIgnoreCase("archived") =>
