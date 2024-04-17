@@ -42,7 +42,7 @@ In such case the rule applies to all non-binary files (with filename extension t
 Repositories can be scanned in either `normal` mode or `draft` mode.  If a mode is not provided then the rescan will run in `draft` mode by default.
 
 ### normal mode
-Any warnings or potential leaks will be visible in the catalogue and alerts will be triggered.
+Any warnings or potential leaks will be visible in the MDTP catalogue and alerts will be triggered.
 
 Any rules marked as draft will be ignored.
 
@@ -80,7 +80,7 @@ Remember to clear down any existing draft reports before testing the amendments 
 
 Before the rule is signed off and the draft flag removed, it is recommended that the draft reports are cleared and at least one rescan of all repositories in draft mode is first performed.  This will give an indication of the number of violations that will be identified across HMRC's github account.
 
-When a new or modified rule is introduced (i.e. the draft flag is removed), a rescan of all repositories in normal mode should also be performed on live.  This will ensure that teams will be alerted to any violations of the rule and that the offending code will be visible within the catalogue.    
+When a new or modified rule is introduced (i.e. the draft flag is removed), a rescan of all repositories in normal mode should also be performed on live.  This will ensure that teams will be alerted to any violations of the rule and that the offending code will be visible within the MDTP catalogue.    
 Without performing a rescan all, any violations within the existing codebase will not be identified until changes are pushed up to the repository - the main issue with this approach is that not all repositories are actively being worked on.
 
 ## Testing in a local environment
