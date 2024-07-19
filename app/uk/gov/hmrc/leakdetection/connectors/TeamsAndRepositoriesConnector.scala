@@ -65,11 +65,6 @@ class TeamsAndRepositoriesConnector @Inject()(
       .get(url"${baseUrl}/api/teams_with_repositories")
       .execute[Seq[Team]]
 
-  def team(teamName: String): Future[Option[Team]] =
-    httpClientV2
-      .get(url"${baseUrl}/api/teams/${teamName}?includeRepos=true")
-      .execute[Option[Team]]
-
   def repos(): Future[Seq[RepositoryInfo]] =
     httpClientV2
       .get(url"${baseUrl}/api/v2/repositories")
