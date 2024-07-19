@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.Rule.Scope
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, Team, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.scanner.Match
 
@@ -288,9 +288,6 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
         givenSomeActiveBranches(timestamp)
-
-        when(teamsAndRepositoriesConnector.team(mockEq("team1")))
-          .thenReturn(Future.successful(Option(Team("team1", None, None, None, Some(Map("Service" -> Seq("repo1")))))))
 
         when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
