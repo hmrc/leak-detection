@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
 import uk.gov.hmrc.leakdetection.config.IgnoreListConfig
-import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.LeakRepository
 import uk.gov.hmrc.mongo.metrix.MetricSource
@@ -56,15 +56,12 @@ class LeaksService @Inject()(
       total      <- leakRepository.countAll()
       unresolved <- leakRepository.countAll()
       byRepo     <- leakRepository.countByRepo()
-      teams      <- teamsAndRepositoriesConnector.teamsWithRepositories()
+      teams      <- teamsAndRepositoriesConnector.teams()
     } yield {
-      def ownedRepos(team: Team): Seq[String] =
-        team.repos.fold(Seq.empty[String])(_.values.toSeq.flatten)
-          .filterNot(ignoreListConfig.repositoriesToIgnore.contains)
-
-      val byTeamStats = teams
-        .map(t => s"reports.teams.${t.normalisedName}.unresolved" -> ownedRepos(t).map(r => byRepo.getOrElse(r, 0)).sum)
-        .toMap
+      val byTeamStats =
+        teams
+          .map(t => s"reports.teams.${t.normalisedName}.unresolved" -> t.repos.filterNot(ignoreListConfig.repositoriesToIgnore.contains).map(r => byRepo.getOrElse(r, 0)).sum)
+          .toMap
 
       val globalStats = Map(
         "reports.total"      -> total,

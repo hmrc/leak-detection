@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 import com.google.inject.Inject
-import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -121,7 +121,7 @@ class SummaryService @Inject()(
   private def getExcludedLeakCount(leaks: Seq[Leak]): Int =
     leaks.filter(_.isExcluded).length
 
-  private def getTeamRepos(teamName: Option[String]): Future[Seq[RepositoryInfo]] = teamName match {
+  private def getTeamRepos(teamName: Option[String]): Future[Seq[TeamsAndRepositoriesConnector.RepositoryInfo]] = teamName match {
     case Some(t) => teamsAndRepositoriesConnector.reposWithTeams(t)
     case None    => Future.successful(Seq())
   }

@@ -21,33 +21,45 @@ import uk.gov.hmrc.http.{HeaderCarrier, HttpReads, StringContextOps}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
-import java.time.LocalDateTime
+import java.time.Instant
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
-case class Team(
-  name                    : String,
-  firstActiveDate         : Option[LocalDateTime],
-  lastActiveDate          : Option[LocalDateTime],
-  firstServiceCreationDate: Option[LocalDateTime],
-  repos                   : Option[Map[String, Seq[String]]]
-) {
-  def normalisedName = name.toLowerCase.replaceAll(" ", "_")
-}
 
-object Team {
-  implicit val format: OFormat[Team] = Json.format[Team]
-}
+object TeamsAndRepositoriesConnector {
+  import play.api.libs.functional.syntax._
 
-case class RepositoryInfo(
-  name         : String,
-  isPrivate    : Boolean,
-  isArchived   : Boolean,
-  defaultBranch: String
-)
+  case class TeamSummary(
+    name          : String,
+    lastActiveDate: Option[Instant],
+    repos         : Seq[String]
+  ) {
+    val normalisedName = name.toLowerCase.replaceAll(" ", "_")
+  }
 
-object RepositoryInfo {
-  implicit val format: OFormat[RepositoryInfo] = Json.format[RepositoryInfo]
+  object TeamSummary {
+    val apiReads: Reads[TeamSummary] =
+      ( (__ \ "name"          ).read[String]
+      ~ (__ \ "lastActiveDate").readNullable[Instant]
+      ~ (__ \ "repos"         ).read[Seq[String]]
+      )(TeamSummary.apply _)
+  }
+
+  case class RepositoryInfo(
+    name         : String,
+    isPrivate    : Boolean,
+    isArchived   : Boolean,
+    defaultBranch: String
+  )
+
+  object RepositoryInfo {
+    val apiReads: Reads[RepositoryInfo] =
+      ( (__ \ "name"         ).read[String]
+      ~ (__ \ "isPrivate"    ).read[Boolean]
+      ~ (__ \ "isArchived"   ).read[Boolean]
+      ~ (__ \ "defaultBranch").read[String]
+      )(RepositoryInfo.apply _)
+  }
 }
 
 @Singleton
@@ -56,14 +68,18 @@ class TeamsAndRepositoriesConnector @Inject()(
   servicesConfig: ServicesConfig
 )(implicit val ec: ExecutionContext) {
   import HttpReads.Implicits._
+  import TeamsAndRepositoriesConnector._
 
   lazy private val baseUrl = servicesConfig.baseUrl("teams-and-repositories")
   implicit private val hc: HeaderCarrier = HeaderCarrier()
 
-  def teamsWithRepositories(): Future[Seq[Team]] =
+  implicit private val readsTeamSummary   : Reads[TeamSummary]    = TeamSummary.apiReads
+  implicit private val readsRepositoryInfo: Reads[RepositoryInfo] = RepositoryInfo.apiReads
+
+  def teams(): Future[Seq[TeamSummary]] =
     httpClientV2
-      .get(url"${baseUrl}/api/teams_with_repositories")
-      .execute[Seq[Team]]
+      .get(url"${baseUrl}/api/v2/teams")
+      .execute[Seq[TeamSummary]]
 
   def repos(): Future[Seq[RepositoryInfo]] =
     httpClientV2
