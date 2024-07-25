@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import cats.implicits._
 import play.api.Logger
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.controllers.AdminController.NOT_APPLICABLE
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.RescanRequestsQueueRepository
@@ -87,7 +87,7 @@ class RescanService @Inject()(
   def clearBranch(repositoryName: String, branchRef: String): Future[Unit] =
     rescanQueue.delete(repositoryName, branchRef)
 
-  private def repoToPayload(repoInfo: RepositoryInfo, runMode: RunMode): PushUpdate =
+  private def repoToPayload(repoInfo: TeamsAndRepositoriesConnector.RepositoryInfo, runMode: RunMode): PushUpdate =
     PushUpdate(
       repositoryName = repoInfo.name,
       isPrivate      = repoInfo.isPrivate,

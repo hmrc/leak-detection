@@ -31,7 +31,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils._
 import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.connectors.{GithubConnector, RepositoryInfo, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.{GithubConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
@@ -530,7 +530,7 @@ class ScanningServiceSpec
     when(warningsService.saveWarnings(any[Repository], any[Branch], any)).thenReturn(Future.successful(()))
     when(warningsService.checkForWarnings(any, any, any, any, any, any)).thenReturn(Seq.empty)
     when(activeBranchesService.markAsActive(any[Repository], any[Branch], any[ReportId])).thenReturn(Future.successful(()))
-    when(teamsAndRepositoriesConnector.repo(any)).thenReturn(Future.successful(Some(RepositoryInfo("", true, false, "main"))))
+    when(teamsAndRepositoriesConnector.repo(any)).thenReturn(Future.successful(Some(TeamsAndRepositoriesConnector.RepositoryInfo("", true, false, "main"))))
     when(githubConnector.getBlame(any[Repository], any[Branch], any[String])).thenReturn(Future.successful(GitBlame(Seq())))
     when(
       githubConnector.getZip(

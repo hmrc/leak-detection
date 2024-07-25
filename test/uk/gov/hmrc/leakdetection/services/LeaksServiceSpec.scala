@@ -22,14 +22,14 @@ import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.config.Rule.Scope
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.connectors.{Team, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.LeakRepository
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 
 import java.time.temporal.ChronoUnit.{HOURS, MILLIS}
-import java.time.{Instant, LocalDateTime}
+import java.time.Instant
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -68,7 +68,7 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
 
     val leaks = few(() => aLeak)
     when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
-    when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(Seq.empty))
+    when(teamsAndRepositoriesConnector.teams()).thenReturn(Future.successful(Seq.empty))
     repository.collection.insertMany(leaks).toFuture().futureValue
 
     leaksService.metrics.futureValue should contain.allOf(
@@ -81,12 +81,14 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     val leaks = List(aLeakFor("r1", "b1"), aLeakFor("r1", "b1"), aLeakFor("r2", "b1"))
     repository.collection.insertMany(leaks).toFuture().futureValue
 
-    val now = Some(LocalDateTime.now)
-    val teams: Seq[Team] = Seq(
-      Team("t1", now, now, now, Some(Map("services" -> Seq("r1")))),
-      Team("t2", now, now, now, Some(Map("services" -> Seq("r2")))))
-    when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
-    when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
+    when(ignoreListConfig.repositoriesToIgnore)
+      .thenReturn(Seq.empty)
+
+    when(teamsAndRepositoriesConnector.teams())
+      .thenReturn(Future.successful(Seq(
+        TeamsAndRepositoriesConnector.TeamSummary("t1", Some(Instant.now), Seq("r1"))
+      , TeamsAndRepositoriesConnector.TeamSummary("t2", Some(Instant.now), Seq("r2"))
+      )))
 
     leaksService.metrics.futureValue should contain.allOf(
       "reports.teams.t1.unresolved" -> 2,
@@ -96,11 +98,12 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
 
   "normalise team names" in {
     when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
-    val now = Some(LocalDateTime.now)
-    val teams: Seq[Team] = Seq(
-      Team("T1", now, now, now, Some(Map("services" -> Seq("r1")))),
-      Team("T2 with spaces", now, now, now, Some(Map("services" -> Seq("r2")))))
-    when(teamsAndRepositoriesConnector.teamsWithRepositories()).thenReturn(Future.successful(teams))
+
+    when(teamsAndRepositoriesConnector.teams())
+      .thenReturn(Future.successful(Seq(
+        TeamsAndRepositoriesConnector.TeamSummary("T1", Some(Instant.now), Seq("r1"))
+      , TeamsAndRepositoriesConnector.TeamSummary("T2 with spaces", Some(Instant.now), Seq("r2"))
+      )))
 
     leaksService.metrics.futureValue.keys should contain.allOf(
       "reports.teams.t1.unresolved",
@@ -114,12 +117,11 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
     val leaks = leak1 ::: leak2
     repository.collection.insertMany(leaks).toFuture().futureValue
 
-    val now = Some(LocalDateTime.now)
-    val teams: Seq[Team] = Seq(
-      Team("T1", now, now, now, Some(Map("services" -> Seq("r1")))),
-      Team("T2", now, now, now, Some(Map("services" -> Seq("r2")))))
-    when(teamsAndRepositoriesConnector.teamsWithRepositories())
-      .thenReturn(Future.successful(teams))
+    when(teamsAndRepositoriesConnector.teams())
+      .thenReturn(Future.successful(Seq(
+        TeamsAndRepositoriesConnector.TeamSummary("T1", Some(Instant.now), Seq("r1"))
+      , TeamsAndRepositoriesConnector.TeamSummary("T2", Some(Instant.now), Seq("r2"))
+      )))
 
     when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq("r1"))
 

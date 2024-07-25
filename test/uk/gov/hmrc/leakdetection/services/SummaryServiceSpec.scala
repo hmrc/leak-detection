@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.Rule.Scope
 import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.connectors.{RepositoryInfo, TeamsAndRepositoriesConnector}
+import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.scanner.Match
 
@@ -74,7 +74,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     val timestamp = Instant.now.minus(2, HOURS)
 
     "generate rule summaries by rule, repository and branch" should {
-      val repositoryInfo = RepositoryInfo(name = "repo1", isPrivate = true, isArchived = true, defaultBranch = "main")
+      val repositoryInfo = TeamsAndRepositoriesConnector.RepositoryInfo(name = "repo1", isPrivate = true, isArchived = true, defaultBranch = "main")
       when(teamsAndRepositoriesConnector.archivedRepos()).thenReturn(Future(Seq(repositoryInfo)))
 
       when(ruleService.getAllRules()).thenReturn(Seq(
@@ -165,7 +165,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
     "generate repository summaries by repository, branch and rule" should {
 
-      val repositoryInfo = RepositoryInfo(name = "repo1", isPrivate = true, isArchived = true, defaultBranch = "main")
+      val repositoryInfo = TeamsAndRepositoriesConnector.RepositoryInfo(name = "repo1", isPrivate = true, isArchived = true, defaultBranch = "main")
       when(teamsAndRepositoriesConnector.archivedRepos()).thenReturn(Future(Seq(repositoryInfo)))
 
       "include details when just leaks exist" in {
