@@ -25,6 +25,7 @@ import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.PushUpdate
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
+import org.mongodb.scala.ObservableFuture
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -36,21 +37,19 @@ class GithubRequestsQueueRepositorySpec
      with DefaultPlayMongoRepositorySupport[WorkItem[PushUpdate]]
      with ScalaFutures
      with Inspectors
-     with IntegrationPatience {
+     with IntegrationPatience:
 
   val anInstant: Instant = Instant.now().truncatedTo(ChronoUnit.MILLIS)
 
-  override lazy val repository =
-    new GithubRequestsQueueRepository(Configuration.load(Environment.simple()), mongoComponent) {
+  val repository: GithubRequestsQueueRepository =
+    new GithubRequestsQueueRepository(Configuration.load(Environment.simple()), mongoComponent):
       override def now(): Instant = anInstant
-    }
 
-  "The github request queue repository" should {
-    "ensure indexes are created" in {
+  "The github request queue repository" should:
+    "ensure indexes are created" in:
       repository.collection.listIndexes().toFuture().futureValue.size shouldBe 5
-    }
 
-    "be able to save and reload a github request" in {
+    "be able to save and reload a github request" in:
       val pushUpdate = aPushUpdate
       val workItemId   = repository.pushNew(pushUpdate, anInstant).futureValue.id
 
@@ -60,9 +59,8 @@ class GithubRequestsQueueRepositorySpec
       workItem.status shouldBe ProcessingStatus.ToDo
       workItem.receivedAt shouldBe anInstant
       workItem.updatedAt shouldBe anInstant
-    }
 
-    "be able to save the same requests twice" in {
+    "be able to save the same requests twice" in:
       val pushUpdate = aPushUpdate
       repository.pushNew(pushUpdate, anInstant).futureValue
       repository.pushNew(pushUpdate, anInstant).futureValue
@@ -76,9 +74,8 @@ class GithubRequestsQueueRepositorySpec
         Symbol("receivedAt") (anInstant),
         Symbol("updatedAt") (anInstant)
       )
-    }
 
-    "be able to retrieve a queued request by commitId and branchRef" in {
+    "be able to retrieve a queued request by commitId and branchRef" in:
       val pushUpdate = aPushUpdate
       repository.pushNew(pushUpdate, anInstant).futureValue
 
@@ -88,6 +85,3 @@ class GithubRequestsQueueRepositorySpec
       workItem.status shouldBe ProcessingStatus.ToDo
       workItem.receivedAt shouldBe anInstant
       workItem.updatedAt shouldBe anInstant
-    }
-  }
-}

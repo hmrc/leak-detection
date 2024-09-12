@@ -27,53 +27,46 @@ import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 import java.time.Instant
 import java.util.UUID
 
-final case class ReportId(value: String) extends AnyVal {
+case class ReportId(value: String) extends AnyVal:
   override def toString: String = value
-}
 
-object ReportId {
+object ReportId:
   def random: ReportId = ReportId(UUID.randomUUID().toString)
 
-  implicit val format: Format[ReportId] =
+  given Format[ReportId] =
     Format.of[String]
-      .inmap(ReportId.apply, unlift(ReportId.unapply))
+      .inmap(ReportId.apply, _.toString)
 
-  implicit val binder: PathBindable[ReportId] =
-    new SimpleObjectBinder[ReportId](ReportId.apply, _.value)
-}
+  given PathBindable[ReportId] =
+    SimpleObjectBinder[ReportId](ReportId.apply, _.value)
 
-final case class RuleId(value: String) extends AnyVal {
+case class RuleId(value: String) extends AnyVal:
   override def toString: String = value
-}
 
-object RuleId {
-  implicit val format: Format[RuleId] =
+object RuleId:
+  given Format[RuleId] =
     Format.of[String]
-      .inmap(RuleId.apply, unlift(RuleId.unapply))
-}
+      .inmap(RuleId.apply, _.toString)
 
-final case class ResolvedLeak(ruleId: String, description: String)
+case class ResolvedLeak(ruleId: String, description: String)
 
-object ResolvedLeak {
-  implicit val format: OFormat[ResolvedLeak] = Json.format[ResolvedLeak]
-}
+object ResolvedLeak:
+  given OFormat[ResolvedLeak] = Json.format[ResolvedLeak]
 
-final case class UnusedExemption(
+case class UnusedExemption(
   ruleId  : String,
   filePath: String,
   text    : Option[String]
 )
 
-object UnusedExemption {
-  implicit val format: OFormat[UnusedExemption] = {
+object UnusedExemption:
+  given OFormat[UnusedExemption] =
     ( (__ \ "ruleId").format[String]
     ~ ( __ \ "filePath").formatWithDefault[String]("")
     ~ ( __ \ "text").formatNullable[String]
-    )(UnusedExemption.apply, unlift((UnusedExemption.unapply)))
-  }
-}
+    )(UnusedExemption.apply, u => Tuple.fromProductTyped(u))
 
-final case class Report(
+case class Report(
   id               : ReportId,
   repoName         : String,
   repoUrl          : String,
@@ -88,7 +81,7 @@ final case class Report(
   unusedExemptions : Seq[UnusedExemption]
 )
 
-object Report {
+object Report:
 
   def createFromMatchedResults(
     repositoryName   : String,
@@ -120,21 +113,20 @@ object Report {
       _.map { case (RuleId(k), v) => (k, v) }
     )
 
-  val apiFormat: Format[Report] = {
+  val apiFormat: Format[Report] =
     // default Instant Reads is fine, but we want Writes to include .SSS even when 000
     val instantFormatter =
       java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
 
-    implicit val instantWrites: Writes[Instant] =
+    given Writes[Instant] =
       (instant: Instant) => JsString(instantFormatter.format(instant))
 
     reportFormat
-  }
 
   val mongoFormat: OFormat[Report] =
-    reportFormat(MongoJavatimeFormats.instantFormat)
+    reportFormat(using MongoJavatimeFormats.instantFormat)
 
-  private def reportFormat(implicit instantFormat: Format[Instant]): OFormat[Report] = {
+  private def reportFormat(using Format[Instant]): OFormat[Report] = {
     ( (__ \ "_id"              ).format[ReportId]
     ~ (__ \ "repoName"         ).format[String]
     ~ (__ \ "repoUrl"          ).format[String]
@@ -147,6 +139,5 @@ object Report {
     ~ (__ \ "rulesViolated"    ).format[Map[RuleId, Int]](ruleIdMapFormat)
     ~ (__ \ "exclusions"       ).formatWithDefault[Map[RuleId, Int]](Map.empty)(ruleIdMapFormat)
     ~ (__ \ "unusedExemptions" ).formatWithDefault[Seq[UnusedExemption]](Seq.empty)
-    )(Report.apply, unlift(Report.unapply))
+    )(Report.apply, r => Tuple.fromProductTyped(r))
   }
-}

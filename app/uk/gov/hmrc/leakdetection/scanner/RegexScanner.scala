@@ -19,22 +19,20 @@ package uk.gov.hmrc.leakdetection.scanner
 import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
 import uk.gov.hmrc.leakdetection.scanner.MatchedResult.ensureLengthIsBelowLimit
 
-case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
+case class RegexScanner(rule: Rule, lineLengthLimit: Int):
 
   private val compiledRegex = rule.regex.r
 
-  private object Extractor {
+  private object Extractor:
     def unapply(arg: String): Option[(String, List[Match])] =
       compiledRegex.findAllMatchIn(arg)
         .toList
-      match {
+      match
         case Nil     => None
         case matches => Some((arg, matches.map(Match.create)))
-      }
-  }
 
   def scanFileName(text: String, filePath: String, serviceDefinedExemptions: Seq[RuleExemption]): Option[MatchedResult] =
-    text match {
+    text match
       case Extractor(_, matches) =>
         Some(
           MatchedResult(
@@ -51,7 +49,6 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
           )
         )
       case _ => None
-    }
 
   def scanLine(
     line                    : String,
@@ -60,7 +57,7 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
     inlineExemption         : Boolean,
     serviceDefinedExemptions: Seq[RuleExemption]
   ): Option[MatchedResult] =
-    line match {
+    line match
       case Extractor(lineText, matches) =>
         Some(
           ensureLengthIsBelowLimit(
@@ -81,7 +78,6 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
           )
         )
       case _ => None
-    }
 
   private def isLineExempt(
     ruleId                  : String,
@@ -91,23 +87,23 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
     inlineExemption         : Boolean,
     serviceDefinedExemptions: Seq[RuleExemption],
     ruleExemptions          : List[String]
-  ): Boolean = {
+  ): Boolean =
     //all matching results musts be covered by the rule exemptions for the line to be considered exempt by the rules ignored content
     def exemptByRule =
-      if (ruleExemptions.isEmpty) false
+      if ruleExemptions.isEmpty then false
       else matches
             .map(m => line.substring(m.start, m.end))
             .forall(t => ruleExemptions.exists(_.r.findAllIn(t).nonEmpty))
 
     //exemptions defined by the service can match any part of the line, not just the matching results
-    def exemptByService = serviceDefinedExemptions
-      .filter(_.ruleId == ruleId)
-      .filter(_.filePaths.contains(filePath))
-      .flatMap(_.text)
-      .exists(line.contains(_))
+    def exemptByService: Boolean =
+      serviceDefinedExemptions
+        .filter(_.ruleId == ruleId)
+        .filter(_.filePaths.contains(filePath))
+        .flatMap(_.text)
+        .exists(line.contains(_))
 
     inlineExemption || exemptByRule || exemptByService
-  }
 
   private def isFileExempt(
     ruleId                  : String,
@@ -118,4 +114,3 @@ case class RegexScanner(rule: Rule, lineLengthLimit: Int) {
       .filter(_.ruleId == ruleId)
       .filter(_.filePaths.contains(filePath))
       .exists(_.text == None)
-}

@@ -22,43 +22,50 @@ import uk.gov.hmrc.leakdetection.config.Rule.Priority
 import uk.gov.hmrc.leakdetection.config.RuleExemption
 import uk.gov.hmrc.leakdetection.model.UnusedExemption
 
-class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
-  val exemptionChecker = new ExemptionChecker
+class ExemptionCheckerSpec extends AnyWordSpec with Matchers:
+  val exemptionChecker: ExemptionChecker =
+    new ExemptionChecker
 
-  val aMatchedResult: MatchedResult = MatchedResult("", "", "", 0, "", "", List(), Priority.Low)
+  val aMatchedResult: MatchedResult =
+    MatchedResult("", "", "", 0, "", "", List(), Priority.Low)
 
-  "exemption checker" should {
-    "return empty list if no exemptions defined" in {
+  "exemption checker" should:
+    "return empty list if no exemptions defined" in:
       val results = exemptionChecker.run(Seq.empty, List.empty)
 
       results shouldBe empty
-    }
-    "return empty list if all exemptions cover an excluded match" in {
-      val exemptions = Seq(
-        RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
-        RuleExemption("rule-2", Seq("/dir/file2", "/dir/file3"), None)
-      )
+      
+    "return empty list if all exemptions cover an excluded match" in:
+      val exemptions: Seq[RuleExemption] =
+        Seq(
+          RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
+          RuleExemption("rule-2", Seq("/dir/file2", "/dir/file3"), None)
+        )
 
-      val matchedResults = Seq(
-        aMatchedResult.copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "with some text that matches", isExcluded = true),
-        aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file2", isExcluded = true),
-        aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file3", isExcluded = true)
-      )
+      val matchedResults: Seq[MatchedResult] =
+        Seq(
+          aMatchedResult.copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "with some text that matches", isExcluded = true),
+          aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file2", isExcluded = true),
+          aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file3", isExcluded = true)
+        )
 
-      val results = exemptionChecker.run(matchedResults, exemptions)
+      val results: Seq[UnusedExemption] =
+        exemptionChecker.run(matchedResults, exemptions)
 
       results shouldBe empty
-    }
-    "return all exemptions as unused when no excluded results" in {
-      val exemptions = Seq(
-        RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
-        RuleExemption("rule-2", Seq("/dir/file2", "/dir/file3"), None)
-      )
+      
+    "return all exemptions as unused when no excluded results" in:
+      val exemptions: Seq[RuleExemption] =
+        Seq(
+          RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
+          RuleExemption("rule-2", Seq("/dir/file2", "/dir/file3"), None)
+        )
 
-      val matchedResults = Seq(
-        aMatchedResult.copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "some other text", isExcluded = false),
-        aMatchedResult.copy(ruleId = "rule-3", filePath = "/dir/file1", isExcluded = false)
-      )
+      val matchedResults: Seq[MatchedResult] =
+        Seq(
+          aMatchedResult.copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "some other text", isExcluded = false),
+          aMatchedResult.copy(ruleId = "rule-3", filePath = "/dir/file1", isExcluded = false)
+        )
 
       val results = exemptionChecker.run(matchedResults, exemptions)
 
@@ -67,37 +74,40 @@ class ExemptionCheckerSpec extends AnyWordSpec with Matchers {
         UnusedExemption("rule-2", "/dir/file2", None),
         UnusedExemption("rule-2", "/dir/file3", None),
       )
-    }
-    "correctly distinguish between exemptions for same rule and file with different text" in {
-      val exemptions = Seq(
-        RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
-        RuleExemption("rule-1", Seq("/dir/file1"), Some("other text"))
-      )
+      
+    "correctly distinguish between exemptions for same rule and file with different text" in:
+      val exemptions: Seq[RuleExemption] =
+        Seq(
+          RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
+          RuleExemption("rule-1", Seq("/dir/file1"), Some("other text"))
+        )
 
-      val matchedResults = Seq(
-        aMatchedResult
-          .copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "with some text that matches", isExcluded = true)
-      )
+      val matchedResults =
+        Seq(
+          aMatchedResult
+            .copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "with some text that matches", isExcluded = true)
+        )
 
-      val results = exemptionChecker.run(matchedResults, exemptions)
+      val results: Seq[UnusedExemption] =
+        exemptionChecker.run(matchedResults, exemptions)
 
       results shouldBe Seq(UnusedExemption("rule-1", "/dir/file1", Some("other text")))
-    }
-    "correctly handle filepaths with and without leading '/'" in {
-      val exemptions = Seq(
-        RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
-        RuleExemption("rule-2", Seq("/dir/file2", "dir/file3"), None)
-      )
+      
+    "correctly handle filepaths with and without leading '/'" in:
+      val exemptions: Seq[RuleExemption] =
+        Seq(
+          RuleExemption("rule-1", Seq("/dir/file1"), Some("some text")),
+          RuleExemption("rule-2", Seq("/dir/file2", "dir/file3"), None)
+        )
 
-      val matchedResults = Seq(
-        aMatchedResult.copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "with some text that matches", isExcluded = true),
-        aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file2", isExcluded = true),
-        aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file3", isExcluded = true)
-      )
+      val matchedResults: Seq[MatchedResult] =
+        Seq(
+          aMatchedResult.copy(ruleId = "rule-1", filePath = "/dir/file1", lineText = "with some text that matches", isExcluded = true),
+          aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file2", isExcluded = true),
+          aMatchedResult.copy(ruleId = "rule-2", filePath = "/dir/file3", isExcluded = true)
+        )
 
-      val results = exemptionChecker.run(matchedResults, exemptions)
+      val results: Seq[UnusedExemption] =
+        exemptionChecker.run(matchedResults, exemptions)
 
       results shouldBe empty
-    }
-  }
-}

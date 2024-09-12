@@ -21,18 +21,22 @@ import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.ActiveBranchesRepository
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit.{HOURS, MILLIS}
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRepositorySupport[ActiveBranch] {
+class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRepositorySupport[ActiveBranch]:
 
-  override val repository = new ActiveBranchesRepository(mongoComponent)
+  val repository: ActiveBranchesRepository =
+    ActiveBranchesRepository(mongoComponent)
 
-  val service = new ActiveBranchesService(repository)
-  "active branches service" should {
-    "get active branches for all repos" in {
+  val service: ActiveBranchesService =
+    ActiveBranchesService(repository)
+
+  "active branches service" should:
+    "get active branches for all repos" in:
       val activeBranches = Seq(
         anActiveBranch,
         anActiveBranch.copy(branch   = "other branch"),
@@ -45,8 +49,8 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
       result.length                   shouldBe 3
       result.map(_.repoName).distinct should contain theSameElementsAs Seq("repo", "other repo")
       result.map(_.branch)            should contain theSameElementsAs Seq("branch", "other branch", "main")
-    }
-    "get all active branches for a given repository" in {
+
+    "get all active branches for a given repository" in:
       val activeBranches = Seq(
         anActiveBranch,
         anActiveBranch.copy(branch   = "other branch"),
@@ -58,17 +62,17 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
 
       result.length        shouldBe 2
       result.map(_.branch) should contain theSameElementsAs Seq("branch", "other branch")
-    }
-    "remove active branches" in {
+
+    "remove active branches" in:
       repository.collection.insertOne(anActiveBranch).toFuture().futureValue
       repository.collection.countDocuments().toFuture().futureValue shouldBe 1
 
       service.clearBranch("repo", "branch").futureValue
 
       repository.collection.countDocuments().toFuture().futureValue shouldBe 0
-    }
-    "mark active branches" when {
-      "active branch does not exist" in {
+
+    "mark active branches" when:
+      "active branch does not exist" in:
         service.markAsActive(Repository("repo"), Branch("branch"), ReportId("reportId")).futureValue
 
         val persistedValues = repository.collection.find().toFuture().futureValue
@@ -78,8 +82,8 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
         activeBranch.branch   shouldBe "branch"
         activeBranch.reportId shouldBe "reportId"
         activeBranch.created  shouldBe activeBranch.updated
-      }
-      "active branch already exists" in {
+
+      "active branch already exists" in:
         val originalInstant = Instant.now().truncatedTo(MILLIS).minus(5, HOURS)
         repository.collection
           .insertOne(anActiveBranch.copy(created = originalInstant, updated = originalInstant))
@@ -96,9 +100,5 @@ class ActiveBranchesServiceSpec extends AnyWordSpec with Matchers with DefaultPl
         activeBranch.reportId shouldBe "reportId"
         activeBranch.created  shouldBe originalInstant
         activeBranch.updated  should be > originalInstant
-      }
-    }
-  }
 
   def anActiveBranch: ActiveBranch = ActiveBranch("repo", "branch", "reportId")
-}

@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.services
 
 
-import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -33,7 +33,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class ReportsServiceSpec
     extends AnyWordSpec
     with Matchers
-    with ArgumentMatchersSugar
     with ScalaFutures
     with IntegrationPatience
     with MockitoSugar
@@ -41,32 +40,37 @@ class ReportsServiceSpec
     with PlayMongoRepositorySupport[Report]
     with CleanMongoCollectionSupport
     with BeforeAndAfterEach
-    with GivenWhenThen {
+    with GivenWhenThen:
 
-  override val repository = new ReportsRepository(mongoComponent)
+  val repository: ReportsRepository =
+    ReportsRepository(mongoComponent)
 
-  implicit val hc: HeaderCarrier = new HeaderCarrier()
+  given HeaderCarrier = HeaderCarrier()
 
-  private val configuration: Configuration = Configuration(
-    "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
-    "allRules.privateRules"                  -> List(),
-    "allRules.publicRules"                   -> List(),
-    "leakResolutionUrl"                      -> "PLACEHOLDER",
-    "maxLineLength"                          -> 2147483647,
-    "clearingCollectionEnabled"              -> false,
-    "warningMessages"                        -> Map.empty,
-    "alerts.slack"                           -> Map.empty
-  )
-  val reportsService = new ReportsService(repository, configuration)
+  private val configuration: Configuration =
+    Configuration(
+      "githubSecrets.personalAccessToken"      -> "PLACEHOLDER",
+      "allRules.privateRules"                  -> List(),
+      "allRules.publicRules"                   -> List(),
+      "leakResolutionUrl"                      -> "PLACEHOLDER",
+      "maxLineLength"                          -> 2147483647,
+      "clearingCollectionEnabled"              -> false,
+      "warningMessages"                        -> Map.empty,
+      "alerts.slack"                           -> Map.empty
+    )
+  val reportsService: ReportsService =
+    ReportsService(repository, configuration)
 
 
-  "Reports service" should {
+  "Reports service" should:
 
-    "insert a report with no leaks when a branch is deleted" in {
+    "insert a report with no leaks when a branch is deleted" in:
 
-      val branchDeleteEvent = PushDelete("repo", "test.user", "branch1", "http://repo.url/repo/branch1")
+      val branchDeleteEvent: PushDelete =
+        PushDelete("repo", "test.user", "branch1", "http://repo.url/repo/branch1")
 
-      val expectedResult = reportsService.clearReportsAfterBranchDeleted(branchDeleteEvent).futureValue
+      val expectedResult: Report =
+        reportsService.clearReportsAfterBranchDeleted(branchDeleteEvent).futureValue
 
       expectedResult.repoName      shouldBe branchDeleteEvent.repositoryName
       expectedResult.branch        shouldBe branchDeleteEvent.branchRef
@@ -77,7 +81,3 @@ class ReportsServiceSpec
       expectedResult.rulesViolated shouldBe Map.empty
 
       repository.findByReportId(expectedResult.id).futureValue should not be None
-    }
-  }
-
-}

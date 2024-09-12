@@ -23,6 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.ModelFactory.few
 import uk.gov.hmrc.leakdetection.model.{LeakUpdateResult, ReportId, Warning}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -35,19 +36,19 @@ class WarningRepositorySpec extends AnyWordSpec
   with CleanMongoCollectionSupport
   with ScalaFutures
   with IntegrationPatience
-  with BeforeAndAfterEach {
+  with BeforeAndAfterEach:
 
-  override val repository = new WarningRepository(mongoComponent)
+  val repository: WarningRepository =
+    WarningRepository(mongoComponent)
 
-  "Warning repository" when {
-    "updating warnings" should {
-      "return zero inserts and not fail when updating with no warnings" in {
+  "Warning repository" when:
+    "updating warnings" should:
+      "return zero inserts and not fail when updating with no warnings" in:
         val result = repository.update("repo", "branch", Seq.empty).futureValue
 
         result shouldBe LeakUpdateResult(0, 0)
-      }
 
-      "clear up any previously stored warnings during an update" in {
+      "clear up any previously stored warnings during an update" in:
         val warnings = givenSomeWarningsLike(aWarning)
 
         val expected = Seq(aWarning.copy(reportId = ReportId("report2")))
@@ -56,10 +57,9 @@ class WarningRepositorySpec extends AnyWordSpec
         result shouldBe LeakUpdateResult(1, warnings.length)
 
         repository.collection.find().toFuture().futureValue shouldBe expected
-      }
-    }
-    "finding warnings" should {
-      "find all warnings for a particular repository and branch" in {
+
+    "finding warnings" should:
+      "find all warnings for a particular repository and branch" in:
         givenSomeWarningsLike(aWarning.copy(branch = "other"))
         givenSomeWarningsLike(aWarning.copy(repoName = "other"))
         val warnings = givenSomeWarningsLike(aWarning)
@@ -67,9 +67,8 @@ class WarningRepositorySpec extends AnyWordSpec
         val result = repository.findBy(Some("repo"), Some("branch")).futureValue
 
         result shouldBe warnings
-      }
 
-      "find all warnings for a particular repository" in {
+      "find all warnings for a particular repository" in:
         givenSomeWarningsLike(aWarning.copy(repoName = "other"))
         val warnings = givenSomeWarningsLike(aWarning)
         val otherBranchWarnings = givenSomeWarningsLike(aWarning.copy(branch = "other"))
@@ -77,9 +76,8 @@ class WarningRepositorySpec extends AnyWordSpec
         val result = repository.findBy(Some("repo"), None).futureValue
 
         result shouldBe otherBranchWarnings ++ warnings
-      }
 
-      "only filter by branch if repoName also supplied" in {
+      "only filter by branch if repoName also supplied" in:
         val warnings = givenSomeWarningsLike(aWarning)
         val otherBranchWarnings = givenSomeWarningsLike(aWarning.copy(branch = "other"))
         val otherRepoWarnings = givenSomeWarningsLike(aWarning.copy(repoName = "other"))
@@ -87,27 +85,21 @@ class WarningRepositorySpec extends AnyWordSpec
         val result = repository.findBy(None, Some("branch")).futureValue
 
         result shouldBe warnings ++ otherBranchWarnings ++ otherRepoWarnings
-      }
 
-      "find all warnings for a particular report" in {
+      "find all warnings for a particular report" in:
         givenSomeWarningsLike(aWarning.copy(reportId = ReportId("other")))
         val warnings = givenSomeWarningsLike(aWarning)
 
         val result = repository.findForReport("report").futureValue
 
         result shouldBe warnings
-      }
-    }
-  }
 
-  def aWarning = Warning("repo", "branch", Instant.now().truncatedTo(ChronoUnit.MILLIS), ReportId("report"), "message")
+  def aWarning: Warning =
+    Warning("repo", "branch", Instant.now().truncatedTo(ChronoUnit.MILLIS), ReportId("report"), "message")
 
-  def givenSomeWarningsLike(warning: Warning): Seq[Warning] = {
-    val warnings: Seq[Warning] = few(() => {
-      warning
-    })
+  def givenSomeWarningsLike(warning: Warning): Seq[Warning] =
+    val warnings: Seq[Warning] =
+      few(() => warning)
     repository.collection.insertMany(Random.shuffle(warnings)).toFuture()
     repository.collection.find().toFuture().futureValue
     warnings
-  }
-}

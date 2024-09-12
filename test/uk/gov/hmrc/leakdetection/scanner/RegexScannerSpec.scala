@@ -20,11 +20,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
 
-class RegexScannerSpec extends AnyWordSpec with Matchers {
+class RegexScannerSpec extends AnyWordSpec with Matchers:
 
-  "scanning file content" should {
-    "look for a regex in a given text and" should {
-      "return line numbers for matches" in {
+  "scanning file content" should:
+    "look for a regex in a given text and" should:
+      "return line numbers for matches" in:
         val text1  = "this matches the regex"
         val descr  = "descr for regex"
         val ruleId = "rule-1"
@@ -42,18 +42,16 @@ class RegexScannerSpec extends AnyWordSpec with Matchers {
             filePath    = "filepath"
           )
         )
-      }
 
-      "return None if text doesn't have matching the given regex" in {
+      "return None if text doesn't have matching the given regex" in:
         val text   = "this is a test"
         val ruleId = "rule-1"
 
         val rule = Rule(ruleId, Rule.Scope.FILE_CONTENT, "(was)", "descr")
 
         RegexScanner(rule, Int.MaxValue).scanLine(text, 1, "filepath", false, Seq()) shouldBe None
-      }
-    }
-    "respect max line length and truncate lineText" in {
+      
+    "respect max line length and truncate lineText" in:
       val text  = "abc AA def BB ghi CC xyz"
       val rule  = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
       val limit = 2
@@ -62,9 +60,9 @@ class RegexScannerSpec extends AnyWordSpec with Matchers {
 
       matchedResult.lineText shouldBe "[…] BB […]"
       matchedResult.matches  shouldBe List(Match(start = 4, end = 6))
-    }
-    "handling exclusions" should {
-      "mark as excluded if inline flag is true" in {
+      
+    "handling exclusions" should:
+      "mark as excluded if inline flag is true" in:
         val text = "abc AA def BB ghi CC xyz"
         val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
         val limit = 2
@@ -72,8 +70,8 @@ class RegexScannerSpec extends AnyWordSpec with Matchers {
         val matchedResult = RegexScanner(rule, limit).scanLine(text, 1, "filepath", true, Seq()).get
 
         matchedResult.isExcluded shouldBe true
-      }
-      "mark as excluded if line matches rule exemptions text" in {
+        
+      "mark as excluded if line matches rule exemptions text" in:
         val text = "abc AA def BB ghi CC xyz"
         val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
         val limit = 2
@@ -83,8 +81,8 @@ class RegexScannerSpec extends AnyWordSpec with Matchers {
         ).get
 
         matchedResult.isExcluded shouldBe true
-      }
-      "mark as excluded if file level rule exemption matches filename" in {
+        
+      "mark as excluded if file level rule exemption matches filename" in:
         val text = "abc AA def BB ghi CC xyz"
         val rule = Rule("ruleId", Rule.Scope.FILE_CONTENT, "BB", "descr")
         val limit = 2
@@ -94,12 +92,9 @@ class RegexScannerSpec extends AnyWordSpec with Matchers {
         ).get
 
         matchedResult.isExcluded shouldBe true
-      }
-    }
-  }
 
-  "scanning file names" should {
-    "return a result if regex found a problem" in {
+  "scanning file names" should:
+    "return a result if regex found a problem" in:
       val fileName = "foo.key"
       val ruleId   = "rule-1"
       val descr    = "descr"
@@ -117,22 +112,20 @@ class RegexScannerSpec extends AnyWordSpec with Matchers {
             priority    = Rule.Priority.Low,
             filePath    = "filepath"
           ))
-    }
-    "return nothing if no match was found" in {
+      
+    "return nothing if no match was found" in:
       val fileName = "foo.key"
       val rule     = Rule("rule-id", Rule.Scope.FILE_NAME, "doesn't match", "descr")
 
       RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "filepath", Seq()) shouldBe None
-    }
-    "mark as excluded if rule exemptions exist for file and rule" in {
+      
+    "mark as excluded if rule exemptions exist for file and rule" in:
       val fileName = "foo.key"
       val ruleId   = "rule-1"
       val descr    = "descr"
       val rule     = Rule(ruleId, Rule.Scope.FILE_NAME, """^.*\.key$""", descr)
 
-      val matchedResult = RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "/filepath/foo.key", Seq(RuleExemption("rule-1", Seq("/filepath/foo.key"), None)))
+      val matchedResult: Option[MatchedResult] =
+        RegexScanner(rule, Int.MaxValue).scanFileName(fileName, "/filepath/foo.key", Seq(RuleExemption("rule-1", Seq("/filepath/foo.key"), None)))
 
       matchedResult.map(_.isExcluded) shouldBe Some(true)
-    }
-  }
-}

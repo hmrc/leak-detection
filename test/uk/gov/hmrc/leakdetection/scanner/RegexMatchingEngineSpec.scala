@@ -16,18 +16,18 @@
 
 package uk.gov.hmrc.leakdetection.scanner
 
-import ammonite.ops.{tmp, write}
-import org.mockito.MockitoSugar
+import os.{temp, write}
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import uk.gov.hmrc.leakdetection.config.{Rule, RuleExemption}
 import uk.gov.hmrc.leakdetection.config.Rule.Priority
 
-class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matchers {
+class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matchers:
 
-  "run" should  {
-    "scan all the files in all subdirectories and return a report with correct file paths" in {
-      val wd = tmp.dir()
+  "run" should:
+    "scan all the files in all subdirectories and return a report with correct file paths" in:
+      val wd = temp.dir()
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir1") / "fileA", "matching on: secretA\nmatching on: secretA again", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "fileB", "\nmatching on: secretB\nmatching on: secretB again", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again", createFolders = true)
@@ -40,10 +40,11 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         Rule("rule-4", Rule.Scope.FILE_NAME, "fileC", "file with secrets")
       )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(
-        explodedZipDir = wd.toNIO.toFile,
-        List.empty
-      )
+      val results: List[MatchedResult] =
+        RegexMatchingEngine(rules, Int.MaxValue).run(
+          explodedZipDir = wd.toNIO.toFile,
+          List.empty
+        )
 
       results should have size 7
 
@@ -133,10 +134,9 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
           priority    = Rule.Priority.Low
         )
       )
-    }
 
-    "filter out results that match rules ignoredFiles" in {
-      val wd = tmp.dir()
+    "filter out results that match rules ignoredFiles" in:
+      val wd = temp.dir()
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir1") / "fileA", "matching on: secretA\nmatching on: secretA again", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "fileB", "\nmatching on: secretB\nmatching on: secretB again", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir2") / "dir3" / "fileC", "matching on: secretC\nmatching on: secretC again", createFolders = true)
@@ -149,7 +149,8 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         Rule("rule-4", Rule.Scope.FILE_NAME, "fileB", "file with more secrets", List("/dir2/fileB"))
       )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+      val results: List[MatchedResult] =
+        RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
 
       results should have size 3
 
@@ -190,48 +191,51 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
             priority    = Rule.Priority.Low
           )
       )
-    }
 
-    "flag as excluded if all results match with at least one rules ignoredContent" in {
-      val wd = tmp.dir()
+    "flag as excluded if all results match with at least one rules ignoredContent" in:
+      val wd = temp.dir()
       write(wd / Symbol("zip_file_name_xyz") / "fileA", "matching on: AA000000A", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / "fileB", "matching on: AA111111A", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / "fileC", "matching on: AA000000A and AA111111A", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / "fileD", "matching on: AA000000A and AA000111A", createFolders = true)
 
-      val rules = List(
-        Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", ignoredContent = List("000", "222"))
-      )
+      val rules: List[Rule] =
+        List(Rule("rule-1", Rule.Scope.FILE_CONTENT, "AA[0-9]{6}A", "descr 1", ignoredContent = List("000", "222")))
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+      val results: List[MatchedResult] =
+        RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
 
-      val aMatchedResult = MatchedResult("", Rule.Scope.FILE_CONTENT, "", 1, "rule-1", "descr 1", List(Match(start = 13, end = 22)), Priority.Low)
+      val aMatchedResult: MatchedResult =
+        MatchedResult("", Rule.Scope.FILE_CONTENT, "", 1, "rule-1", "descr 1", List(Match(start = 13, end = 22)), Priority.Low)
+      
       results should contain theSameElementsAs Seq(
         aMatchedResult.copy(filePath="/fileA", lineText = "matching on: AA000000A", isExcluded = true),
         aMatchedResult.copy(filePath="/fileB", lineText = "matching on: AA111111A"),
         aMatchedResult.copy(filePath="/fileC", lineText = "matching on: AA000000A and AA111111A", matches = List(Match(start = 13, end = 22), Match(start = 27, end = 36))),
         aMatchedResult.copy(filePath="/fileD", lineText = "matching on: AA000000A and AA000111A", matches = List(Match(start = 13, end = 22), Match(start = 27, end = 36)), isExcluded = true),
       )
-    }
 
-    "flag as excluded if filename matches file level exemption in repository.yaml" in {
-      val exemptions = List(
-        RuleExemption("rule-1", Seq("/dir/file1", "/dir/file2"), None),
-        RuleExemption("rule-2", Seq("/dir/file4.key"), None)
-      )
+    "flag as excluded if filename matches file level exemption in repository.yaml" in:
+      val exemptions: List[RuleExemption] =
+        List(
+          RuleExemption("rule-1", Seq("/dir/file1", "/dir/file2"), None),
+          RuleExemption("rule-2", Seq("/dir/file4.key"), None)
+        )
 
-      val wd = tmp.dir()
+      val wd = temp.dir()
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file1", "secret=false-positive\neven if multiple matches for secret=real-secret", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file2", "secret=other-value", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file3", "secret=anything", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file4.key", "", createFolders = true)
 
-      val rules = List(
-        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
-        Rule("rule-2", Rule.Scope.FILE_NAME, """^.*\.key$""", "leaked secret found in filename")
-      )
+      val rules: List[Rule] =
+        List(
+          Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
+          Rule("rule-2", Rule.Scope.FILE_NAME, """^.*\.key$""", "leaked secret found in filename")
+        )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, exemptions)
+      val results: List[MatchedResult] =
+        RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, exemptions)
 
       results should contain theSameElementsAs Seq(
         MatchedResult(
@@ -289,24 +293,27 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
           isExcluded    = true
         )
       )
-    }
-    "flag as excluded if line text matches supplied exemption text in repository.yaml" in {
-      val exemptions = List(
-        RuleExemption("rule-1", Seq("/dir/file1"), Some("false-positive")),
-        RuleExemption("rule-2", Seq("/dir/file1"), Some("some-other-rule-false-positive")),
-        RuleExemption("rule-1", Seq("/dir/file2"), Some("some-other-false-positive"))
-      )
+      
+    "flag as excluded if line text matches supplied exemption text in repository.yaml" in:
+      val exemptions: List[RuleExemption] =
+        List(
+          RuleExemption("rule-1", Seq("/dir/file1"), Some("false-positive")),
+          RuleExemption("rule-2", Seq("/dir/file1"), Some("some-other-rule-false-positive")),
+          RuleExemption("rule-1", Seq("/dir/file2"), Some("some-other-false-positive"))
+        )
 
-      val wd = tmp.dir()
+      val wd = temp.dir()
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file1", "no match to be found on: secret=false-positive\nmatch should be found on secret=real-secret\nrule 2 match should still be found on: key=false-positive", createFolders = true)
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file2", "match should be found on: secret=false-positive in this file", createFolders = true)
 
-      val rules = List(
-        Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
-        Rule("rule-2", Rule.Scope.FILE_CONTENT, "key=", "leaked secret found for rule 2")
-      )
+      val rules: List[Rule] =
+        List(
+          Rule("rule-1", Rule.Scope.FILE_CONTENT, "secret=", "leaked secret found for rule 1"),
+          Rule("rule-2", Rule.Scope.FILE_CONTENT, "key=", "leaked secret found for rule 2")
+        )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, exemptions)
+      val results: List[MatchedResult] =
+        RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, exemptions)
 
       results should contain theSameElementsAs Seq(
         MatchedResult(
@@ -351,10 +358,9 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
           priority    = Rule.Priority.Low
         )
       )
-    }
 
-    "flag in-line exceptions as excluded" in {
-      val wd = tmp.dir()
+    "flag in-line exceptions as excluded" in:
+      val wd = temp.dir()
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file",
         "first match on: secret\n" +
           "//LDS ignore\n" +
@@ -365,54 +371,56 @@ class RegexMatchingEngineSpec extends AnyWordSpec with MockitoSugar with Matcher
         createFolders = true
       )
 
-      val rules = List(Rule("rule", Rule.Scope.FILE_CONTENT, "secret", "leaked secret"))
+      val rules: List[Rule] =
+        List(Rule("rule", Rule.Scope.FILE_CONTENT, "secret", "leaked secret"))
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+      val results: List[MatchedResult] =
+        RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
 
-      val aMatchedResult = MatchedResult("/dir/file", "fileContent", "", 0, "rule", "leaked secret", List(), Priority.Low)
+      val aMatchedResult: MatchedResult =
+        MatchedResult("/dir/file", "fileContent", "", 0, "rule", "leaked secret", List(), Priority.Low)
+      
       results shouldBe Seq(
         aMatchedResult.copy(lineText = "first match on: secret", lineNumber = 1, matches = List(Match(16, 22))),
         aMatchedResult.copy(lineText = "ignore match on: secret", lineNumber = 3, matches = List(Match(17, 23)), isExcluded = true),
         aMatchedResult.copy(lineText = "second match on: secret", lineNumber = 4, matches = List(Match(17, 23))),
         aMatchedResult.copy(lineText = "ignore another match on: secret", lineNumber = 6, matches = List(Match(25, 31)), isExcluded = true),
       )
-    }
 
-    "handle fileContent rules that may span multiple lines" in {
-      val wd = tmp.dir()
+    "handle fileContent rules that may span multiple lines" in:
+      val wd = temp.dir()
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file",
         "sso.encryption.key:\n" +
           "ENC[GPG,blah]",
         createFolders = true
       )
 
-      val rules = List(
-        Rule("sso_encryption_key", Rule.Scope.FILE_CONTENT, """sso\.encryption\.key\s*(=|:|->)\s*(?!(\s*ENC\[))""", "Unencrypted sso.encryption.key")
-      )
+      val rules: List[Rule] =
+        List(
+          Rule("sso_encryption_key", Rule.Scope.FILE_CONTENT, """sso\.encryption\.key\s*(=|:|->)\s*(?!(\s*ENC\[))""", "Unencrypted sso.encryption.key")
+        )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+      val results: List[MatchedResult] =
+        RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
 
       results shouldBe Nil
-    }
 
-    "not filter out genuine hits" in {
-      val wd = tmp.dir()
+    "not filter out genuine hits" in:
+      val wd = temp.dir()
       write(wd / Symbol("zip_file_name_xyz") / Symbol("dir") / "file",
         "sso.encryption.key:\n" +
           "myplaintextkey",
         createFolders = true
       )
 
-      val rules = List(
-        Rule("sso_encryption_key", Rule.Scope.FILE_CONTENT, """sso\.encryption\.key\s*(=|:|->)\s*(?!(\s*ENC\[))""", "Unencrypted sso.encryption.key")
-      )
+      val rules: List[Rule] =
+        List(
+          Rule("sso_encryption_key", Rule.Scope.FILE_CONTENT, """sso\.encryption\.key\s*(=|:|->)\s*(?!(\s*ENC\[))""", "Unencrypted sso.encryption.key")
+        )
 
-      val results = new RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
+      val results: List[MatchedResult] =
+        RegexMatchingEngine(rules, Int.MaxValue).run(explodedZipDir = wd.toNIO.toFile, List.empty)
 
       results shouldBe Seq(
         MatchedResult("/dir/file", "fileContent", "sso.encryption.key:", 1, "sso_encryption_key", "Unencrypted sso.encryption.key", List(Match(0, 19)), "low", false, false, None)
       )
-    }
-  }
-
-}

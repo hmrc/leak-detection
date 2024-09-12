@@ -25,7 +25,7 @@ import scala.concurrent.duration.Duration
 @Singleton
 class AppConfigProvider @Inject()(
   configuration: Configuration
-) extends Provider[AppConfig] {
+) extends Provider[AppConfig]:
 
   private def toRule(configuration: Configuration): Rule =
     Rule(
@@ -59,10 +59,9 @@ class AppConfigProvider @Inject()(
       clearingCollectionEnabled =
         configuration.get[Boolean]("clearingCollectionEnabled"),
 
-      warningMessages = {
+      warningMessages =
         val msgs = configuration.get[Configuration]("warningMessages")
-        msgs.keys.map { k => k -> msgs.get[String](k) }.toMap
-      },
+        msgs.keys.map { k => k -> msgs.get[String](k) }.toMap,
 
       alerts =
         Alerts(SlackConfig(
@@ -87,9 +86,8 @@ class AppConfigProvider @Inject()(
 
   override def get(): AppConfig =
     appConfig
-}
 
-final case class AppConfig(
+case class AppConfig(
   allRules                   : AllRules,
   githubSecrets              : GithubSecrets,
   maxLineLength              : Int,
@@ -101,16 +99,15 @@ final case class AppConfig(
   timeoutFailureLogAfterCount: Int
 )
 
-final case class AllRules(
+case class AllRules(
   publicRules : List[Rule],
   privateRules: List[Rule]
 )
 
-object AllRules {
-  implicit val format: OFormat[AllRules] = Json.format[AllRules]
-}
+object AllRules:
+  given OFormat[AllRules] = Json.format[AllRules]
 
-final case class Rule(
+case class Rule(
   id:                String,
   scope:             String,
   regex:             String,
@@ -122,41 +119,38 @@ final case class Rule(
   draft:             Boolean      = false
 )
 
-object Rule {
-  implicit val format: Format[Rule] = Json.format[Rule]
+object Rule:
+  given Format[Rule] = Json.format[Rule]
 
-  object Scope {
+  object Scope:
     val FILE_CONTENT = "fileContent"
     val FILE_NAME    = "fileName"
-  }
 
-  object Priority {
+  object Priority:
     val Low    = "low"
     val Medium = "medium"
     val High   = "high"
-  }
-}
 
-final case class GithubSecrets(
+case class GithubSecrets(
   personalAccessToken: String,
 )
 
-final case class RuleExemption(
+case class RuleExemption(
   ruleId   : String,
   filePaths: Seq[String],
   text     : Option[String] = None
 )
 
 object RuleExemption {
-  implicit val format: OFormat[RuleExemption] = Json.format[RuleExemption]
+  given OFormat[RuleExemption] = Json.format[RuleExemption]
 }
 
 
-final case class Alerts(
+case class Alerts(
   slack: SlackConfig
 )
 
-final case class SlackConfig(
+case class SlackConfig(
   enabled            : Boolean,
   adminChannel       : String,
   defaultAlertChannel: String,

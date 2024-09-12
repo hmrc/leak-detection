@@ -20,24 +20,21 @@ import com.google.inject.Inject
 import uk.gov.hmrc.leakdetection.config.RuleExemption
 import uk.gov.hmrc.leakdetection.model.UnusedExemption
 
-class ExemptionChecker @Inject()() {
+class ExemptionChecker @Inject():
 
-  def run(matchedResults: Seq[MatchedResult], serviceDefinedExemptions: Seq[RuleExemption]): Seq[UnusedExemption] = {
+  def run(matchedResults: Seq[MatchedResult], serviceDefinedExemptions: Seq[RuleExemption]): Seq[UnusedExemption] =
     val excludedResults = matchedResults.filter(_.isExcluded)
 
     serviceDefinedExemptions
-      .flatMap(e => e.filePaths.map(filePath => UnusedExemption(e.ruleId, filePath, e.text)))
-      .filterNot(exemption =>
-        excludedResults.exists(exclusion =>
+      .flatMap: e =>
+        e.filePaths.map: filePath =>
+          UnusedExemption(e.ruleId, filePath, e.text)
+      .filterNot: exemption =>
+        excludedResults.exists: exclusion =>
           exemption.ruleId == exclusion.ruleId &&
             normalise(exemption.filePath) == normalise(exclusion.filePath) &&
             exemption.text.fold(true)(exclusion.lineText.contains)
-        )
-      )
-  }
 
-  private def normalise(filePath: String) = filePath match {
+  private def normalise(filePath: String) = filePath match
     case s if s.startsWith("/") => s.substring(1)
     case _ => filePath
-  }
-}

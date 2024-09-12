@@ -24,15 +24,12 @@ import java.time.Instant
 
 case class Summary(rule: Rule, repositorySummary: Seq[RepositorySummary])
 
-object Summary {
-  val apiFormat = {
-    implicit val rf = Rule.format
-    implicit val rsf = RepositorySummary.format
+object Summary:
+  val apiFormat: OFormat[Summary] =
+    given Format[RepositorySummary] = RepositorySummary.format
     ( (__ \ "rule" ).format[Rule]
     ~ (__ \ "leaks").format[Seq[RepositorySummary]]
-    )(Summary.apply, unlift(Summary.unapply))
-  }
-}
+    )(Summary.apply, s => Tuple.fromProductTyped(s))
 
 case class RepositorySummary(
   repository     : String,
@@ -45,10 +42,10 @@ case class RepositorySummary(
   branchSummary  : Option[Seq[BranchSummary]]
 )
 
-object RepositorySummary {
-  implicit val rf: OFormat[BranchSummary] = BranchSummary.format
-  val format = Json.format[RepositorySummary]
-}
+object RepositorySummary:
+  given OFormat[BranchSummary] = BranchSummary.format
+  val format: OFormat[RepositorySummary] =
+    Json.format[RepositorySummary]
 
 case class BranchSummary(
   branch         : String,
@@ -59,6 +56,6 @@ case class BranchSummary(
   excludedCount  : Int
 )
 
-object BranchSummary {
-  val format = Json.format[BranchSummary]
-}
+object BranchSummary:
+  val format: OFormat[BranchSummary] =
+    Json.format[BranchSummary]

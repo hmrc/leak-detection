@@ -23,78 +23,65 @@ import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import uk.gov.hmrc.leakdetection.config.Rule
 import uk.gov.hmrc.leakdetection.scanner.MatchedResult.ensureLengthIsBelowLimit
 
-class MatchedResultSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyChecks {
-  implicit val noShrink: Shrink[Int] = Shrink.shrinkAny
+class MatchedResultSpec extends AnyWordSpec with Matchers with ScalaCheckPropertyChecks:
+  given Shrink[Int] = Shrink.shrinkAny
 
-  "truncated result" should {
-    "have lineText with length up to the configured limit" in {
-      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
+  "truncated result" should:
+    "have lineText with length up to the configured limit" in:
+      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)):
         case (initialResult, limit) =>
           val truncated       = ensureLengthIsBelowLimit(initialResult, limit)
           val strippedElipses = truncated.lineText.stripPrefix("[…] ").stripSuffix(" […]").replaceAll(" \\[…\\] ", "")
           strippedElipses.length should be <= limit
-      }
 
-    }
-
-    "contain all matches if their total length is <= limit" in {
-      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
+    "contain all matches if their total length is <= limit" in:
+      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)):
         case (initialResult, limit) =>
           val initialTotalLengthOfAllMatches =
             initialResult.matches.map(m => initialResult.lineText.substring(m.start, m.end).length).sum
-          if (initialTotalLengthOfAllMatches <= limit) {
+          if initialTotalLengthOfAllMatches <= limit then
             val truncated = ensureLengthIsBelowLimit(initialResult, limit)
-            initialResult.matches.foreach { m =>
+            initialResult.matches.foreach: m =>
               val leakValue = initialResult.lineText.substring(m.start, m.end)
               assert(truncated.lineText.contains(leakValue))
-            }
-          }
-      }
-    }
 
-    "don't put […] inbetween consecutive matches" in {
+    "don't put […] inbetween consecutive matches" in:
       val initialResult = genMatchedResult.sample.get.copy(
         lineText = "abc XXFF xyz",
         matches  = List(Match(4, 6), Match(6, 8))
       )
 
       ensureLengthIsBelowLimit(initialResult, 4).lineText shouldBe "[…] XXFF […]"
-    }
 
-    "contain as many matches as still below limit" in {
+    "contain as many matches as still below limit" in:
 
       val initialResult = genMatchedResult.sample.get.copy(
         lineText = "abc AA def BB ghi CC xyz",
-        matches = {
+        matches =
           val matchedAA = Match(4, 6)
           val matchedBB = Match(11, 13)
           val matchedCC = Match(18, 19)
           List(matchedAA, matchedBB, matchedCC)
-        }
       )
 
       val limit = "AABB".length
 
       ensureLengthIsBelowLimit(initialResult, limit).lineText shouldBe "[…] AA […] BB […]"
-    }
 
-    "be idempotent" in {
-      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)) {
+    "be idempotent" in:
+      forAll(genMatchedResult, Gen.posNum[Int], minSuccessful(500)):
         case (initialResult, limit) =>
           val truncatedOnce  = ensureLengthIsBelowLimit(initialResult, limit)
           val truncatedAgain = ensureLengthIsBelowLimit(truncatedOnce, limit)
 
           truncatedOnce shouldBe truncatedAgain
-      }
-    }
-  }
 
   val genMatchedResult: Gen[MatchedResult] =
-    for {
+    for
       path     <- Gen.alphaStr
       lineText <- Gen.alphaStr.map(_ + "x")
       matches  <- genConsecutiveMatches(lineText)
-    } yield
+    yield
       MatchedResult(
         filePath    = path,
         scope       = "scope",
@@ -106,25 +93,20 @@ class MatchedResultSpec extends AnyWordSpec with Matchers with ScalaCheckPropert
         priority    = Rule.Priority.Low)
 
   def genMatch(lineText: String): Gen[Match] =
-    (for {
+    (for
       start <- Gen.choose(0, lineText.length)
       end   <- Gen.choose(start, lineText.length)
-    } yield {
+    yield
       Match(start, end)
-    }).retryUntil(m => m.start != m.end)
+    ).retryUntil(m => m.start != m.end)
 
-  def genConsecutiveMatches(lineText: String): Gen[List[Match]] = {
+  def genConsecutiveMatches(lineText: String): Gen[List[Match]] =
     def keepConsecutive(m: Match, acc: List[Match]): List[Match] =
-      if (acc.exists(_.end >= m.start)) {
+      if acc.exists(_.end >= m.start) then
         acc
-      } else {
+      else
         m :: acc
-      }
     Gen
       .listOfN(100, genMatch(lineText))
-      .map { matches =>
+      .map: matches =>
         matches.sortBy(_.start).foldRight(List.empty[Match])(keepConsecutive)
-      }
-  }
-
-}

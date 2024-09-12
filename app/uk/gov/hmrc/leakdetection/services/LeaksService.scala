@@ -29,9 +29,8 @@ class LeaksService @Inject()(
   leakRepository               : LeakRepository,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
   ignoreListConfig             : IgnoreListConfig
-)(implicit
-  ec: ExecutionContext
-) extends MetricSource {
+)(using ExecutionContext
+) extends MetricSource:
 
   def getRepositoriesWithUnresolvedLeaks: Future[Seq[String]] =
     leakRepository.findDistinctRepoNamesWithUnresolvedLeaks()
@@ -51,23 +50,26 @@ class LeaksService @Inject()(
   def saveLeaks(repo: Repository, branch: Branch, leaks: Seq[Leak]): Future[Unit] =
     leakRepository.update(repo.asString, branch.asString, leaks).map(_ => ())
 
-  override def metrics(implicit ec: ExecutionContext): Future[Map[String, Int]] =
-    for {
+  override def metrics(using ExecutionContext): Future[Map[String, Int]] =
+    for
       total      <- leakRepository.countAll()
       unresolved <- leakRepository.countAll()
       byRepo     <- leakRepository.countByRepo()
       teams      <- teamsAndRepositoriesConnector.teams()
-    } yield {
+    yield
       val byTeamStats =
         teams
-          .map(t => s"reports.teams.${t.normalisedName}.unresolved" -> t.repos.filterNot(ignoreListConfig.repositoriesToIgnore.contains).map(r => byRepo.getOrElse(r, 0)).sum)
+          .map: t =>
+            s"reports.teams.${t.normalisedName}.unresolved" -> t.repos
+              .filterNot(ignoreListConfig.repositoriesToIgnore.contains)
+              .map(r => byRepo.getOrElse(r, 0))
+              .sum
           .toMap
 
-      val globalStats = Map(
-        "reports.total"      -> total,
-        "reports.unresolved" -> unresolved
-      )
+      val globalStats: Map[String, Int] =
+        Map(
+          "reports.total"      -> total,
+          "reports.unresolved" -> unresolved
+        )
 
       globalStats ++ byTeamStats
-    }
-}

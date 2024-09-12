@@ -44,20 +44,19 @@ case class Warning(
   warningMessageType: String
 )
 
-object Warning {
+object Warning:
   val apiFormat: OFormat[Warning] =
     ( (__ \ "repoName" ).format[String]
     ~ (__ \ "branch"   ).format[String]
     ~ (__ \ "timestamp").format[Instant]
-    ~ (__ \ "reportId" ).format[ReportId](ReportId.format)
+    ~ (__ \ "reportId" ).format[ReportId]
     ~ (__ \ "message"  ).format[String]
-    )(Warning.apply, unlift(Warning.unapply))
+    )(Warning.apply, o => Tuple.fromProductTyped(o))
 
   def mongoFormat: OFormat[Warning] =
     ( (__ \ "repoName"          ).format[String]
     ~ (__ \ "branch"            ).format[String]
     ~ (__ \ "timestamp"         ).format[Instant](MongoJavatimeFormats.instantFormat)
-    ~ (__ \ "reportId"          ).format[ReportId](ReportId.format)
+    ~ (__ \ "reportId"          ).format[ReportId]
     ~ (__ \ "warningMessageType").format[String]
-    )(Warning.apply, unlift(Warning.unapply))
-}
+    )(Warning.apply, o => Tuple.fromProductTyped(o))

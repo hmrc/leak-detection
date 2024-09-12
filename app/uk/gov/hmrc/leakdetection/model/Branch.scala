@@ -20,9 +20,8 @@ import play.api.libs.json.{Reads, __}
 
 case class Branch(asString: String) extends AnyVal
 
-object Branch {
+object Branch:
   val main: Branch = Branch("main")
 
-  implicit def reads: Reads[Branch] =
+  given Reads[Branch] =
     (__ \ "default_branch").readWithDefault[String]("main").map(Branch(_))
-}

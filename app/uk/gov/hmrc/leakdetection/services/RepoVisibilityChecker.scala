@@ -17,77 +17,70 @@
 package uk.gov.hmrc.leakdetection.services
 
 import org.yaml.snakeyaml.Yaml
-import play.api.Logger
+import play.api.Logging
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
-import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.model.*
 
 import java.io.File
-import java.{util => ju}
+import java.util as ju
 import scala.io.Source
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
-class RepoVisibilityChecker {
-
-  private val logger = Logger(getClass)
+class RepoVisibilityChecker extends Logging:
 
   val publicVisibilityIdentifier = "public_0C3F0CE3E6E6448FAD341E7BFA50FCD333E06A20CFF05FCACE61154DDBBADF71"
   val privateVisibilityIdentifier = "private_12E5349CFB8BBA30AF464C24760B70343C0EAE9E9BD99156345DD0852C2E0F6F"
 
   def checkVisibility(dir: File, isPrivate: Boolean, isArchived: Boolean): Option[WarningMessageType] =
-    if (isArchived)
+    if isArchived then
       None
     else
       checkVisibilityDefinedCorrectly(dir, isPrivate)
 
   def checkVisibilityDefinedCorrectly(dir: File, isPrivate: Boolean): Option[WarningMessageType] =
-    try {
+    try
       val projectRoot = FileAndDirectoryUtils.getSubdirName(dir)
 
-      val repositoryYaml: File = new File(projectRoot.getAbsolutePath.concat("/repository.yaml"))
+      val repositoryYaml: File = File(projectRoot.getAbsolutePath.concat("/repository.yaml"))
 
-      if (!repositoryYaml.exists()) {
+      if !repositoryYaml.exists() then
         logger.warn(s"$repositoryYaml file not found")
         Some(MissingRepositoryYamlFile)
-      } else {
-
+      else
         val fileSource = Source.fromFile(repositoryYaml)
-        val fileContents = try {
-          fileSource.mkString
-        } catch {
-          case ex: Exception =>
-            logger.error("failed to read repository.yaml", ex)
-            throw ex
-        } finally {
-          fileSource.close()
-        }
+        val fileContents: String =
+          try
+            fileSource.mkString
+          catch
+            case ex: Exception =>
+              logger.error("failed to read repository.yaml", ex)
+              throw ex
+          finally
+            fileSource.close()
 
         type ExpectedConfigFormat = ju.Map[String, String]
 
-        val repoVisibility = new Yaml()
-          .load(fileContents)
-          .asInstanceOf[ExpectedConfigFormat]
-          .asScala
-          .get("repoVisibility")
+        val repoVisibility: Option[String] =
+          Yaml()
+            .load(fileContents)
+            .asInstanceOf[ExpectedConfigFormat]
+            .asScala
+            .get("repoVisibility")
 
-        repoVisibility match {
+        repoVisibility match
           case Some(value) =>
-            if (isPrivate && value == privateVisibilityIdentifier)
+            if isPrivate && value == privateVisibilityIdentifier then
               None
-            else if (!isPrivate && value == publicVisibilityIdentifier)
+            else if !isPrivate && value == publicVisibilityIdentifier then
               None
-            else {
+            else
               logger.warn(s"Invalid value of repoVisibility entry: [$value], repo privacy [$isPrivate]")
               Some(InvalidEntry)
-            }
           case None =>
             logger.warn("Missing repoVisibility entry")
             Some(MissingEntry)
-        }
-      }
-    } catch {
+    catch
       case NonFatal(ex) =>
         logger.warn("Failed to parse repository.yaml to assert repoVisibility", ex)
         Some(ParseFailure)
-    }
-}

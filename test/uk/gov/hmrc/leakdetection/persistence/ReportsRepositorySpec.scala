@@ -23,6 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.ModelFactory._
 import uk.gov.hmrc.leakdetection.model.{Report, Repository}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, DefaultPlayMongoRepositorySupport, PlayMongoRepositorySupport}
+import org.mongodb.scala.SingleObservableFuture
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -37,25 +38,28 @@ class ReportsRepositorySpec
     with CleanMongoCollectionSupport
     with ScalaFutures
     with IntegrationPatience
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach:
 
-  "Reports repository" should {
+  val repository: ReportsRepository =
+    ReportsRepository(mongoComponent)
+  
+  "Reports repository" should:
 
-    "return reports by repository in inverse chronological order" in {
+    "return reports by repository in inverse chronological order" in:
       val repoName = "repo"
       val reports: Seq[Report] =
         few(() => aReportWithLeaks(repoName))
           .zipWithIndex
-          .map { case (r, idx) => r.copy(timestamp = Instant.now().truncatedTo(ChronoUnit.MILLIS).plus(idx, ChronoUnit.SECONDS)) }
+          .map:
+            case (r, idx) => r.copy(timestamp = Instant.now().truncatedTo(ChronoUnit.MILLIS).plus(idx, ChronoUnit.SECONDS))
 
       repository.collection.insertMany(Random.shuffle(reports)).toFuture().futureValue
 
       val foundReports: Seq[Report] = repository.findUnresolvedWithProblems(Repository(repoName)).futureValue
 
       foundReports shouldBe reports.reverse
-    }
 
-    "only return reports that actually had unresolved problems in them" in {
+    "only return reports that actually had unresolved problems in them" in:
       val repoName                      = "repo"
       val reportsWithUnresolvedProblems = few(() => aReportWithLeaks(repoName))
       val reportsWithoutProblems        = few(() => aReportWithoutLeaks(repoName))
@@ -67,9 +71,8 @@ class ReportsRepositorySpec
       val foundReports = repository.findUnresolvedWithProblems(Repository(repoName)).futureValue
 
       foundReports should contain theSameElementsAs reportsWithUnresolvedProblems
-    }
 
-    "find a report by commitId and branchRef" in {
+    "find a report by commitId and branchRef" in:
       val repoName = "repo"
       val report = aReportWithLeaks(repoName)
 
@@ -78,9 +81,3 @@ class ReportsRepositorySpec
       val result = repository.findByCommitIdAndBranch(report.commitId, report.branch).futureValue.get
 
       result shouldBe report
-    }
-
-  }
-
-  override val repository = new ReportsRepository(mongoComponent)
-}

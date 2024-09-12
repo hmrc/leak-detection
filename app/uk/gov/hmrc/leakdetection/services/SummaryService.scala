@@ -28,23 +28,23 @@ class SummaryService @Inject()(
   warningsService              : WarningsService,
   activeBranchesService        : ActiveBranchesService,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
-)(implicit ec: ExecutionContext) {
+)(using ExecutionContext):
 
   def getRuleSummaries(
     ruleId  : Option[String],
     repoName: Option[String],
     teamName: Option[String]
   ): Future[Seq[Summary]] =
-    for {
+    for
       leaks            <- leaksService.getLeaks(repoName, None, ruleId)
       warnings         <- warningsService.getWarnings(repoName, None)
       teamRepos        <- getTeamRepos(teamName)
       allArchivedRepos <- teamsAndRepositoriesConnector.archivedRepos().map(_.map(repo => repo.name))
       teamRepoNames    =  teamRepos.map(repo => repo.name)
       filteredLeaks    =  teamName.fold(leaks)(_ => leaks.filter(l => teamRepoNames.contains(l.repoName)))
-      rules            =  ruleService.getAllRules()
+      rules            =  ruleService.getAllRules
       leaksByRule      =  groupLeaksByRule(allArchivedRepos.toSet, filteredLeaks, warnings)
-    } yield
+    yield
       rules.map(rule => Summary(rule, leaksByRule.getOrElse(rule.id, Seq())))
 
   def getRepositorySummaries(
@@ -54,9 +54,8 @@ class SummaryService @Inject()(
     excludeNonIssues: Boolean,
     includeBranches : Boolean
   ): Future[Seq[RepositorySummary]] =
-    for {
-      activeBranches   <- if (excludeNonIssues)
-                            Future.successful(Seq.empty)
+    for
+      activeBranches   <- if excludeNonIssues then Future.successful(Seq.empty)
                           else activeBranchesService.getActiveBranches(repoName)
       leaks            <- leaksService.getLeaks(repoName, None, ruleId)
       warnings         <- warningsService.getWarnings(repoName, None)
@@ -67,10 +66,10 @@ class SummaryService @Inject()(
       filteredLeaks    =  teamName.fold(leaks         )(_ => leaks         .filter(l => teamRepoNames.contains(l.repoName)))
       filteredWarnings =  teamName.fold(warnings      )(_ => warnings      .filter(w => teamRepoNames.contains(w.repoName)))
       allRepoNames     =  filteredLeaks.map(_.repoName) ++ filteredWarnings.map(_.repoName) ++ filteredBranches.map(_.repoName)
-    } yield
+    yield
       allRepoNames
         .distinct
-        .map { repoName =>
+        .map: repoName =>
           val repoLeaks          = filteredLeaks   .filter(_.repoName == repoName)
           val repoWarnings       = filteredWarnings.filter(_.repoName == repoName)
           val repoActiveBranches = filteredBranches.filter(_.repoName == repoName)
@@ -82,17 +81,16 @@ class SummaryService @Inject()(
             warningCount    = repoWarnings.length,
             unresolvedCount = getUnresolvedLeakCount(repoLeaks),
             excludedCount   = getExcludedLeakCount(repoLeaks),
-            branchSummary   = if (includeBranches)
+            branchSummary   = if includeBranches then
                                 Some(buildBranchSummaries(repoActiveBranches, repoLeaks, repoWarnings))
                               else None
           )
-      }
 
   def buildBranchSummaries(
     activeBranches: Seq[ActiveBranch],
     leaks         : Seq[Leak],
     warnings      : Seq[Warning]
-  ): Seq[BranchSummary] = {
+  ): Seq[BranchSummary] =
     val allBranches = leaks.map(_.branch) ++ warnings.map(_.branch)
     val branchDetails =
       allBranches.distinct.map(r => (r, leaks.filter(_.branch == r), warnings.filter(_.branch == r)))
@@ -102,7 +100,7 @@ class SummaryService @Inject()(
       .map(activeBranch =>
       BranchSummary(activeBranch.branch, activeBranch.reportId, activeBranch.updated, 0, 0, 0)
     ) ++
-    branchDetails.map {
+    branchDetails.map:
       case (branch, branchLeaks, branchWarnings) =>
         BranchSummary(
           branch,
@@ -112,8 +110,6 @@ class SummaryService @Inject()(
           getUnresolvedLeakCount(branchLeaks),
           getExcludedLeakCount(branchLeaks)
         )
-    }
-  }
 
   private def getUnresolvedLeakCount(leaks: Seq[Leak]): Int =
     leaks.filterNot(_.isExcluded).length
@@ -121,10 +117,10 @@ class SummaryService @Inject()(
   private def getExcludedLeakCount(leaks: Seq[Leak]): Int =
     leaks.filter(_.isExcluded).length
 
-  private def getTeamRepos(teamName: Option[String]): Future[Seq[TeamsAndRepositoriesConnector.RepositoryInfo]] = teamName match {
-    case Some(t) => teamsAndRepositoriesConnector.reposWithTeams(t)
-    case None    => Future.successful(Seq())
-  }
+  private def getTeamRepos(teamName: Option[String]): Future[Seq[TeamsAndRepositoriesConnector.RepositoryInfo]] =
+    teamName match
+      case Some(t) => teamsAndRepositoriesConnector.reposWithTeams(t)
+      case None    => Future.successful(Seq())
 
   private def groupLeaksByRule(
     allArchivedRepos: Set[String],
@@ -133,13 +129,13 @@ class SummaryService @Inject()(
   ): Map[String, Seq[RepositorySummary]] =
     leaks
       .groupBy(_.ruleId)
-      .map {
+      .map:
         case (ruleId, leaksByRule) =>
           (
             ruleId,
             leaksByRule
               .groupBy(_.repoName)
-              .map {
+              .map:
                 case (repoName, ruleLeaksByRepo) =>
                   RepositorySummary(
                     repository      = repoName,
@@ -151,8 +147,5 @@ class SummaryService @Inject()(
                     excludedCount   = getExcludedLeakCount(ruleLeaksByRepo),
                     branchSummary   = None
                   )
-              }
               .toSeq
           )
-      }
-}

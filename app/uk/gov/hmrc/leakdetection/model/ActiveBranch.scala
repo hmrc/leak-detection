@@ -30,14 +30,14 @@ case class ActiveBranch(
   updated : Instant = Instant.now()
 )
 
-object ActiveBranch {
+object ActiveBranch:
   val apiFormat: OFormat[ActiveBranch] =
     ( (__ \ "repoName").format[String]
     ~ (__ \ "branch"  ).format[String]
     ~ (__ \ "reportId").format[String]
     ~ (__ \ "created" ).format[Instant]
     ~ (__ \ "updated" ).format[Instant]
-    ) (ActiveBranch.apply, unlift(ActiveBranch.unapply))
+    ) (ActiveBranch.apply, a => Tuple.fromProductTyped(a))
 
   def mongoFormat: OFormat[ActiveBranch] =
     ( (__ \ "repoName").format[String]
@@ -45,5 +45,4 @@ object ActiveBranch {
     ~ (__ \ "reportId").format[String]
     ~ (__ \ "created" ).format[Instant](MongoJavatimeFormats.instantFormat)
     ~ (__ \ "updated" ).format[Instant](MongoJavatimeFormats.instantFormat)
-    ) (ActiveBranch.apply, unlift(ActiveBranch.unapply))
-}
+    ) (ActiveBranch.apply, a => Tuple.fromProductTyped(a))

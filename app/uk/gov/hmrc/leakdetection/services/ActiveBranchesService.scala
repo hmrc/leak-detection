@@ -25,23 +25,20 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class ActiveBranchesService @Inject()(
   activeBranchesRepository: ActiveBranchesRepository
-)(implicit
-  ec: ExecutionContext
-) {
+)(using ExecutionContext):
 
   def getActiveBranches(repoName: Option[String]): Future[Seq[ActiveBranch]] =
     repoName.fold(activeBranchesRepository.findAll())(activeBranchesRepository.findForRepo)
 
   def markAsActive(repository: Repository, branch: Branch, reportId: ReportId): Future[Unit] =
-    for {
+    for
       optBranch <- activeBranchesRepository.find(repository.asString, branch.asString)
-      result    <- optBranch match {
+      result    <- optBranch match
                      case Some(activeBranch) =>
                        activeBranchesRepository.update(activeBranch.copy(updated = Instant.now(), reportId = reportId.value))
                      case None =>
                        activeBranchesRepository.create(ActiveBranch(repository.asString, branch.asString, reportId.value))
-                   }
-    } yield result
+    yield result
 
   def clearBranch(repoName: String, branchName: String): Future[Unit] =
     activeBranchesRepository.delete(repoName, branchName)
@@ -51,8 +48,6 @@ class ActiveBranchesService @Inject()(
 
   def clearRepoExceptDefault(repositoryName: String, defaultBranch: String): Future[Unit] =
     activeBranchesRepository.findForRepo(repositoryName)
-      .map(_
-        .filterNot(_.branch == defaultBranch)
-        .map(b => activeBranchesRepository.delete(repositoryName, b.branch))
-      )
-}
+      .map:
+        _.filterNot(_.branch == defaultBranch)
+          .map(b => activeBranchesRepository.delete(repositoryName, b.branch))

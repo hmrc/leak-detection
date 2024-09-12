@@ -21,11 +21,10 @@ import uk.gov.hmrc.leakdetection.config.{AppConfig, Rule}
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class RuleService @Inject()(appConfig: AppConfig) {
+class RuleService @Inject()(appConfig: AppConfig):
 
   lazy private val privateRules = appConfig.allRules.privateRules
   lazy private val publicRules  = appConfig.allRules.publicRules
 
-  def getAllRules(): Seq[Rule] =
+  def getAllRules: Seq[Rule] =
     (privateRules ::: publicRules).distinct
-}

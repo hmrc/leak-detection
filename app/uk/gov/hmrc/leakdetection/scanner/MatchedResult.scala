@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.scanner
 import play.api.libs.json.{Format, Json}
 import scala.util.matching.Regex
 
-final case class MatchedResult(
+case class MatchedResult(
   filePath   : String,
   scope      : String,
   lineText   : String,
@@ -33,34 +33,32 @@ final case class MatchedResult(
   commitId   : Option[String] = None
 )
 
-final case class Match(
+case class Match(
   start: Int,
   end  : Int
-) {
+):
   def length: Int = end - start
-}
 
-object Match {
+object Match:
   def create(regexMatch: Regex.Match): Match =
     Match(
       start = regexMatch.start,
       end   = regexMatch.end
     )
-  implicit val format: Format[Match] = Json.format[Match]
-}
+  given Format[Match] = Json.format[Match]
 
-object MatchedResult {
-  implicit val format: Format[MatchedResult] = Json.format[MatchedResult]
+object MatchedResult:
+  given Format[MatchedResult] = Json.format[MatchedResult]
 
   def ensureLengthIsBelowLimit(matchedResult: MatchedResult, limit: Int): MatchedResult =
-    if (matchedResult.lineText.length > limit && matchedResult.matches.nonEmpty)
+    if matchedResult.lineText.length > limit && matchedResult.matches.nonEmpty then
       truncate(matchedResult, limit)
     else
       matchedResult
 
-  private def truncate(matchedResult: MatchedResult, limit: Int): MatchedResult = {
+  private def truncate(matchedResult: MatchedResult, limit: Int): MatchedResult =
 
-    val matchesUpToLimit: List[Match] = {
+    val matchesUpToLimit: List[Match] =
       def cumulativeSum(xs: List[Int]): List[Int] =
         xs.scanLeft(0) { case (acc, current) => acc + current }.drop(1)
 
@@ -69,13 +67,12 @@ object MatchedResult {
           .count(_ <= limit)
 
       matchedResult.matches.take(numberOfMatchesUnderLimit)
-    }
 
     val joinedConsecutiveMatches =
       matchesUpToLimit
         .foldLeft(List.empty[Match]) {
           case (lastAddedElement :: others, m) =>
-            if (lastAddedElement.end == m.start)
+            if lastAddedElement.end == m.start then
               lastAddedElement.copy(end = m.end) :: others
             else
               m :: lastAddedElement :: others
@@ -87,25 +84,23 @@ object MatchedResult {
     val (_, matchesWithReadjustedIndexes) =
       joinedConsecutiveMatches.zipWithIndex.foldLeft((0, List.empty[Match])) {
         case ((totalLength, acc), (m, index)) =>
-          if (index == 0) {
+          if index == 0 then
             val startPos = totalLength + "[…] ".length
             val endPos   = totalLength + "[…] ".length + m.length
             (endPos, acc :+ Match(startPos, endPos))
-          } else {
+          else
             val startPos = totalLength + " […] ".length
             val endPos   = totalLength + " […] ".length + m.length
             (endPos, acc :+ Match(startPos, endPos))
-          }
       }
 
     val values =
       joinedConsecutiveMatches
-        .map { m =>
+        .map: m =>
           matchedResult.lineText.substring(m.start, m.end)
-        }
 
     val lineTextWithElipses =
-      if (values.nonEmpty)
+      if values.nonEmpty then
         values.mkString("[…] ", " […] ", " […]")
       else
         ""
@@ -114,5 +109,3 @@ object MatchedResult {
       lineText    = lineTextWithElipses,
       matches     = matchesWithReadjustedIndexes
     )
-  }
-}

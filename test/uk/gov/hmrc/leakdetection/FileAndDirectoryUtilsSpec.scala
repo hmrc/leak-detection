@@ -16,14 +16,14 @@
 
 package uk.gov.hmrc.leakdetection
 
-import ammonite.ops.{Path, mkdir, tmp, write}
+import os.{Path, makeDir, temp, write}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class FileAndDirectoryUtilsSpec extends AnyWordSpec with Matchers {
-  "getPathRelativeToProjectRoot" should {
-    "remove tmp dir and randomized repo name leaving just a file path relative to repo root" in {
-      val dir: Path          = tmp.dir()
+class FileAndDirectoryUtilsSpec extends AnyWordSpec with Matchers:
+  "getPathRelativeToProjectRoot" should:
+    "remove temp dir and randomized repo name leaving just a file path relative to repo root" in:
+      val dir: Path          = temp.dir()
       val randomizedRepoName = "foo_abc"
       val aSubdirectory      = "some_subdir"
       val fileName           = "my-file.txt"
@@ -34,17 +34,12 @@ class FileAndDirectoryUtilsSpec extends AnyWordSpec with Matchers {
       val relativePath = FileAndDirectoryUtils.getFilePathRelativeToProjectRoot(dir.toIO, file.toIO)
 
       relativePath shouldBe s"/$aSubdirectory/$fileName"
-    }
-  }
 
-  "getSubdirName" should {
-    "return a name of a single directory in a given directory" in {
-      val dir    = tmp.dir()
+  "getSubdirName" should:
+    "return a name of a single directory in a given directory" in:
+      val dir    = temp.dir()
       val subdir = dir / "subdir"
 
-      mkdir(subdir)
+      makeDir(subdir)
 
       FileAndDirectoryUtils.getSubdirName(dir.toIO) shouldBe subdir.toIO
-    }
-  }
-}

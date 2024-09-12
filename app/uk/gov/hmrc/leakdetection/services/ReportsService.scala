@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class ReportsService @Inject()(
   reportsRepository: ReportsRepository,
   configuration    : Configuration
-)(implicit ec: ExecutionContext) {
+)(using ExecutionContext):
 
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.get[Seq[String]]("shared.repositories")
@@ -38,25 +38,23 @@ class ReportsService @Inject()(
   def getReport(reportId: ReportId): Future[Option[Report]] =
     reportsRepository.findByReportId(reportId)
 
-  def clearReportsAfterBranchDeleted(pushDelete: PushDelete): Future[Report] = {
-    val reportSolvingProblems = Report.createFromMatchedResults(
-      repositoryName = pushDelete.repositoryName,
-      repositoryUrl  = pushDelete.repositoryUrl,
-      commitId       = "n/a (branch was deleted)",
-      authorName     = pushDelete.authorName,
-      branch         = pushDelete.branchRef,
-      results        = Nil,
-      unusedExemptions = Nil
-    )
-    for {
+  def clearReportsAfterBranchDeleted(pushDelete: PushDelete): Future[Report] =
+    val reportSolvingProblems: Report =
+      Report.createFromMatchedResults(
+        repositoryName = pushDelete.repositoryName,
+        repositoryUrl  = pushDelete.repositoryUrl,
+        commitId       = "n/a (branch was deleted)",
+        authorName     = pushDelete.authorName,
+        branch         = pushDelete.branchRef,
+        results        = Nil,
+        unusedExemptions = Nil
+      )
+    for
       _  <- reportsRepository.saveReport(reportSolvingProblems)
-    } yield  reportSolvingProblems
-  }
+    yield  reportSolvingProblems
 
   def saveReport(report: Report): Future[Unit] =
     reportsRepository.saveReport(report)
 
   def reportExists(pushUpdate: PushUpdate): Future[Boolean] =
     reportsRepository.findByCommitIdAndBranch(pushUpdate.commitId, pushUpdate.branchRef).map(_.isDefined)
-
-}

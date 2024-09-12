@@ -17,13 +17,13 @@
 package uk.gov.hmrc.leakdetection.services
 
 import org.apache.commons.io.FileUtils
-import play.api.Logger
+import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors.{GithubConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.leakdetection.model.RunMode.{Draft, Normal}
-import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.model.*
 import uk.gov.hmrc.leakdetection.persistence.{GithubRequestsQueueRepository, RescanRequestsQueueRepository}
 import uk.gov.hmrc.leakdetection.scanner.{ExemptionChecker, MatchedResult, RegexMatchingEngine}
 import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem, WorkItemRepository}
@@ -49,12 +49,10 @@ class ScanningService @Inject()(
   activeBranchesService        : ActiveBranchesService,
   exemptionChecker             : ExemptionChecker,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector
-)(implicit ec: ExecutionContext) {
+)(using ExecutionContext) extends Logging:
 
-  private val logger = Logger(getClass)
-
-  lazy val privateMatchingEngine = new RegexMatchingEngine(appConfig.allRules.privateRules, appConfig.maxLineLength)
-  lazy val publicMatchingEngine  = new RegexMatchingEngine(appConfig.allRules.publicRules, appConfig.maxLineLength)
+  lazy val privateMatchingEngine = RegexMatchingEngine(appConfig.allRules.privateRules, appConfig.maxLineLength)
+  lazy val publicMatchingEngine  = RegexMatchingEngine(appConfig.allRules.publicRules, appConfig.maxLineLength)
 
   def scanRepository(
     repository:    Repository,
@@ -66,11 +64,11 @@ class ScanningService @Inject()(
     authorName:    String,
     archiveUrl:    String,
     runMode:       RunMode
-  )(implicit hc: HeaderCarrier): Future[Report] = {
+  )(using HeaderCarrier): Future[Report] =
     val savedZipFilePath = Files.createTempFile("unzipped_", "")
-    try {
+    try
       val zip = githubConnector.getZip(archiveUrl, branch, savedZipFilePath)
-      val result = zip.flatMap {
+      val result = zip.flatMap:
         case Left(GithubConnector.BranchNotFound(_)) =>
           val pushDelete = PushDelete(repositoryName = repository.asString, authorName = authorName, branchRef = branch.asString, repositoryUrl = repositoryUrl)
           for {
@@ -90,7 +88,7 @@ class ScanningService @Inject()(
 
           val exemptions = exemptionParsingResult.getOrElse(List.empty)
 
-          for {
+          for
             matched                 <- Future {regexMatchingEngine.run(dir, exemptions)}
             results                  = matched.filterNot(_.draft)
             resultsWithCommitId     <- addCommitId(repository, branch, results)
@@ -108,59 +106,52 @@ class ScanningService @Inject()(
             _                       <- executeIfNormalMode(activeBranchesService.markAsActive(repository, branch, report.id))
             _                       <- executeIfNormalMode(alertingService.alert(report, isPrivate))
             _                       <- executeIfNormalMode(whenDefaultBranch(repository, branch)(alertingService.alertAboutWarnings(authorName, warnings, isPrivate)))
-          } yield if (runMode == Normal) reportWithWarnings else draftReportWithWarnings
-      }
-      result.onComplete {
+          yield if runMode == Normal then reportWithWarnings else draftReportWithWarnings
+      result.onComplete:
         _ =>
           if(savedZipFilePath.toFile.isDirectory)
             FileUtils.deleteDirectory(savedZipFilePath.toFile)
           else
             FileUtils.delete(savedZipFilePath.toFile)
-      }
       result
-    } catch {
+    catch
       case NonFatal(e) => Future.failed(e)
-    }
-  }
 
   private def whenDefaultBranch(repository: Repository, branch: Branch)(f: => Future[Unit]): Future[Unit] =
     teamsAndRepositoriesConnector
       .repo(repository.asString)
-      .flatMap {
+      .flatMap:
         case Some(repo) if repo.defaultBranch == branch.asString => f
         case _                                                   => Future.unit
-      }
 
-  def queueDistinctRequest(p: PushUpdate): Future[Boolean] = for {
-    itemAlreadyQueued <- githubRequestsQueue.findByCommitIdAndBranch(p).map(_.isDefined)
-    reportExists      <- reportsService.reportExists(p)
-    duplicate          = itemAlreadyQueued || reportExists
-    _                 <- if (!duplicate) githubRequestsQueue.pushNew(p) else Future.unit
-  } yield duplicate
+  def queueDistinctRequest(p: PushUpdate): Future[Boolean] =
+    for
+      itemAlreadyQueued <- githubRequestsQueue.findByCommitIdAndBranch(p).map(_.isDefined)
+      reportExists      <- reportsService.reportExists(p)
+      duplicate          = itemAlreadyQueued || reportExists
+      _                 <- if !duplicate then githubRequestsQueue.pushNew(p) else Future.unit
+    yield duplicate
 
-  def scanAll(implicit ec: ExecutionContext): Future[Int] = {
+  def scanAll(using ExecutionContext): Future[Int] =
     def processNext(acc: Int): Future[Int] =
-      githubRequestsQueue.pullOutstanding.flatMap {
+      githubRequestsQueue.pullOutstanding.flatMap:
         case None     => Future.successful(acc)
         case Some(wi) => scanOneItemAndMarkAsComplete(githubRequestsQueue)(wi).flatMap(res => processNext(acc + res.size))
-      }
 
-    for {
+    for
       scanned   <- processNext(0)
       rescanned <- rescanOne // limit rescanning to a single repo per cycle
-    } yield  scanned + rescanned
-  }
+    yield  scanned + rescanned
 
-  private def rescanOne(implicit ec: ExecutionContext): Future[Int] =
-    rescanRequestsQueue.pullOutstanding.flatMap {
+  private def rescanOne(using ExecutionContext): Future[Int] =
+    rescanRequestsQueue.pullOutstanding.flatMap:
       case None     => Future.successful(0)
       case Some(wi) => scanOneItemAndMarkAsComplete(rescanRequestsQueue)(wi).map(_.size)
-    }
 
   import org.apache.pekko.stream.IOOperationIncompleteException
-  private def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PushUpdate])(workItem: WorkItem[PushUpdate]): Future[Option[Report]] = {
+  private def scanOneItemAndMarkAsComplete(repo:WorkItemRepository[PushUpdate])(workItem: WorkItem[PushUpdate]): Future[Option[Report]] =
     val request     = workItem.item
-    implicit val hc: HeaderCarrier = HeaderCarrier()
+    given HeaderCarrier = HeaderCarrier()
     scanRepository(
       repository    = Repository(request.repositoryName),
       branch        = Branch(request.branchRef),
@@ -172,60 +163,53 @@ class ScanningService @Inject()(
       archiveUrl    = request.archiveUrl,
       runMode       = request.runMode.getOrElse(Normal)
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
-     .recoverWith {
+     .recoverWith:
        case e: IOOperationIncompleteException if e.getCause.isInstanceOf[GithubConnector.LargeDownloadException] =>
          val repository = Repository(request.repositoryName)
          val branch     = Branch(request.branchRef)
-         for {
+         for
            _ <- whenDefaultBranch(repository, branch)(alertingService.alertAboutFailure(repository, branch, request.authorName, e.getCause.getMessage, request.isPrivate))
            _ <- repo.markAs(workItem.id, ProcessingStatus.PermanentlyFailed)
            _ =  logger.error(s"Failed scan due to large download exception - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}", e)
-         } yield None
+         yield None
        case e: IOOperationIncompleteException if e.getCause.isInstanceOf[TimeoutException] =>
          val backOffMillis = Math.min(workItem.failureCount * appConfig.timeoutBackoff.toMillis, appConfig.timeoutBackOffMax.toMillis)
-         if (workItem.failureCount > 2) {
+         if workItem.failureCount > 2 then
            logger.error(s"Failed scan due to timeouts - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}, retry count: ${workItem.failureCount}, timeoutMillis: $backOffMillis", e)
-         }
          repo.markAs(workItem.id, ProcessingStatus.Failed, Some(Instant.now().plusMillis(backOffMillis))).map(_ => None)
        case NonFatal(e) =>
          logger.error(s"Failed scan - repo: ${request.repositoryName}, branch: ${request.branchRef}, commit: ${request.commitId}, retry count: ${workItem.failureCount}", e)
          repo.markAs(workItem.id, ProcessingStatus.Failed).map(_ => None)
-     }
-  }
 
   private def addCommitId(
       repository: Repository,
       branch: Branch,
-      results: List[MatchedResult]): Future[List[MatchedResult]] = {
-    for {
+      results: List[MatchedResult]): Future[List[MatchedResult]] =
+    for
       blameToFileSeq <- getBlameByFile(repository, branch, results)
       blameToFileMap = blameToFileSeq.toMap
-      resultsWithCommitID = results.map(r => {
+      resultsWithCommitID = results.map: r =>
         val commitIds = getCommitIdForLine(r.lineNumber, blameToFileMap.get(r.filePath))
         r.copy(commitId = commitIds)
-      })
-    } yield resultsWithCommitID
-  }
+    yield resultsWithCommitID
 
   private def getBlameByFile(
       repository: Repository,
       branch: Branch,
-      results: List[MatchedResult]): Future[Seq[(String, GitBlame)]] = {
-    val files = results.map(_.filePath).toSet
-    val fileToBlameTuple = files.map(f => (f -> githubConnector.getBlame(repository, branch, f))).toSeq
+      results: List[MatchedResult]): Future[Seq[(String, GitBlame)]] =
+    val files: Set[String] =
+      results.map(_.filePath).toSet
+    val fileToBlameTuple: Seq[(String, Future[GitBlame])] =
+      files.map(f => (f -> githubConnector.getBlame(repository, branch, f))).toSeq
     Future.sequence(
       fileToBlameTuple.map { case (s1, fut_s2) => fut_s2.map { s2 => (s1, s2) } }
     )
-  }
 
-  private def getCommitIdForLine(lineNumber: Int, blame: Option[GitBlame]): Option[String] = {
-    blame match {
+  private def getCommitIdForLine(lineNumber: Int, blame: Option[GitBlame]): Option[String] =
+    blame match
       case Some(value) =>
         val found = value.ranges.find(range => range.startingLine >= lineNumber && range.endingLine <= lineNumber)
         found.map(_.oid)
       case None =>
         None
-    }
 
-  }
-}

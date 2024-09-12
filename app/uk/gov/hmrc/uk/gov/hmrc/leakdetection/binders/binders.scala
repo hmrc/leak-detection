@@ -21,37 +21,32 @@ import play.api.mvc.{PathBindable, QueryStringBindable}
 class SimpleQueryBinder[T](
   bind  : String => Either[String, T],
   unbind: T => String
-)(implicit
+)(using
   stringBinder: QueryStringBindable[String]
-) extends QueryStringBindable[T] {
+) extends QueryStringBindable[T]:
 
   override def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, T]] =
-    for {
+    for
       value <- stringBinder.bind(key, params)
-    } yield {
-      value match {
+    yield
+      value match
         case Right(s) => bind(s)
         case _        => Left(s"Unable to bind")
-      }
-    }
 
   override def unbind(key: String, value: T): String =
     stringBinder.unbind(key, unbind(value))
-}
 
 
 class SimpleObjectBinder[T](
   bind  : String => T,
   unbind: T => String
-)(implicit
+)(using
   m: Manifest[T]
-) extends PathBindable[T] {
+) extends PathBindable[T]:
   override def bind(key: String, value: String): Either[String, T] =
     try Right(bind(value))
-    catch {
+    catch
       case e: Throwable =>
         Left(s"Cannot parse parameter '$key' with value '$value' as '${m.runtimeClass.getSimpleName}'")
-    }
 
   def unbind(key: String, value: T): String = unbind(value)
-}

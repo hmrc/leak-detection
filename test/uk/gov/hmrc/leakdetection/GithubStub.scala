@@ -24,56 +24,48 @@ import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 
-class GithubStub {
+class GithubStub:
   private val config = options.dynamicPort()
-  val server         = new WireMockServer(config)
+  val server         = WireMockServer(config)
 
   server.start()
 
   val port: Int          = server.port()
   val relativeArchiveUrl = "archive-url"
   val archiveUrl         = s"http://localhost:$port/$relativeArchiveUrl"
-}
 
-object GithubStub {
+object GithubStub:
 
-  def serving404: GithubStub = {
+  def serving404: GithubStub =
     val gh = new GithubStub
     gh.server.stubFor(
       get(s"/${gh.relativeArchiveUrl}").willReturn(aResponse().withStatus(404).withBody("404: Not Found"))
     )
     gh
-  }
 
-  def servingZippedFiles(files: List[TestZippedFile]): GithubStub = {
+  def servingZippedFiles(files: List[TestZippedFile]): GithubStub =
     val gh = new GithubStub
     gh.server
       .stubFor(
         get(s"/${gh.relativeArchiveUrl}").willReturn(aResponse().withBody(createZip(files)))
       )
     gh
-  }
 
-  def createZip(files: List[TestZippedFile]): Array[Byte] = {
+  def createZip(files: List[TestZippedFile]): Array[Byte] =
     val baos = new ByteArrayOutputStream()
     val zos  = new ZipOutputStream(new BufferedOutputStream(baos))
 
-    try {
-      files.foreach { file =>
+    try
+      files.foreach: file =>
         zos.putNextEntry(new ZipEntry(file.path))
         zos.write(file.content.getBytes("UTF-8"))
         zos.closeEntry()
-      }
-    } finally {
+    finally
       zos.close()
-    }
 
     baos.toByteArray
-  }
 
   case class TestZippedFile(
     content: String,
     path: String = s"repo/${UUID.randomUUID().toString}"
   )
-
-}

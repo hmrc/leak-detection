@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.controllers
 
-import play.api.libs.json._
-import play.api.mvc.ControllerComponents
+import play.api.libs.json.*
+import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.leakdetection.connectors.GithubConnector
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, Repository, RunMode}
 import uk.gov.hmrc.leakdetection.services.{LeaksService, RescanService}
@@ -32,49 +32,46 @@ class AdminController @Inject()(
   rescanService  : RescanService,
   githubConnector: GithubConnector,
   cc             : ControllerComponents
-)(implicit
-  ec: ExecutionContext
-) extends BackendController(cc) {
+)(using ExecutionContext
+) extends BackendController(cc):
 
-  def rescanRepo(repository: Repository, branch: Branch, runMode: RunMode) = Action.async { implicit request =>
-    implicit val rf: Format[Report] = Report.apiFormat
+  def rescanRepo(repository: Repository, branch: Branch, runMode: RunMode): Action[AnyContent] =
+    Action.async:
+      implicit request =>
+        given Format[Report] = Report.apiFormat
 
-    rescanService.rescan(repository, branch, runMode)
-      .flatMap {
-        case Some(f) => f.map(r => Ok(Json.toJson(r)))
-        case _ => Future.successful(NotFound(s"rescan could not be performed as '${repository.asString}' is not a known HMRC repository"))
-      }
-  }
+        rescanService.rescan(repository, branch, runMode)
+          .flatMap:
+            case Some(f) => f.map(r => Ok(Json.toJson(r)))
+            case _ => Future.successful(NotFound(s"rescan could not be performed as '${repository.asString}' is not a known HMRC repository"))
 
-  def rescan(runMode: RunMode) = Action.async(parse.json) { implicit request =>
-    request.body.validate[List[String]].fold(
-      _     => Future.successful(BadRequest("Invalid list of repos")),
-      repos => rescanService.triggerRescan(repos, runMode).map(_ => Accepted(""))
-    )
-  }
+  def rescan(runMode: RunMode): Action[JsValue] =
+    Action.async(parse.json):
+      implicit request =>
+        request.body.validate[List[String]].fold(
+          _     => Future.successful(BadRequest("Invalid list of repos")),
+          repos => rescanService.triggerRescan(repos, runMode).map(_ => Accepted(""))
+        )
 
-  def rescanAllRepos(runMode: RunMode) = Action.async(parse.json) { _ =>
-    rescanService.rescanAllRepos(runMode).map(_ => Accepted(""))
-  }
+  def rescanAllRepos(runMode: RunMode): Action[JsValue] =
+    Action.async(parse.json): _ =>
+      rescanService.rescanAllRepos(runMode).map(_ => Accepted(""))
 
-  def checkGithubRateLimits = Action.async {
-    githubConnector
-      .getRateLimit()
-      .map(Ok(_))
-  }
+  def checkGithubRateLimits: Action[AnyContent] =
+    Action.async:
+      githubConnector
+        .getRateLimit()
+        .map(Ok(_))
 
-  def stats = Action.async {
-    leaksService.metrics.map(stats => Ok(Json.toJson(stats)))
-  }
-}
+  def stats: Action[AnyContent] =
+    Action.async:
+      leaksService.metrics.map(stats => Ok(Json.toJson(stats)))
 
-object AdminController {
+object AdminController:
   val NOT_APPLICABLE = "n/a"
-}
 
-final case class AcceptanceTestsRequest(fileContent: String, fileName: String)
+case class AcceptanceTestsRequest(fileContent: String, fileName: String)
 
-object AcceptanceTestsRequest {
-  implicit val format: Format[AcceptanceTestsRequest] =
+object AcceptanceTestsRequest:
+  given Format[AcceptanceTestsRequest] =
     Json.format[AcceptanceTestsRequest]
-}

@@ -18,7 +18,7 @@ package uk.gov.hmrc.leakdetection.scheduled
 
 import com.codahale.metrics.MetricRegistry
 import org.apache.pekko.actor.ActorSystem
-import play.api.{Configuration, Logger}
+import play.api.{Configuration, Logging}
 import uk.gov.hmrc.leakdetection.persistence.GithubRequestsQueueRepository
 import uk.gov.hmrc.leakdetection.services.LeaksService
 import uk.gov.hmrc.mongo.lock.{LockRepository, LockService}
@@ -26,7 +26,7 @@ import uk.gov.hmrc.mongo.metrix.{MetricOrchestrator, MetricRepository}
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class MetricsScheduler @Inject()(
   actorSystem                  : ActorSystem,
@@ -36,36 +36,33 @@ class MetricsScheduler @Inject()(
   leaksService                 : LeaksService,
   lockRepository               : LockRepository,
   metricRepository             : MetricRepository
-)(implicit
-  ec: ExecutionContext
-) {
+)(using ExecutionContext
+) extends Logging:
 
   private val key = "queue.metricsGauges.interval"
 
   lazy val refreshIntervalMillis: Long = configuration.getMillis(key)
 
-  private val logger = Logger(getClass)
+  val lock: LockService =
+    LockService(
+      lockRepository = lockRepository,
+      lockId         = "queue",
+      ttl            = refreshIntervalMillis.milliseconds
+    )
 
-  val lock = LockService(
-    lockRepository = lockRepository,
-    lockId         = "queue",
-    ttl            = refreshIntervalMillis.milliseconds
-  )
-
-  val metricOrchestrator = new MetricOrchestrator(
-    metricSources    = List(githubRequestsQueueRepository, leaksService),
-    lockService      = lock,
-    metricRepository = metricRepository,
-    metricRegistry   = metrics
-  )
+  val metricOrchestrator: MetricOrchestrator =
+    MetricOrchestrator(
+      metricSources    = List(githubRequestsQueueRepository, leaksService),
+      lockService      = lock,
+      metricRepository = metricRepository,
+      metricRegistry   = metrics
+    )
 
   actorSystem.scheduler.scheduleWithFixedDelay(1.minute, refreshIntervalMillis.milliseconds){ () =>
     metricOrchestrator
       .attemptMetricRefresh()
       .map(_.log())
-      .recover({
+      .recover:
         case e: RuntimeException =>
           logger.error(s"An error occurred processing metrics: ${e.getMessage}", e)
-      })
   }
-}

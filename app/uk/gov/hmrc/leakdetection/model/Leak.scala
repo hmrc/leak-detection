@@ -42,14 +42,13 @@ case class Leak(
   commitId: Option[String]
 )
 
-object Leak {
+object Leak:
 
-  val apiFormat: OFormat[Leak] = {
-    implicit val mf = Match.format
+  val apiFormat: OFormat[Leak] =
     ( (__ \ "repoName").format[String]
     ~ (__ \ "branch").format[String]
     ~ (__ \ "timestamp").format[Instant]
-    ~ (__ \ "reportId").format[ReportId](ReportId.format)
+    ~ (__ \ "reportId").format[ReportId]
     ~ (__ \ "ruleId").format[String]
     ~ (__ \ "description").format[String]
     ~ (__ \ "filePath").format[String]
@@ -61,15 +60,13 @@ object Leak {
     ~ (__ \ "priority").format[String]
     ~ (__ \ "isExcluded").format[Boolean]
     ~ (__ \ "commitId").formatNullable[String]
-    )(Leak.apply, unlift(Leak.unapply))
-  }
+    )(Leak.apply, l => Tuple.fromProductTyped(l))
 
-  val mongoFormat: OFormat[Leak] = {
-    implicit val mf = Match.format
+  val mongoFormat: OFormat[Leak] =
     ( (__ \ "repoName").format[String]
     ~ (__ \ "branch").format[String]
     ~ (__ \ "timestamp").format[Instant](MongoJavatimeFormats.instantFormat)
-    ~ (__ \ "reportId").format[ReportId](ReportId.format)
+    ~ (__ \ "reportId").format[ReportId]
     ~ (__ \ "ruleId").format[String]
     ~ (__ \ "description").format[String]
     ~ (__ \ "filePath").format[String]
@@ -81,11 +78,10 @@ object Leak {
     ~ (__ \ "priority").format[String]
     ~ (__ \ "isExcluded").formatWithDefault[Boolean](false)
     ~ (__ \ "commitId").formatNullable[String]
-    )(Leak.apply, unlift(Leak.unapply))
-  }
+    )(Leak.apply, l => Tuple.fromProductTyped(l))
 
   def createFromMatchedResults(report: Report, results: List[MatchedResult]): List[Leak] =
-    results.map(result => {
+    results.map: result =>
       val commitId = result.commitId
       Leak(
         repoName = report.repoName,
@@ -97,16 +93,12 @@ object Leak {
         filePath = result.filePath,
         scope = result.scope,
         lineNumber = result.lineNumber,
-        urlToSource = commitId match {
+        urlToSource = commitId match
           case Some(commitId) => s"${report.repoUrl}/blame/${commitId}${result.filePath}#L${result.lineNumber}"
-          case None => s"${report.repoUrl}/blame/${report.branch}${result.filePath}#L${result.lineNumber}"
-        },
+          case None           => s"${report.repoUrl}/blame/${report.branch}${result.filePath}#L${result.lineNumber}",
         commitId = commitId,
         lineText = result.lineText,
         matches = result.matches,
         priority = result.priority,
         isExcluded = result.isExcluded
       )
-    }
-    )
-}

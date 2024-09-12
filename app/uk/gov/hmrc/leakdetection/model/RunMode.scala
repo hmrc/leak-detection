@@ -20,29 +20,26 @@ import play.api.libs.json._
 import play.api.mvc.QueryStringBindable
 import uk.gov.hmrc.leakdetection.binders.SimpleQueryBinder
 
-sealed trait RunMode extends Product with Serializable {
+sealed trait RunMode extends Product with Serializable:
   def asString: String
-}
 
-object RunMode {
-  final case object Normal extends RunMode { override def asString = "normal" }
-  final case object Draft  extends RunMode { override def asString = "draft"  }
+object RunMode:
+  case object Normal extends RunMode { override def asString = "normal" }
+  case object Draft  extends RunMode { override def asString = "draft"  }
 
   def parse(s: String): Either[String, RunMode] =
-    s match {
+    s match
       case "normal" => Right(Normal)
       case "draft"  => Right(Draft)
       case rm       => Left(s"Invalid run mode: $rm - should be one of: normal, draft")
-    }
 
-  val format: Format[RunMode] = new Format[RunMode] {
+  val format: Format[RunMode] =
+    new Format[RunMode]:
       override def reads(json: JsValue): JsResult[RunMode] =
         json.validate[String].flatMap(s => parse(s).fold(msg => JsError(msg), rm => JsSuccess(rm)))
 
       override def writes(rm: RunMode): JsValue =
         JsString(rm.asString.toLowerCase())
-    }
 
-  implicit val binder: QueryStringBindable[RunMode] =
-    new SimpleQueryBinder[RunMode](parse, _.asString)
-}
+  given QueryStringBindable[RunMode] =
+    SimpleQueryBinder[RunMode](parse, _.asString)
