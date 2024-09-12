@@ -22,6 +22,7 @@ import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.leakdetection.config.AppConfig
 import uk.gov.hmrc.leakdetection.connectors.*
 import uk.gov.hmrc.leakdetection.model.*
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}

@@ -17,14 +17,14 @@
 package uk.gov.hmrc.leakdetection.services
 
 import cats.implicits.*
-
-import java.io.File
-import java.util as ju
 import org.yaml.snakeyaml.Yaml
 import play.api.Logging
 import uk.gov.hmrc.leakdetection.config.RuleExemption
-import uk.gov.hmrc.leakdetection.model.{MissingRepositoryYamlFile, ParseFailure, WarningMessageType}
+import uk.gov.hmrc.leakdetection.model.WarningMessageType
+import uk.gov.hmrc.leakdetection.model.WarningMessageType.*
 
+import java.io.File
+import java.util as ju
 import scala.io.Source
 import scala.jdk.CollectionConverters.*
 

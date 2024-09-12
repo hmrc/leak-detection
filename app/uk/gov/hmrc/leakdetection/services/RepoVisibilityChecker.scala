@@ -20,6 +20,7 @@ import org.yaml.snakeyaml.Yaml
 import play.api.Logging
 import uk.gov.hmrc.leakdetection.FileAndDirectoryUtils
 import uk.gov.hmrc.leakdetection.model.*
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 
 import java.io.File
 import java.util as ju

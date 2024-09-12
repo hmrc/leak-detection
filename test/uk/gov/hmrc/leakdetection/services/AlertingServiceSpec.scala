@@ -17,16 +17,17 @@
 package uk.gov.hmrc.leakdetection.services
 
 import org.scalatestplus.mockito.MockitoSugar
-import org.mockito.Mockito.{times, verify, verifyNoInteractions, when, reset}
+import org.mockito.Mockito.{reset, times, verify, verifyNoInteractions, when}
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.leakdetection.ModelFactory.aSlackConfig
-import uk.gov.hmrc.leakdetection.config._
-import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.config.*
+import uk.gov.hmrc.leakdetection.connectors.*
+import uk.gov.hmrc.leakdetection.model.*
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 
 import java.time.Instant
 import scala.concurrent.duration.DurationInt

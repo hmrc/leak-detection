@@ -19,7 +19,7 @@ package uk.gov.hmrc.leakdetection.services
 import os.{Path, makeDir, temp, write}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import uk.gov.hmrc.leakdetection.model.{InvalidEntry, MissingEntry, MissingRepositoryYamlFile, ParseFailure}
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 
 import scala.util.Random
 
@@ -27,7 +27,7 @@ class RepoVisibilityCheckerSpec extends AnyWordSpec with Matchers:
 
   val checker: RepoVisibilityChecker =
     RepoVisibilityChecker()
-
+    
   "repositoryYamlChecker" should:
 
     "return a warning if the repository.yaml file is not found" in:

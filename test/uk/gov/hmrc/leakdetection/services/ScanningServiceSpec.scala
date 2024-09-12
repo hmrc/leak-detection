@@ -41,6 +41,7 @@ import uk.gov.hmrc.leakdetection.scanner.ExemptionChecker
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus
 import org.mongodb.scala.SingleObservableFuture
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 
 import java.io.{File, PrintWriter}
 import java.nio.file

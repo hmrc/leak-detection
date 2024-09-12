@@ -20,12 +20,11 @@ import play.api.libs.json._
 import play.api.mvc.QueryStringBindable
 import uk.gov.hmrc.leakdetection.binders.SimpleQueryBinder
 
-sealed trait RunMode extends Product with Serializable:
-  def asString: String
+enum RunMode(val asString: String):
+  case Normal extends RunMode("normal")
+  case Draft extends RunMode("draft")
 
 object RunMode:
-  case object Normal extends RunMode { override def asString = "normal" }
-  case object Draft  extends RunMode { override def asString = "draft"  }
 
   def parse(s: String): Either[String, RunMode] =
     s match

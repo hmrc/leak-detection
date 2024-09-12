@@ -80,31 +80,17 @@ object SlackNotificationsConnector:
       , "text" -> Json.obj("type" -> JsString("mrkdwn"), "text" -> JsString(mrkdwn))
       ) :: Nil
 
-  sealed trait ChannelLookup { def by: String }
+  enum ChannelLookup(val by: String):
+    case TeamsOfGithubUser(githubUsername: String) extends ChannelLookup("teams-of-github-user")
+    case GithubRepository(repositoryName: String ) extends ChannelLookup("github-repository"   )
+    case SlackChannel(slackChannels: List[String]) extends ChannelLookup("slack-channel"       )
 
   object ChannelLookup:
-    case class TeamsOfGithubUser(
-      githubUsername: String,
-      by            : String = "teams-of-github-user"
-    ) extends ChannelLookup
-
-    case class GithubRepository(
-      repositoryName: String,
-      by            : String = "github-repository"
-    ) extends ChannelLookup
-
-    case class SlackChannel(
-      slackChannels: List[String],
-      by           : String = "slack-channel"
-    ) extends ChannelLookup
-
     given Writes[ChannelLookup] =
-      Writes {
-        case s: SlackChannel      => Json.toJson(s)(Json.writes[SlackChannel])
-        case s: TeamsOfGithubUser => Json.toJson(s)(Json.writes[TeamsOfGithubUser])
-        case s: GithubRepository  => Json.toJson(s)(Json.writes[GithubRepository])
-      }
-
+      Writes:
+        case s: SlackChannel      => Json.obj("slackChannels"  -> s.slackChannels,  "by" -> s.by)
+        case s: TeamsOfGithubUser => Json.obj("githubUsername" -> s.githubUsername, "by" -> s.by)
+        case s: GithubRepository  => Json.obj("repositoryName" -> s.repositoryName, "by" -> s.by)
 
   case class SlackNotificationError(
     code: String,

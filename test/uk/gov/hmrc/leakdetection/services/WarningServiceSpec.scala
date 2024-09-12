@@ -28,6 +28,7 @@ import uk.gov.hmrc.leakdetection.persistence.WarningRepository
 import uk.gov.hmrc.mongo.test.MongoSupport
 import org.mockito.Mockito.when
 import org.mockito.ArgumentMatchers.any
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 
 import java.io.{File, PrintWriter}
 import java.nio.file

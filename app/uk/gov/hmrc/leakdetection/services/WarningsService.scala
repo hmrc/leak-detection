@@ -17,7 +17,8 @@
 package uk.gov.hmrc.leakdetection.services
 
 import uk.gov.hmrc.leakdetection.config.{AppConfig, Rule, RuleExemption}
-import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.model.*
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 import uk.gov.hmrc.leakdetection.persistence.WarningRepository
 
 import java.io.File

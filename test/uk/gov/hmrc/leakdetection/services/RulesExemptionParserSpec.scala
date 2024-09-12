@@ -20,7 +20,8 @@ import os.{Path, temp, write}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.RuleExemption
-import uk.gov.hmrc.leakdetection.model.{MissingRepositoryYamlFile, ParseFailure, WarningMessageType}
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
+import uk.gov.hmrc.leakdetection.model.WarningMessageType
 
 import java.io.File
 import scala.util.Random
