@@ -17,7 +17,6 @@
 package uk.gov.hmrc.leakdetection.services
 
 import org.apache.pekko.stream.IOOperationIncompleteException
-import os.Path
 import com.typesafe.config.ConfigFactory
 import org.mockito.ArgumentCaptor
 import org.scalatestplus.mockito.MockitoSugar
@@ -546,12 +545,12 @@ class ScanningServiceSpec
       Files.createTempDirectory(unzippedTmpDirectory, "repoName")
 
     val applicationConf: File =
-      Files.createFile(Path(s"$projectDirectory/application.conf").toNIO).toFile
+      Files.createFile(projectDirectory.resolve("application.conf")).toFile
 
     write("""play.crypto.secret="Htt5cyxh8"""", applicationConf)
 
     val testApplicationConf: File =
-      Files.createFile(Path(s"$projectDirectory/test-application.conf").toNIO).toFile
+      Files.createFile(projectDirectory.resolve("test-application.conf")).toFile
 
     write("""play.crypto.secret="Htt5cyxh8"""", testApplicationConf)
 
@@ -564,7 +563,7 @@ class ScanningServiceSpec
       Files.createTempFile(projectDirectory, "test2", "id_rsa").toFile
 
     def writeRepositoryYaml(contents: String): Unit =
-      val projectConfigurationYaml = Files.createFile(Path(s"$projectDirectory/repository.yaml").toNIO).toFile
+      val projectConfigurationYaml = Files.createFile(projectDirectory.resolve("repository.yaml")).toFile
       write(contents, projectConfigurationYaml)
 
     when(reportsService.saveReport(any)).thenReturn(Future.successful(()))

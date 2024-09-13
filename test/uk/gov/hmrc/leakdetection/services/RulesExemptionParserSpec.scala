@@ -16,14 +16,15 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import os.{Path, temp, write}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.RuleExemption
-import uk.gov.hmrc.leakdetection.model.WarningMessageType._
+import uk.gov.hmrc.leakdetection.model.WarningMessageType.*
 import uk.gov.hmrc.leakdetection.model.WarningMessageType
+import uk.gov.hmrc.leakdetection.utils.TestFileUtils._
 
 import java.io.File
+import java.nio.file.Path
 import scala.util.Random
 
 class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
@@ -50,7 +51,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
         )
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expected
 
@@ -74,7 +75,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
         )
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expected
 
@@ -93,7 +94,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
         Right(List(RuleExemption("1", Seq("foo.scala", "bar.py"))))
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expectedRules
 
@@ -111,7 +112,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
       val expectedRules: Either[WarningMessageType, List[RuleExemption]] =
         Right(List(RuleExemption("1", Seq("foo.scala"), Some("false-positive"))))
 
-      val parsedRules: Either[WarningMessageType, List[RuleExemption]] = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] = RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expectedRules
 
@@ -129,7 +130,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
         Left(ParseFailure)
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expected
 
@@ -151,7 +152,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
         Left(ParseFailure)
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expectedRules
 
@@ -168,7 +169,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
       createFileForTest(emptyContent)
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe Right(List.empty)
 
@@ -182,7 +183,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
       createFileForTest(brokenYaml)
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe Left(ParseFailure)
 
@@ -202,7 +203,7 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
       createFileForTest(configContent)
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe Left(ParseFailure)
 
@@ -221,13 +222,13 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
         Left(ParseFailure)
 
       val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
-        RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expectedRules
 
   trait Setup:
-    val dir: Path = temp.dir()
+    val dir: Path = tempDir()
 
     def createFileForTest(content: String): Path =
-      write(dir / "repository.yaml", content)
+      write(dir.resolve("repository.yaml"), content)
       dir

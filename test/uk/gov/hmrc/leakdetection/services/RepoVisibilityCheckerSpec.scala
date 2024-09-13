@@ -16,10 +16,11 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import os.{Path, makeDir, temp, write}
+import java.nio.file.{Files, Path}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import uk.gov.hmrc.leakdetection.model.WarningMessageType._
+import uk.gov.hmrc.leakdetection.model.WarningMessageType.*
+import uk.gov.hmrc.leakdetection.utils.TestFileUtils._
 
 import scala.util.Random
 
@@ -31,66 +32,66 @@ class RepoVisibilityCheckerSpec extends AnyWordSpec with Matchers:
   "repositoryYamlChecker" should:
 
     "return a warning if the repository.yaml file is not found" in:
-      val dir: Path = temp.dir()
-      makeDir(dir / "test")
+      val dir: Path = Files.createTempDirectory(null)
+      makeDir(dir.resolve("test"))
 
-      checker.checkVisibilityDefinedCorrectly(dir.toIO, Random.nextBoolean()) shouldBe Some(MissingRepositoryYamlFile)
+      checker.checkVisibilityDefinedCorrectly(dir.toFile, Random.nextBoolean()) shouldBe Some(MissingRepositoryYamlFile)
 
     "confirm if repoVisibility has correct value for a public repository" in:
       val yamlFileContents = "repoVisibility: public_0C3F0CE3E6E6448FAD341E7BFA50FCD333E06A20CFF05FCACE61154DDBBADF71"
-      val dir: Path = temp.dir()
-      val subDir: Path = dir / "test"
+      val dir: Path = tempDir()
+      val subDir: Path = dir.resolve("test")
       makeDir(subDir)
-      write(subDir / "repository.yaml", yamlFileContents)
+      write(subDir.resolve("repository.yaml"), yamlFileContents)
 
-      checker.checkVisibilityDefinedCorrectly(dir.toIO, isPrivate = false) shouldBe None
+      checker.checkVisibilityDefinedCorrectly(dir.toFile, isPrivate = false) shouldBe None
 
     "confirm if repoVisibility has correct value for a private repository" in:
       val yamlFileContents = "repoVisibility: private_12E5349CFB8BBA30AF464C24760B70343C0EAE9E9BD99156345DD0852C2E0F6F"
-      val dir: Path = temp.dir()
-      val subDir: Path = dir / "test"
+      val dir: Path = tempDir()
+      val subDir: Path = dir.resolve("test")
       makeDir(subDir)
-      write(subDir / "repository.yaml", yamlFileContents)
+      write(subDir.resolve("repository.yaml"), yamlFileContents)
 
-      checker.checkVisibilityDefinedCorrectly(dir.toIO, isPrivate = true) shouldBe None
+      checker.checkVisibilityDefinedCorrectly(dir.toFile, isPrivate = true) shouldBe None
 
     "return a warning if the repoVisibility value is incorrect" in:
       val yamlFileContents = "repoVisibility: private_12E5349CFB8BBA30AF464C24760B70343C0EAE9E9BD99156345DD0852C2E0F6F"
-      val dir: Path = temp.dir()
-      val subDir: Path = dir / "test"
+      val dir: Path = tempDir()
+      val subDir: Path = dir.resolve("test")
       makeDir(subDir)
-      write(subDir / "repository.yaml", yamlFileContents)
+      write(subDir.resolve("repository.yaml"), yamlFileContents)
 
-      checker.checkVisibilityDefinedCorrectly(dir.toIO, false) shouldBe Some(InvalidEntry)
+      checker.checkVisibilityDefinedCorrectly(dir.toFile, false) shouldBe Some(InvalidEntry)
 
     "return a warning if the file doesn't have the repoVisibility key" in:
       val yamlFileContents = "foo: bar"
-      val dir: Path = temp.dir()
-      val subDir: Path = dir / "test"
+      val dir: Path = tempDir()
+      val subDir: Path = dir.resolve("test")
       makeDir(subDir)
-      write(subDir / "repository.yaml", yamlFileContents)
+      write(subDir.resolve("repository.yaml"), yamlFileContents)
 
-      checker.checkVisibilityDefinedCorrectly(dir.toIO, isPrivate = Random.nextBoolean()) shouldBe Some(MissingEntry)
+      checker.checkVisibilityDefinedCorrectly(dir.toFile, isPrivate = Random.nextBoolean()) shouldBe Some(MissingEntry)
 
     "return a warning if the repoVisibility key doesn't have a string value" in:
       val yamlFileContents = "repoVisibility: 1"
-      val dir: Path = temp.dir()
-      val subDir: Path = dir / "test"
+      val dir: Path = tempDir()
+      val subDir: Path = dir.resolve("test")
       makeDir(subDir)
-      write(subDir / "repository.yaml", yamlFileContents)
+      write(subDir.resolve("repository.yaml"), yamlFileContents)
 
-      checker.checkVisibilityDefinedCorrectly(dir.toIO, isPrivate = Random.nextBoolean()) shouldBe Some(ParseFailure)
+      checker.checkVisibilityDefinedCorrectly(dir.toFile, isPrivate = Random.nextBoolean()) shouldBe Some(ParseFailure)
 
     "check visibility" should:
       "ignore if repository is archived" in:
-        val dir: Path = temp.dir()
-        makeDir(dir / "test")
+        val dir: Path = tempDir()
+        makeDir(dir.resolve("test"))
 
-        checker.checkVisibility(dir.toIO, Random.nextBoolean(), true) shouldBe None
+        checker.checkVisibility(dir.toFile, Random.nextBoolean(), true) shouldBe None
 
       "return warnings if repository is not archived" in:
-        val dir: Path = temp.dir()
-        makeDir(dir / "test")
+        val dir: Path = tempDir()
+        makeDir(dir.resolve("test"))
 
-        checker.checkVisibility(dir.toIO, Random.nextBoolean(), false) shouldBe Some(MissingRepositoryYamlFile)
+        checker.checkVisibility(dir.toFile, Random.nextBoolean(), false) shouldBe Some(MissingRepositoryYamlFile)
 

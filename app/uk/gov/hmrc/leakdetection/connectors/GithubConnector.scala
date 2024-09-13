@@ -105,7 +105,7 @@ class GithubConnector @Inject()(
       getBlameQuery
         .withVariable("repo", JsString(repository.asString))
         .withVariable("branch", JsString(branch.asString))
-        .withVariable("file", JsString(if (file.startsWith("/")) file.substring(1) else file))
+        .withVariable("file", JsString(if file.startsWith("/") then file.substring(1) else file))
     httpClientV2
       .post(url"$githubUrl/graphql")
       .withBody(blameQuery.asJson)

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import os.Path
+import java.nio.file.Path
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -135,7 +135,7 @@ class WarningServiceSpec
       unzippedTmpDirectory.toFile
 
     def writeRepositoryYaml(contents: String): Unit =
-      val projectConfigurationYaml = Files.createFile(Path(s"$projectDirectory/repository.yaml").toNIO).toFile
+      val projectConfigurationYaml = Files.createFile(projectDirectory.resolve("repository.yaml")).toFile
       new PrintWriter(projectConfigurationYaml):
         write(contents)
         close()

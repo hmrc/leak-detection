@@ -64,7 +64,7 @@ class AlertingService @Inject()(
         , emoji       = slackConfig.iconEmoji
         , text        = s"Leak Detection had a problem scanning repo: ${warning.repoName} on branch: ${warning.branch}"
         , blocks      = SlackNotificationsConnector.Message.toBlocks(
-                          (slackConfig.warningText + (if (warning.warningMessageType == FileLevelExemptions.toString) slackConfig.seeReportText else ""))
+                          (slackConfig.warningText + (if warning.warningMessageType == FileLevelExemptions.toString then slackConfig.seeReportText else ""))
                             .replace("{repo}"          , warning.repoName)
                             .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
                             .replace("{warningMessage}", appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))

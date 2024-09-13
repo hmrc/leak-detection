@@ -79,10 +79,10 @@ class ScanningService @Inject()(
             report <- reportsService.clearReportsAfterBranchDeleted(pushDelete)
           } yield report
         case Right(dir) =>
-          def executeIfDraftMode(function: => Future[Unit] ): Future[Unit] = if (runMode == Draft ) function else Future.unit
-          def executeIfNormalMode(function: => Future[Unit]): Future[Unit] = if (runMode == Normal) function else Future.unit
+          def executeIfDraftMode(function: => Future[Unit] ): Future[Unit] = if runMode == Draft  then function else Future.unit
+          def executeIfNormalMode(function: => Future[Unit]): Future[Unit] = if runMode == Normal then function else Future.unit
 
-          val regexMatchingEngine = if (isPrivate) privateMatchingEngine else publicMatchingEngine
+          val regexMatchingEngine = if isPrivate then privateMatchingEngine else publicMatchingEngine
           val exemptionParsingResult = RulesExemptionParser
             .parseServiceSpecificExemptions(FileAndDirectoryUtils.getSubdirName(dir))
 
