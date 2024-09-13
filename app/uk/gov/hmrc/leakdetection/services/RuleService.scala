@@ -26,5 +26,5 @@ class RuleService @Inject()(appConfig: AppConfig):
   lazy private val privateRules = appConfig.allRules.privateRules
   lazy private val publicRules  = appConfig.allRules.publicRules
 
-  def getAllRules: Seq[Rule] =
+  val getAllRules: Seq[Rule] =
     (privateRules ::: publicRules).distinct
