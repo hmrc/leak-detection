@@ -35,7 +35,7 @@ object ReportId:
 
   given Format[ReportId] =
     Format.of[String]
-      .inmap(ReportId.apply, _.toString)
+      .inmap(ReportId.apply, _.value)
 
   given PathBindable[ReportId] =
     SimpleObjectBinder[ReportId](ReportId.apply, _.value)
