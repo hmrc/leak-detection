@@ -22,6 +22,7 @@ import org.mongodb.scala.model._
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 
 import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
@@ -29,7 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class DraftReportsRepository @Inject()(
   mongoComponent: MongoComponent
-)(implicit ec: ExecutionContext
+)(using ExecutionContext
 ) extends PlayMongoRepository[Report](
   collectionName = "draftreports",
   mongoComponent = mongoComponent,
@@ -38,7 +39,7 @@ class DraftReportsRepository @Inject()(
                      IndexModel(Indexes.hashed("repoName"), IndexOptions().name("repoName-idx").background(true)),
                      IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true)),
   )
-) {
+):
 
   def saveReport(report: Report): Future[Unit] =
     collection.insertOne(report)
@@ -78,4 +79,3 @@ class DraftReportsRepository @Inject()(
       .deleteMany(filter = BsonDocument())
       .toFuture()
       .map(_.getDeletedCount)
-}

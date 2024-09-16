@@ -24,6 +24,7 @@ import play.api.Logging
 import uk.gov.hmrc.leakdetection.model.{LeakUpdateResult, Warning}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,8 +32,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class WarningRepository @Inject()(
   mongoComponent: MongoComponent
-)(implicit
-  ec: ExecutionContext
+)(using ExecutionContext
 ) extends PlayMongoRepository[Warning](
   collectionName = "warnings",
   mongoComponent = mongoComponent,
@@ -42,15 +42,15 @@ class WarningRepository @Inject()(
       IndexModel(Indexes.descending("reportId"), IndexOptions().name("reportId-idx").background(true)),
       IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true))
     )
-) with Logging {
+) with Logging:
 
   def update(repo: String, branch: String, warnings: Seq[Warning]): Future[LeakUpdateResult] =
-    for {
+    for
       deleted  <- removeWarnings(repo, branch)
-      inserted <- if (warnings.nonEmpty) collection.insertMany(warnings).toFuture().map(_.getInsertedIds.size())
+      inserted <- if warnings.nonEmpty then collection.insertMany(warnings).toFuture().map(_.getInsertedIds.size())
                   else Future(0)
       _        =  logger.info(s"removed $deleted warnings, added $inserted warnings for $repo/$branch")
-    } yield LeakUpdateResult(inserted, deleted)
+    yield LeakUpdateResult(inserted, deleted)
 
   def removeWarnings(repo: String, branch: String): Future[Long] =
     collection
@@ -72,16 +72,13 @@ class WarningRepository @Inject()(
   def findBy(
     repoName: Option[String] = None,
     branch  : Option[String] = None
-  ): Future[Seq[Warning]] = {
+  ): Future[Seq[Warning]] =
 
     val repoFilter: Option[Bson] = repoName.map(Filters.eq("repoName", _))
     val branchFilter: Option[Bson] = repoName.flatMap(_ => branch.map(Filters.eq("branch", _)))
 
     collection.find(
-      Seq(repoFilter, branchFilter).flatten match {
+      Seq(repoFilter, branchFilter).flatten match
         case Nil => BsonDocument()
         case f   => Filters.and(f: _*)
-      }
     ).toFuture()
-  }
-}

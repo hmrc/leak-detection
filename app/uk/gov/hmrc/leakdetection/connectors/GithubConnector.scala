@@ -26,6 +26,8 @@ import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpReads, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.leakdetection.model.{Branch, GitBlame, Repository}
+import uk.gov.hmrc.http.client.readEitherSource
+import play.api.libs.ws.writeableOf_JsValue
 
 import java.io.File
 import java.net.URL
@@ -39,10 +41,8 @@ class GithubConnector @Inject()(
   config         : Configuration,
   httpClientV2   : HttpClientV2,
   metricsRegistry: MetricRegistry
-)(implicit
-  ec : ExecutionContext,
-  mat: Materializer
-) extends Logging {
+)(using ExecutionContext, Materializer
+) extends Logging:
   import GithubConnector._
   import HttpReads.Implicits._
 
@@ -51,7 +51,7 @@ class GithubConnector @Inject()(
   private val zipDownloadTimeout = config.get[Duration]("github.zipDownloadTimeout")
   private val zipDownloadMaxSize = config.get[Int     ]("github.zipDownloadMaxSize")
 
-  implicit private val hc: HeaderCarrier = HeaderCarrier()
+  given HeaderCarrier = HeaderCarrier()
 
   def getRateLimit(): Future[JsValue] =
      httpClientV2
@@ -71,7 +71,7 @@ class GithubConnector @Inject()(
     archiveUrl      : String,
     branch          : Branch,
     savedZipFilePath: Path
-  ): Future[Either[BranchNotFound, File]] = {
+  ): Future[Either[BranchNotFound, File]] =
     logger.info(s"starting zip process, free disk space ${savedZipFilePath.toFile.getFreeSpace}")
     val zipUrl = getArtifactUrl(archiveUrl, branch)
     logger.info(s"Getting code archive from: $zipUrl")
@@ -81,53 +81,48 @@ class GithubConnector @Inject()(
       .withProxy
       .transform(_.withRequestTimeout(zipDownloadTimeout))
       .stream[Either[UpstreamErrorResponse, Source[ByteString, _]]]
-      .flatMap {
+      .flatMap:
         case Right(source) =>
           metricsRegistry.counter(s"github.open.zip.success").inc()
           logger.debug(s"Saving $archiveUrl to $savedZipFilePath")
           source
             .alsoToMat(preventLargeDownloads)(Keep.none)
             .runWith(FileIO.toPath(savedZipFilePath))
-            .map { _ =>
+            .map: _ =>
               val savedZipFile = savedZipFilePath.toFile
               logger.info(s"Saved file: ${savedZipFilePath}")
               ZipUtil.explode(savedZipFile)
               logger.info(s"zip process complete, free disk space ${savedZipFilePath.toFile.getFreeSpace}")
               Right(savedZipFile)
-            }
         case Left(UpstreamErrorResponse.WithStatusCode(404)) =>
           Future.successful(Left(BranchNotFound(branch)))
         case Left(error) =>
           metricsRegistry.counter(s"github.open.zip.failure").inc()
-          Future.failed(new RuntimeException(s"Error downloading the zip file from $zipUrl received status ${error.statusCode}", error))
-      }
-  }
+          Future.failed(RuntimeException(s"Error downloading the zip file from $zipUrl received status ${error.statusCode}", error))
 
-  def getBlame(repository: Repository, branch: Branch, file: String): Future[GitBlame] = {
-    val blameQuery = getBlameQuery
-      .withVariable("repo", JsString(repository.asString))
-      .withVariable("branch", JsString(branch.asString))
-      .withVariable("file", JsString(if (file.startsWith("/")) file.substring(1) else file))
+  def getBlame(repository: Repository, branch: Branch, file: String): Future[GitBlame] =
+    val blameQuery: GraphqlQuery =
+      getBlameQuery
+        .withVariable("repo", JsString(repository.asString))
+        .withVariable("branch", JsString(branch.asString))
+        .withVariable("file", JsString(if file.startsWith("/") then file.substring(1) else file))
     httpClientV2
       .post(url"$githubUrl/graphql")
       .withBody(blameQuery.asJson)
       .setHeader("Authorization" -> s"token $githubToken")
       .withProxy
       .execute[GitBlame]
-  }
-}
 
 
-object GithubConnector {
+object GithubConnector:
 
   case class LargeDownloadException(message: String) extends Exception(message)
 
-  final case class BranchNotFound(name: Branch)
+  case class BranchNotFound(name: Branch)
 
-  def getArtifactUrl(archiveUrl: String, branch: Branch): URL = {
+  def getArtifactUrl(archiveUrl: String, branch: Branch): URL =
     val urlEncodedBranchName = java.net.URLEncoder.encode(branch.asString, "UTF-8")
-    new URL(archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/refs/heads/$urlEncodedBranchName"))
-  }
+    URL(archiveUrl.replace("{archive_format}", "zipball").replace("{/ref}", s"/refs/heads/$urlEncodedBranchName"))
 
   val getBlameQuery: GraphqlQuery =
     GraphqlQuery(
@@ -157,11 +152,10 @@ object GithubConnector {
         }
       """
     )
-}
 
-final case class GraphqlQuery(
+case class GraphqlQuery(
   query: String,
-  variables: Map[String, JsValue] = Map.empty) {
+  variables: Map[String, JsValue] = Map.empty):
 
   def withVariable(name: String, value: JsValue): GraphqlQuery =
     copy(variables = variables + (name -> value))
@@ -176,5 +170,4 @@ final case class GraphqlQuery(
 
   def asJsonString: String =
     Json.stringify(asJson)
-}
 

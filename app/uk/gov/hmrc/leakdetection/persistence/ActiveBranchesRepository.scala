@@ -21,6 +21,7 @@ import play.api.Logging
 import uk.gov.hmrc.leakdetection.model.ActiveBranch
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -28,8 +29,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class ActiveBranchesRepository @Inject()(
   mongoComponent: MongoComponent
-)(implicit
-  ec: ExecutionContext
+)(using ExecutionContext
 ) extends PlayMongoRepository[ActiveBranch](
   collectionName = "activeBranches",
   mongoComponent = mongoComponent,
@@ -38,7 +38,7 @@ class ActiveBranchesRepository @Inject()(
     IndexModel(Indexes.descending("repoName"), IndexOptions().name("repoName-idx").background(true)),
     IndexModel(Indexes.descending("repoName", "branch"), IndexOptions().name("repoName-branch-idx").background(true))
   )
-) with Logging {
+) with Logging:
 
   override lazy val requiresTtlIndex: Boolean = false
 
@@ -66,7 +66,7 @@ class ActiveBranchesRepository @Inject()(
       .toFuture()
       .map(_ => ())
 
-  def update(activeBranch: ActiveBranch): Future[Unit] = {
+  def update(activeBranch: ActiveBranch): Future[Unit] =
     collection.replaceOne(
       filter = Filters.and(
         Filters.eq("repoName", activeBranch.repoName),
@@ -75,7 +75,6 @@ class ActiveBranchesRepository @Inject()(
     )
       .toFuture()
       .map(_ => ())
-  }
 
   def delete(repoName: String, branchName: String): Future[Unit] =
     collection
@@ -90,4 +89,3 @@ class ActiveBranchesRepository @Inject()(
     collection
       .deleteOne(filter = Filters.eq("repoName", repoName))
       .toFuture().map(_ => ())
-}

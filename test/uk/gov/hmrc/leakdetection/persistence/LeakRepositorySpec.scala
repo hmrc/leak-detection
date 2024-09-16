@@ -23,6 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.ModelFactory.aLeak
 import uk.gov.hmrc.leakdetection.model.{Leak, LeakUpdateResult}
 import uk.gov.hmrc.mongo.test.{CleanMongoCollectionSupport, PlayMongoRepositorySupport}
+import org.mongodb.scala.SingleObservableFuture
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -33,18 +34,18 @@ class LeakRepositorySpec
     with CleanMongoCollectionSupport
     with ScalaFutures
     with IntegrationPatience
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach:
 
-  override val repository = new LeakRepository(mongoComponent)
+  val repository: LeakRepository =
+    LeakRepository(mongoComponent)
 
-  "Leak repository" should {
+  "Leak repository" should:
 
-    "return zero inserts and not fail when updating with no leaks" in {
+    "return zero inserts and not fail when updating with no leaks" in:
       repository.update("test", "main", Seq.empty).futureValue shouldBe LeakUpdateResult(0, 0)
-    }
 
-    "return repositories with unresolved leaks" when {
-      "leaks isExcluded is false" in {
+    "return repositories with unresolved leaks" when:
+      "leaks isExcluded is false" in:
         repository.collection
           .insertMany(
             Seq(
@@ -58,7 +59,3 @@ class LeakRepositorySpec
         val result = repository.findDistinctRepoNamesWithUnresolvedLeaks().futureValue
 
         result shouldBe Seq("repo1")
-      }
-    }
-  }
-}

@@ -23,6 +23,7 @@ import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, Sort
 import uk.gov.hmrc.leakdetection.model.{Branch, Report, ReportId, Repository}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 
 import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,7 +31,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class ReportsRepository @Inject()(
   mongoComponent: MongoComponent
-)(implicit ec: ExecutionContext
+)(using ExecutionContext
 ) extends PlayMongoRepository[Report](
   collectionName = "reports",
   mongoComponent = mongoComponent,
@@ -40,7 +41,7 @@ class ReportsRepository @Inject()(
                      IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true)),
                      IndexModel(Indexes.compoundIndex(Indexes.hashed("commitId"), Indexes.ascending("branchRef")), IndexOptions().name("commitId-branch-idx").background(true))
                    )
-) {
+):
 
   override lazy val requiresTtlIndex: Boolean = false
   private val               hasLeaks: Bson    =  Filters.gt("totalLeaks",  0)
@@ -92,4 +93,3 @@ class ReportsRepository @Inject()(
       .deleteMany(filter = BsonDocument())
       .toFuture()
       .map(_.getDeletedCount)
-}

@@ -16,35 +16,32 @@
 
 package uk.gov.hmrc.leakdetection
 
-import ammonite.ops.{Path, mkdir, tmp, write}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.leakdetection.utils.TestFileUtils._
 
-class FileAndDirectoryUtilsSpec extends AnyWordSpec with Matchers {
-  "getPathRelativeToProjectRoot" should {
-    "remove tmp dir and randomized repo name leaving just a file path relative to repo root" in {
-      val dir: Path          = tmp.dir()
+import java.nio.file.Path
+
+class FileAndDirectoryUtilsSpec extends AnyWordSpec with Matchers:
+  "getPathRelativeToProjectRoot" should:
+    "remove temp dir and randomized repo name leaving just a file path relative to repo root" in:
+      val dir: Path          = tempDir()
       val randomizedRepoName = "foo_abc"
       val aSubdirectory      = "some_subdir"
       val fileName           = "my-file.txt"
-      val file               = dir / randomizedRepoName / aSubdirectory / fileName
+      val file: Path         = dir.resolve(randomizedRepoName).resolve(aSubdirectory).resolve(fileName)
 
       write(file, "some-file-content", createFolders = true)
 
-      val relativePath = FileAndDirectoryUtils.getFilePathRelativeToProjectRoot(dir.toIO, file.toIO)
+      val relativePath: String = FileAndDirectoryUtils.getFilePathRelativeToProjectRoot(dir.toFile, file.toFile)
 
       relativePath shouldBe s"/$aSubdirectory/$fileName"
-    }
-  }
 
-  "getSubdirName" should {
-    "return a name of a single directory in a given directory" in {
-      val dir    = tmp.dir()
-      val subdir = dir / "subdir"
+  "getSubdirName" should:
+    "return a name of a single directory in a given directory" in:
+      val dir: Path    = tempDir()
+      val subdir: Path = dir.resolve("subdir")
 
-      mkdir(subdir)
+      makeDir(subdir)
 
-      FileAndDirectoryUtils.getSubdirName(dir.toIO) shouldBe subdir.toIO
-    }
-  }
-}
+      FileAndDirectoryUtils.getSubdirName(dir.toFile) shouldBe subdir.toFile

@@ -33,10 +33,10 @@ class SlackNotificationsConnectorSpec
       with ScalaFutures
       with IntegrationPatience
       with WireMockSupport
-      with HttpClientV2Support {
+      with HttpClientV2Support:
 
-  "Connector" should {
-    "use internal auth config token" in {
+  "Connector" should:
+    "use internal auth config token" in:
       val hc               = HeaderCarrier(authorization = None)
       val expectedResponse = SlackNotificationsConnector.SlackNotificationResponse(errors = Nil)
 
@@ -56,21 +56,23 @@ class SlackNotificationsConnectorSpec
           "microservice.services.slack-notifications.port" -> wireMockPort
         )
 
-      val connector = new SlackNotificationsConnector(
-        httpClientV2,
-        configuration,
-        new ServicesConfig(configuration)
-      )
+      val connector: SlackNotificationsConnector =
+        SlackNotificationsConnector(
+          httpClientV2,
+          configuration,
+          ServicesConfig(configuration)
+        )
 
-      val slackMessage = SlackNotificationsConnector.Message(
-        displayName   = "username"
-      , emoji         = "iconEmoji"
-      , text          = "text"
-      , blocks        = SlackNotificationsConnector.Message.toBlocks(mrkdwn = "some markdown string")
-      , channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(slackChannels = Nil)
-      )
+      val slackMessage =
+        SlackNotificationsConnector.Message(
+          displayName   = "username"
+        , emoji         = "iconEmoji"
+        , text          = "text"
+        , blocks        = SlackNotificationsConnector.Message.toBlocks(mrkdwn = "some markdown string")
+        , channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(slackChannels = Nil)
+        )
 
-      val response = connector.sendMessage(slackMessage)(hc).futureValue
+      val response = connector.sendMessage(slackMessage)(using hc).futureValue
 
       response shouldBe expectedResponse
 
@@ -96,6 +98,3 @@ class SlackNotificationsConnectorSpec
           ))
           .withHeader("Authorization", equalTo("PLACEHOLDER")) // leak-detection:development-only base64 encoded
       )
-    }
-  }
-}

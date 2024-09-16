@@ -16,78 +16,73 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import cats.implicits._
+import cats.implicits.*
+import org.yaml.snakeyaml.Yaml
+import play.api.Logging
+import uk.gov.hmrc.leakdetection.config.RuleExemption
+import uk.gov.hmrc.leakdetection.model.WarningMessageType
+import uk.gov.hmrc.leakdetection.model.WarningMessageType.*
 
 import java.io.File
-import java.{util => ju}
-import org.yaml.snakeyaml.Yaml
-import play.api.Logger
-import uk.gov.hmrc.leakdetection.config.RuleExemption
-import uk.gov.hmrc.leakdetection.model.{MissingRepositoryYamlFile, ParseFailure, WarningMessageType}
-
+import java.util as ju
 import scala.io.Source
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
-object RulesExemptionParser {
-
-  private val logger = Logger(getClass)
+object RulesExemptionParser extends Logging:
 
   def parseServiceSpecificExemptions(repoDir: File): Either[WarningMessageType, List[RuleExemption]] =
-    try {
-      for {
+    try
+      for
         contents <- getConfigFileContents(repoDir)
         exemptions <- parseYamlAsRuleExemptions(contents)
-      } yield exemptions
-    } catch {
+      yield exemptions
+    catch
       case e: RuntimeException =>
         logger.warn(s"Error parsing ${repoDir.getAbsolutePath}/repository.yaml. Ignoring all exemptions.", e)
         Left(ParseFailure)
-    }
 
-  private def getConfigFileContents(repoDir: File): Either[WarningMessageType, String] = {
-    val f = new File(repoDir.getAbsolutePath + "/" + "repository.yaml")
-    if (f.exists) {
+  private def getConfigFileContents(repoDir: File): Either[WarningMessageType, String] =
+    val f = File(repoDir.getAbsolutePath + "/" + "repository.yaml")
+    if f.exists then
       val source = Source.fromFile(f)
       val content = source.mkString
       source.close()
       Right(content)
-    } else Left(MissingRepositoryYamlFile)
-  }
+    else Left(MissingRepositoryYamlFile)
 
-  private def parseYamlAsRuleExemptions(fileContents: String): Either[WarningMessageType, List[RuleExemption]] = {
+  private def parseYamlAsRuleExemptions(fileContents: String): Either[WarningMessageType, List[RuleExemption]] =
     type ExpectedConfigFormat = ju.Map[String, ju.List[ju.Map[String, String]]]
 
-    if(!fileContents.contains("leakDetectionExemptions")) {
+    if !fileContents.contains("leakDetectionExemptions") then
       Right(List.empty)
-    } else {
+    else
       val exemptions: List[ju.Map[String, String]] =
-        new Yaml()
+        Yaml()
           .load(fileContents)
           .asInstanceOf[ExpectedConfigFormat]
           .asScala
           .get("leakDetectionExemptions").map(_.asScala.toList).getOrElse(List.empty)
 
-      exemptions.traverse { entry =>
+      exemptions.traverse: entry =>
 
           def optString(entry: ju.Map[String, String], k: String): Option[String] =
           // we need the cast to String to eagerly ensure that the value actually is a String
             entry.asScala.get(k).map(_.asInstanceOf[String])
 
-          val optRuleId   = optString(entry, "ruleId")
-          val optFilePath = optString(entry, "filePath")
-          val optText     = optString(entry, "text")
-          val filePaths   = entry.asScala
-            .getOrElse("filePaths", new java.util.ArrayList())
-            .asInstanceOf[java.util.ArrayList[String]]
-            .asScala
-            .toSeq
+          val optRuleId: Option[String] =
+            optString(entry, "ruleId")
+          val optFilePath: Option[String] =
+            optString(entry, "filePath")
+          val optText: Option[String] =
+            optString(entry, "text")
+          val filePaths: Seq[String] =
+            entry.asScala
+              .getOrElse("filePaths", new java.util.ArrayList())
+              .asInstanceOf[java.util.ArrayList[String]]
+              .asScala
+              .toSeq
 
-          (optRuleId, filePaths.nonEmpty, optFilePath, optText) match {
+          (optRuleId, filePaths.nonEmpty, optFilePath, optText) match
             case (Some(ruleId), _, Some(fileName), text) => Right(RuleExemption(ruleId, filePaths :+ fileName, text))
             case (Some(ruleId), true, None, text)  => Right(RuleExemption(ruleId, filePaths, text))
             case _ => Left(ParseFailure)
-          }
-        }
-      }
-    }
-}

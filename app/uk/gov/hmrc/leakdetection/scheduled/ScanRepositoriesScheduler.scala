@@ -17,9 +17,8 @@
 package uk.gov.hmrc.leakdetection.scheduled
 
 import javax.inject.Inject
-
 import org.apache.pekko.actor.ActorSystem
-import play.api.{Configuration, Logger}
+import play.api.{Configuration, Logging}
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.leakdetection.services.ScanningService
 
@@ -32,11 +31,10 @@ class ScanRepositoriesScheduler @Inject()(
   applicationLifecycle: ApplicationLifecycle,
   configuration       : Configuration,
   scanningService     : ScanningService
-)(implicit ec: ExecutionContext
-) {
-  private val logger = Logger(getClass)
+)(using ExecutionContext
+) extends Logging:
 
-  private def execute(implicit ec: ExecutionContext): Future[Result] =
+  private def execute(using ExecutionContext): Future[Result] =
     scanningService.scanAll.map(count => Result(s"Processed $count github requests"))
 
   private lazy val enabled: Boolean =
@@ -48,7 +46,7 @@ class ScanRepositoriesScheduler @Inject()(
   private lazy val interval: FiniteDuration =
     configuration.get[FiniteDuration]("scheduling.scanner.interval")
 
-  if (enabled) {
+  if enabled then
     val cancellable =
       actorSystem.scheduler.scheduleAtFixedRate(initialDelay, interval){ () =>
         logger.info("Scheduled scanning job triggered")
@@ -60,8 +58,7 @@ class ScanRepositoriesScheduler @Inject()(
         }
       }
     applicationLifecycle.addStopHook(() => Future(cancellable.cancel()))
-  } else
+  else
     logger.warn(s"The ScanRepositoriesScheduler has been disabled.")
 
   case class Result(message: String)
-}

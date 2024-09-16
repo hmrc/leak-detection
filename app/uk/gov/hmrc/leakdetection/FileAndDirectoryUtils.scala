@@ -23,7 +23,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import scala.jdk.CollectionConverters._
 
-object FileAndDirectoryUtils {
+object FileAndDirectoryUtils:
   def getFiles(explodedZipDir: File): Iterable[File] =
     FileUtils
       .listFilesAndDirs(
@@ -36,17 +36,15 @@ object FileAndDirectoryUtils {
   def getFileContents(file: File): String =
     FileUtils.readFileToString(file, StandardCharsets.UTF_8)
 
-  def getFilePathRelativeToProjectRoot(explodedZipDir: File, file: File): String = {
+  def getFilePathRelativeToProjectRoot(explodedZipDir: File, file: File): String =
     val strippedTmpDir   = file.getAbsolutePath.stripPrefix(explodedZipDir.getAbsolutePath)
     val strippedRepoName = strippedTmpDir.stripPrefix(File.separator + getSubdirName(explodedZipDir).getName)
 
     strippedRepoName
-  }
 
   def getSubdirName(parentDir: File): File =
     Option(parentDir.listFiles())
       .toList
       .flatten
       .find(_.isDirectory)
-      .getOrElse(throw new RuntimeException(s"[$parentDir] directory does not exist is empty"))
-}
+      .getOrElse(throw RuntimeException(s"[$parentDir] directory does not exist is empty"))

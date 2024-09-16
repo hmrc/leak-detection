@@ -21,8 +21,7 @@ import play.api.Configuration
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class IgnoreListConfig @Inject()(configuration: Configuration) {
+class IgnoreListConfig @Inject()(configuration: Configuration):
 
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.get[Seq[String]]("shared.repositories")
-}

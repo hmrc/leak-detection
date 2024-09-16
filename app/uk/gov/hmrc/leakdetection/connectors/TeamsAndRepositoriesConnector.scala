@@ -26,24 +26,22 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 
-object TeamsAndRepositoriesConnector {
+object TeamsAndRepositoriesConnector:
   import play.api.libs.functional.syntax._
 
   case class TeamSummary(
     name          : String,
     lastActiveDate: Option[Instant],
     repos         : Seq[String]
-  ) {
+  ):
     val normalisedName = name.toLowerCase.replaceAll(" ", "_")
-  }
 
-  object TeamSummary {
+  object TeamSummary:
     val apiReads: Reads[TeamSummary] =
       ( (__ \ "name"          ).read[String]
       ~ (__ \ "lastActiveDate").readNullable[Instant]
       ~ (__ \ "repos"         ).read[Seq[String]]
       )(TeamSummary.apply _)
-  }
 
   case class RepositoryInfo(
     name         : String,
@@ -52,29 +50,27 @@ object TeamsAndRepositoriesConnector {
     defaultBranch: String
   )
 
-  object RepositoryInfo {
+  object RepositoryInfo:
     val apiReads: Reads[RepositoryInfo] =
       ( (__ \ "name"         ).read[String]
       ~ (__ \ "isPrivate"    ).read[Boolean]
       ~ (__ \ "isArchived"   ).read[Boolean]
       ~ (__ \ "defaultBranch").read[String]
       )(RepositoryInfo.apply _)
-  }
-}
 
 @Singleton
 class TeamsAndRepositoriesConnector @Inject()(
   httpClientV2  : HttpClientV2,
   servicesConfig: ServicesConfig
-)(implicit val ec: ExecutionContext) {
+)(using ExecutionContext):
   import HttpReads.Implicits._
   import TeamsAndRepositoriesConnector._
 
   lazy private val baseUrl = servicesConfig.baseUrl("teams-and-repositories")
-  implicit private val hc: HeaderCarrier = HeaderCarrier()
+  given HeaderCarrier = HeaderCarrier()
 
-  implicit private val readsTeamSummary   : Reads[TeamSummary]    = TeamSummary.apiReads
-  implicit private val readsRepositoryInfo: Reads[RepositoryInfo] = RepositoryInfo.apiReads
+  private given Reads[TeamSummary]    = TeamSummary.apiReads
+  private given Reads[RepositoryInfo] = RepositoryInfo.apiReads
 
   def teams(): Future[Seq[TeamSummary]] =
     httpClientV2
@@ -100,4 +96,3 @@ class TeamsAndRepositoriesConnector @Inject()(
     httpClientV2
       .get(url"${baseUrl}/api/v2/repositories?archived=true")
       .execute[Seq[RepositoryInfo]]
-}

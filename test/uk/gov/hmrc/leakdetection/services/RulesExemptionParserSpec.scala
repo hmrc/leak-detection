@@ -16,20 +16,22 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import ammonite.ops.{Path, tmp, write}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.config.RuleExemption
-import uk.gov.hmrc.leakdetection.model.{MissingRepositoryYamlFile, ParseFailure}
+import uk.gov.hmrc.leakdetection.model.WarningMessageType.*
+import uk.gov.hmrc.leakdetection.model.WarningMessageType
+import uk.gov.hmrc.leakdetection.utils.TestFileUtils._
 
 import java.io.File
+import java.nio.file.Path
 import scala.util.Random
 
-class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
+class RulesExemptionParserSpec extends AnyWordSpec with Matchers:
 
-  "Rules exemption service" should {
-    "extract rule exemptions from a configuration file" in new Setup {
-      val configContent =
+  "Rules exemption service" should:
+    "extract rule exemptions from a configuration file" in new Setup:
+      val configContent: String =
         """
           |leakDetectionExemptions:
           |  - ruleId: '1'
@@ -40,20 +42,21 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
 
       createFileForTest(configContent)
 
-      val expected = Right(
-        List(
-          RuleExemption("1", Seq("foo.scala")),
-          RuleExemption("id2", Seq("bar.py"))
+      val expected: Either[WarningMessageType, List[RuleExemption]] =
+        Right(
+          List(
+            RuleExemption("1", Seq("foo.scala")),
+            RuleExemption("id2", Seq("bar.py"))
+          )
         )
-      )
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expected
-    }
 
-    "Support multiple paths with the same id" in new Setup {
-      val configContent =
+    "Support multiple paths with the same id" in new Setup:
+      val configContent: String =
         """
           |leakDetectionExemptions:
           |  - ruleId: '1'
@@ -63,21 +66,21 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
         """.stripMargin
 
       createFileForTest(configContent)
-      val expected = Right(
-        List(
-          RuleExemption("1", Seq("foo.scala")),
-          RuleExemption("1", Seq("bar.py"))
+      val expected: Either[WarningMessageType, List[RuleExemption]] =
+        Right(
+          List(
+            RuleExemption("1", Seq("foo.scala")),
+            RuleExemption("1", Seq("bar.py"))
+          )
         )
-      )
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expected
 
-    }
-
-    "Support rule exemption with multiple paths" in new Setup {
-      val configContent =
+    "Support rule exemption with multiple paths" in new Setup:
+      val configContent: String =
         """
           |leakDetectionExemptions:
           |  - ruleId: '1'
@@ -87,15 +90,16 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
         """.stripMargin
 
       createFileForTest(configContent)
-      val expectedRules = Right(List(RuleExemption("1", Seq("foo.scala", "bar.py"))))
+      val expectedRules: Either[WarningMessageType, List[RuleExemption]] =
+        Right(List(RuleExemption("1", Seq("foo.scala", "bar.py"))))
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expectedRules
-    }
 
-    "Support rule exemption with text" in new Setup {
-      val configContent =
+    "Support rule exemption with text" in new Setup:
+      val configContent: String =
         """
           |leakDetectionExemptions:
           |  - ruleId: '1'
@@ -105,15 +109,15 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
         """.stripMargin
 
       createFileForTest(configContent)
-      val expectedRules = Right(List(RuleExemption("1", Seq("foo.scala"), Some("false-positive"))))
+      val expectedRules: Either[WarningMessageType, List[RuleExemption]] =
+        Right(List(RuleExemption("1", Seq("foo.scala"), Some("false-positive"))))
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] = RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expectedRules
-    }
 
-    "return MissingRuleId when leakDetectionExemptions has missing ruleId field" in new Setup {
-      val configContent =
+    "return MissingRuleId when leakDetectionExemptions has missing ruleId field" in new Setup:
+      val configContent: String =
         """
           |leakDetectionExemptions:
           |  - filePath: /dir/file1
@@ -122,15 +126,16 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
 
       createFileForTest(configContent)
 
-      val expected = Left(ParseFailure)
+      val expected: Either[WarningMessageType, List[RuleExemption]] =
+        Left(ParseFailure)
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expected
-    }
 
-    "Ignore leakDetectionExemptions with bad syntax in a rule" in new Setup {
-      val configContent =
+    "Ignore leakDetectionExemptions with bad syntax in a rule" in new Setup:
+      val configContent: String =
         """
           |leakDetectionExemptions:
           |  - ruleId: '1'
@@ -143,31 +148,33 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
         """.stripMargin
 
       createFileForTest(configContent)
-      val expectedRules = Left(ParseFailure)
+      val expectedRules: Either[WarningMessageType, List[RuleExemption]] =
+        Left(ParseFailure)
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expectedRules
-    }
 
-    "return MissingRepositoryYamlFile Warning if no configuration file exists" in new Setup {
-      val nonexistentFile = new File(Random.nextString(10))
-      val parsedRules     = RulesExemptionParser.parseServiceSpecificExemptions(nonexistentFile)
+    "return MissingRepositoryYamlFile Warning if no configuration file exists" in new Setup:
+      val nonexistentFile: File =
+        File(Random.nextString(10))
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(nonexistentFile)
 
       parsedRules shouldBe Left(MissingRepositoryYamlFile)
-    }
 
-    "return empty list if config exists but exemptions are not defined" in new Setup {
+    "return empty list if config exists but exemptions are not defined" in new Setup:
       val emptyContent = ""
       createFileForTest(emptyContent)
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe Right(List.empty)
-    }
 
-    "return ParseFailure if key `leakDetectionExemptions` exists but has syntax errors" in new Setup {
-      val brokenYaml =
+    "return ParseFailure if key `leakDetectionExemptions` exists but has syntax errors" in new Setup:
+      val brokenYaml: String =
         """
           |foo
           |leakDetectionExemptions
@@ -175,13 +182,13 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
         """.stripMargin
       createFileForTest(brokenYaml)
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe Left(ParseFailure)
-    }
 
-    "return ParseFailure if config has wrong type" in new Setup {
-      val configContent =
+    "return ParseFailure if config has wrong type" in new Setup:
+      val configContent: String =
         """
           |leakDetectionExemptions:
           |  - ruleId: '1' # snake case instead of camelCase
@@ -195,13 +202,13 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
 
       createFileForTest(configContent)
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe Left(ParseFailure)
-    }
 
-    "handle misconfigured exemptions and still parse valid exemptions" in new Setup {
-      val configContent =
+    "handle misconfigured exemptions and still parse valid exemptions" in new Setup:
+      val configContent: String =
         """
           |leakDetectionExemptions:
           |  - rule-id: '1' # snake case instead of camelCase
@@ -211,20 +218,17 @@ class RulesExemptionParserSpec extends AnyWordSpec with Matchers {
         """.stripMargin
 
       createFileForTest(configContent)
-      val expectedRules = Left(ParseFailure)
+      val expectedRules: Either[WarningMessageType, List[RuleExemption]] =
+        Left(ParseFailure)
 
-      val parsedRules = RulesExemptionParser.parseServiceSpecificExemptions(dir.toIO)
+      val parsedRules: Either[WarningMessageType, List[RuleExemption]] =
+        RulesExemptionParser.parseServiceSpecificExemptions(dir.toFile)
 
       parsedRules shouldBe expectedRules
-    }
-  }
 
-  trait Setup {
-    val dir: Path = tmp.dir()
+  trait Setup:
+    val dir: Path = tempDir()
 
-    def createFileForTest(content: String) = {
-      write(dir / "repository.yaml", content)
+    def createFileForTest(content: String): Path =
+      write(dir.resolve("repository.yaml"), content)
       dir
-    }
-  }
-}

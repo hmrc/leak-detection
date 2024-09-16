@@ -33,43 +33,42 @@ class ApiController @Inject()(
   summaryService : SummaryService,
   ruleService    : RuleService,
   cc             : ControllerComponents
-)(implicit
-  ec: ExecutionContext
-) extends BackendController(cc) {
+)(using ExecutionContext
+) extends BackendController(cc):
 
   def leaks(
     repository: Option[String],
     branch    : Option[String],
     ruleId    : Option[String]
-  ): Action[AnyContent] = Action.async {
-    implicit val lf: OFormat[Leak] = Leak.apiFormat
-    leaksService
-      .getLeaks(
-        repoName = repository,
-        branch   = branch,
-        ruleId   = ruleId
-      )
-      .map(r => Ok(Json.toJson(r)))
-  }
+  ): Action[AnyContent] =
+    Action.async:
+      given OFormat[Leak] = Leak.apiFormat
+      leaksService
+        .getLeaks(
+          repoName = repository,
+          branch   = branch,
+          ruleId   = ruleId
+        )
+        .map(r => Ok(Json.toJson(r)))
 
-  def rules(): Action[AnyContent] = Action {
-    Ok(Json.toJson(ruleService.getAllRules()))
-  }
+  def rules: Action[AnyContent] =
+    Action:
+      Ok(Json.toJson(ruleService.getAllRules))
 
   def ruleSummary(
     ruleId    : Option[String],
     repository: Option[String],
     team      : Option[String]
-  ): Action[AnyContent] = Action.async {
-    implicit val sf: OFormat[Summary] = Summary.apiFormat
-    summaryService
-      .getRuleSummaries(
-        ruleId   = ruleId,
-        repoName = repository,
-        teamName = team
-      )
-      .map(r => Ok(Json.toJson(r)))
-  }
+  ): Action[AnyContent] =
+    Action.async:
+      given OFormat[Summary] = Summary.apiFormat
+      summaryService
+        .getRuleSummaries(
+          ruleId   = ruleId,
+          repoName = repository,
+          teamName = team
+        )
+        .map(r => Ok(Json.toJson(r)))
 
   def repositorySummary(
     ruleId          : Option[String],
@@ -77,53 +76,52 @@ class ApiController @Inject()(
     team            : Option[String],
     excludeNonIssues: Boolean,
     includeBranches : Boolean
-  ): Action[AnyContent] = Action.async {
-    implicit val rsf: OFormat[RepositorySummary] = RepositorySummary.format
-    summaryService
-      .getRepositorySummaries(
-        ruleId           = ruleId,
-        repoName         = repository,
-        teamName         = team,
-        excludeNonIssues = excludeNonIssues,
-        includeBranches  = includeBranches
-      )
-      .map(rs => Ok(Json.toJson(rs)))
-  }
+  ): Action[AnyContent] =
+    Action.async:
+      given OFormat[RepositorySummary] = RepositorySummary.format
+      summaryService
+        .getRepositorySummaries(
+          ruleId           = ruleId,
+          repoName         = repository,
+          teamName         = team,
+          excludeNonIssues = excludeNonIssues,
+          includeBranches  = includeBranches
+        )
+        .map(rs => Ok(Json.toJson(rs)))
 
-  def reportLeaks(reportId: ReportId): Action[AnyContent] = Action.async {
-    implicit val lf: OFormat[Leak] = Leak.apiFormat
-    leaksService
-      .getLeaksForReport(reportId)
-      .map(l => Ok(Json.toJson(l)))
-  }
+  def reportLeaks(reportId: ReportId): Action[AnyContent] =
+    Action.async:
+      given OFormat[Leak] = Leak.apiFormat
+      leaksService
+        .getLeaksForReport(reportId)
+        .map(l => Ok(Json.toJson(l)))
 
-  def reportWarnings(reportId: ReportId): Action[AnyContent] = Action.async {
-    implicit val wf: OFormat[Warning] = Warning.apiFormat
-    warningsService
-      .getWarningsForReport(reportId)
-      .map(w => Ok(Json.toJson(w)))
-  }
+  def reportWarnings(reportId: ReportId): Action[AnyContent] =
+    Action.async:
+      given OFormat[Warning] = Warning.apiFormat
+      warningsService
+        .getWarningsForReport(reportId)
+        .map(w => Ok(Json.toJson(w)))
 
   def latestReport(
     repository: Repository,
     branch    : Branch
-  ): Action[AnyContent] = Action.async {
-    implicit val rf: Format[Report] = Report.apiFormat
-    reportsService
-      .getLatestReport(repository, branch)
-      .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
-  }
+  ): Action[AnyContent] =
+    Action.async:
+      given Format[Report] = Report.apiFormat
+      reportsService
+        .getLatestReport(repository, branch)
+        .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
 
-  def repositories(): Action[AnyContent] = Action.async {
-    leaksService
-      .getRepositoriesWithUnresolvedLeaks
-      .map(r => Ok(Json.toJson(r)))
-  }
+  def repositories: Action[AnyContent] =
+    Action.async:
+      leaksService
+        .getRepositoriesWithUnresolvedLeaks
+        .map(r => Ok(Json.toJson(r)))
 
-  def report(reportId: ReportId): Action[AnyContent] = Action.async {
-    implicit val rf: Format[Report] = Report.apiFormat
-    reportsService
-      .getReport(reportId)
-      .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
-  }
-}
+  def report(reportId: ReportId): Action[AnyContent] =
+    Action.async:
+      given Format[Report] = Report.apiFormat
+      reportsService
+        .getReport(reportId)
+        .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))

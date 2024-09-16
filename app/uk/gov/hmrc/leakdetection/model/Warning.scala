@@ -16,25 +16,19 @@
 
 package uk.gov.hmrc.leakdetection.model
 
-import play.api.libs.functional.syntax._
-import play.api.libs.json.{OFormat, __}
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.{Format, JsResult, OFormat, __}
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 
 import java.time.Instant
 
-sealed trait WarningMessageType
-
-case object MissingRepositoryYamlFile extends WarningMessageType
-
-case object InvalidEntry extends WarningMessageType
-
-case object MissingEntry extends WarningMessageType
-
-case object ParseFailure extends WarningMessageType
-
-case object FileLevelExemptions extends WarningMessageType
-
-case object UnusedExemptions extends WarningMessageType
+enum WarningMessageType:
+  case MissingRepositoryYamlFile
+  case InvalidEntry
+  case MissingEntry
+  case ParseFailure
+  case FileLevelExemptions
+  case UnusedExemptions
 
 case class Warning(
   repoName          : String,
@@ -44,20 +38,19 @@ case class Warning(
   warningMessageType: String
 )
 
-object Warning {
+object Warning:
   val apiFormat: OFormat[Warning] =
     ( (__ \ "repoName" ).format[String]
     ~ (__ \ "branch"   ).format[String]
     ~ (__ \ "timestamp").format[Instant]
-    ~ (__ \ "reportId" ).format[ReportId](ReportId.format)
+    ~ (__ \ "reportId" ).format[ReportId]
     ~ (__ \ "message"  ).format[String]
-    )(Warning.apply, unlift(Warning.unapply))
+    )(Warning.apply, o => Tuple.fromProductTyped(o))
 
   def mongoFormat: OFormat[Warning] =
     ( (__ \ "repoName"          ).format[String]
     ~ (__ \ "branch"            ).format[String]
     ~ (__ \ "timestamp"         ).format[Instant](MongoJavatimeFormats.instantFormat)
-    ~ (__ \ "reportId"          ).format[ReportId](ReportId.format)
+    ~ (__ \ "reportId"          ).format[ReportId]
     ~ (__ \ "warningMessageType").format[String]
-    )(Warning.apply, unlift(Warning.unapply))
-}
+    )(Warning.apply, o => Tuple.fromProductTyped(o))

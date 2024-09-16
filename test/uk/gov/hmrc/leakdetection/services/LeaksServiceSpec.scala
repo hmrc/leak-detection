@@ -16,7 +16,8 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import org.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
+import org.mockito.Mockito.when
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.leakdetection.ModelFactory._
@@ -27,27 +28,33 @@ import uk.gov.hmrc.leakdetection.model._
 import uk.gov.hmrc.leakdetection.persistence.LeakRepository
 import uk.gov.hmrc.leakdetection.scanner.Match
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
+import org.mongodb.scala.SingleObservableFuture
 
 import java.time.temporal.ChronoUnit.{HOURS, MILLIS}
 import java.time.Instant
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRepositorySupport[Leak] with MockitoSugar {
+class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRepositorySupport[Leak] with MockitoSugar:
 
-  override val repository = new LeakRepository(mongoComponent)
+  val repository: LeakRepository =
+    LeakRepository(mongoComponent)
 
-  lazy val teamsAndRepositoriesConnector = mock[TeamsAndRepositoriesConnector]
-  lazy val ignoreListConfig = mock[IgnoreListConfig]
+  lazy val teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector =
+    mock[TeamsAndRepositoriesConnector]
+    
+  lazy val ignoreListConfig: IgnoreListConfig =
+    mock[IgnoreListConfig]
 
-  val leaksService = new LeaksService(repository, teamsAndRepositoriesConnector, ignoreListConfig)
+  val leaksService: LeaksService =
+    LeaksService(repository, teamsAndRepositoriesConnector, ignoreListConfig)
 
-  "Leaks service" should {
-    val timestamp = Instant.now().truncatedTo(MILLIS).minus(2, HOURS)
+  "Leaks service" should:
+    val timestamp: Instant =
+      Instant.now().truncatedTo(MILLIS).minus(2, HOURS)
 
-    "get leaks for a report" in {
+    "get leaks for a report" in:
       repository.collection.insertMany(
-
         Seq(aLeak.copy(repoName = "repo1", reportId = ReportId("otherReport"), ruleId = "rule-1", timestamp = timestamp),
           aLeak.copy(repoName = "repo1", ruleId = "rule-2", timestamp = timestamp),
           aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch1", timestamp = timestamp.minus(3, HOURS)),
@@ -61,10 +68,8 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
         aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch1", timestamp = timestamp.minus(3, HOURS)),
         aLeak.copy(repoName = "repo2", ruleId = "rule-1", branch = "branch2", timestamp = timestamp.minus(1, HOURS))
       )
-    }
-  }
 
-  "produce a metric of the total active leaks" in {
+  "produce a metric of the total active leaks" in:
 
     val leaks = few(() => aLeak)
     when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
@@ -75,9 +80,8 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
       "reports.total" -> leaks.length,
       "reports.unresolved" -> leaks.length
     )
-  }
 
-  "produce metrics grouped by team" in {
+  "produce metrics grouped by team" in:
     val leaks = List(aLeakFor("r1", "b1"), aLeakFor("r1", "b1"), aLeakFor("r2", "b1"))
     repository.collection.insertMany(leaks).toFuture().futureValue
 
@@ -94,9 +98,8 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
       "reports.teams.t1.unresolved" -> 2,
       "reports.teams.t2.unresolved" -> 1
     )
-  }
 
-  "normalise team names" in {
+  "normalise team names" in:
     when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
     when(teamsAndRepositoriesConnector.teams())
@@ -109,9 +112,8 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
       "reports.teams.t1.unresolved",
       "reports.teams.t2_with_spaces.unresolved"
     )
-  }
 
-  "ignore shared repositories" in {
+  "ignore shared repositories" in:
     val leak1 = few(() => aLeakFor("r1", "b1"))
     val leak2 = few(() => aLeakFor("r2", "b1"))
     val leaks = leak1 ::: leak2
@@ -129,25 +131,24 @@ class LeaksServiceSpec extends AnyWordSpec with Matchers with DefaultPlayMongoRe
       "reports.teams.t1.unresolved" -> 0,
       "reports.teams.t2.unresolved" -> leak2.length
     )
-  }
 
-  def aLeakFor(repo: String, branch: String) =
+  def aLeakFor(repo: String, branch: String): Leak =
     aLeak.copy(repoName = repo, branch = branch)
 
-  def aLeak = Leak(
-    "repoName",
-    "branch",
-    Instant.now(),
-    ReportId("reportId"),
-    "ruleId", "description",
-    "/file/path",
-    Scope.FILE_CONTENT,
-    1,
-    "url",
-    "abc = 123",
-    List(Match(3, 7)),
-    "high",
-    false,
-    None
-  )
-}
+  def aLeak: Leak =
+    Leak(
+      "repoName",
+      "branch",
+      Instant.now(),
+      ReportId("reportId"),
+      "ruleId", "description",
+      "/file/path",
+      Scope.FILE_CONTENT,
+      1,
+      "url",
+      "abc = 123",
+      List(Match(3, 7)),
+      "high",
+      false,
+      None
+    )

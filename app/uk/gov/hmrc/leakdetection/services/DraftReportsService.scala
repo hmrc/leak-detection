@@ -28,7 +28,7 @@ import scala.concurrent.Future
 class DraftReportsService @Inject() (
   draftRepository: DraftReportsRepository,
   configuration  : Configuration
-){
+):
   lazy val repositoriesToIgnore: Seq[String] =
     configuration.get[Seq[String]]("shared.repositories")
 
@@ -49,4 +49,3 @@ class DraftReportsService @Inject() (
 
   def findAllDraftReports(): Future[Seq[Report]] =
     draftRepository.findAll()
-}

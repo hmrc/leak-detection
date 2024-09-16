@@ -16,12 +16,12 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import cats.implicits._
-import play.api.Logger
+import cats.implicits.*
+import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.leakdetection.connectors.TeamsAndRepositoriesConnector
 import uk.gov.hmrc.leakdetection.controllers.AdminController.NOT_APPLICABLE
-import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.model.*
 import uk.gov.hmrc.leakdetection.persistence.RescanRequestsQueueRepository
 
 import javax.inject.{Inject, Singleton}
@@ -33,15 +33,13 @@ class RescanService @Inject()(
   rescanQueue          : RescanRequestsQueueRepository,
   scanningService      : ScanningService,
   activeBranchesService: ActiveBranchesService
-)(implicit ec: ExecutionContext) {
+)(using ExecutionContext) extends Logging:
 
-  private val logger = Logger(getClass)
-
-  def rescan(repository: Repository, branch: Branch, runMode: RunMode)(implicit headerCarrier: HeaderCarrier): Future[Option[Future[Report]]] =
+  def rescan(repository: Repository, branch: Branch, runMode: RunMode)(using HeaderCarrier): Future[Option[Future[Report]]] =
     teamsAndRepos.repo(repository.asString)
-      .map(f =>
+      .map: f =>
         f.map(repoToPayload(_, runMode))
-          .map(p =>
+          .map: p =>
             scanningService
               .scanRepository(
                 repository    = repository,
@@ -54,35 +52,33 @@ class RescanService @Inject()(
                 archiveUrl    = p.archiveUrl,
                 runMode       = runMode
               )
-          )
-      )
 
   def rescanAllRepos(runMode: RunMode): Future[Unit] =
-    for {
+    for
       repos    <- teamsAndRepos.repos()
       payloads =  repos.map(r => repoToPayload(r, runMode))
       inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
       _        =  logger.info(s"Re-triggered $inserts rescans")
-    } yield ()
+    yield ()
 
   def triggerRescan(repos: List[String], runMode: RunMode): Future[Unit] =
-    for {
+    for
       payloads <- repos.foldLeftM(Seq.empty[PushUpdate])((acc, repoName) =>
                     teamsAndRepos.repo(repoName).map(r => acc ++ r.map(r => repoToPayload(r, runMode)).toSeq)
                   )
       inserts  <- rescanQueue.pushNewBatch(payloads).map(_.length)
       _         = logger.info(s"Re-triggered $inserts rescans")
-    } yield ()
+    yield ()
 
   def rescanArchivedBranches(repository: Repository, runMode: RunMode): Future[Unit] =
-    for {
+    for
       branches    <- activeBranchesService.getActiveBranches(Some(repository.asString)).map(_.map(_.branch))
       repoDetails <- teamsAndRepos.repo(repository.asString)
       pushUpdate  =  repoDetails.map(r => repoToPayload(r, runMode))
       payloads    =  branches.map(b => pushUpdate.map(p => p.copy(branchRef = b, isArchived = true))).flatten //we need to ensure it's marked as archived as it's unlikely teamsAndRepos knows this yet
       inserts     <- rescanQueue.pushNewBatch(payloads).map(_.length)
       _           =  logger.info(s"Re-triggered $inserts rescans")
-    } yield ()
+    yield ()
 
   def clearBranch(repositoryName: String, branchRef: String): Future[Unit] =
     rescanQueue.delete(repositoryName, branchRef)
@@ -99,4 +95,3 @@ class RescanService @Inject()(
       archiveUrl     = s"https://api.github.com/repos/hmrc/${repoInfo.name}/{archive_format}{/ref}",
       runMode        = Some(runMode)
     )
-}

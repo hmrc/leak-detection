@@ -25,6 +25,7 @@ import play.api.libs.json.{Json, Reads}
 import uk.gov.hmrc.leakdetection.model.{Leak, LeakUpdateResult}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.{Codecs, PlayMongoRepository}
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,8 +33,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class LeakRepository @Inject()(
   mongoComponent: MongoComponent
-)(implicit
-  ec: ExecutionContext
+)(using ExecutionContext
 ) extends PlayMongoRepository[Leak](
   collectionName = "leaks",
   mongoComponent = mongoComponent,
@@ -44,19 +44,19 @@ class LeakRepository @Inject()(
       IndexModel(Indexes.descending("reportId"), IndexOptions().name("reportId-idx").background(true)),
       IndexModel(Indexes.descending("timestamp"), IndexOptions().name("timestamp-idx").background(true))
     )
-) with Logging {
+) with Logging:
 
   override lazy val requiresTtlIndex: Boolean = false
 
   // TODO: use transactions
   def update(repo: String, branch: String, violations: Seq[Leak]): Future[LeakUpdateResult] =
-    for {
+    for
       // remove previous violations
       deleted  <- removeBranch(repo, branch)
       // replace with new ones
-      inserted <- if (violations.nonEmpty) collection.insertMany(violations).toFuture().map(_.getInsertedIds.size()) else Future(0)
+      inserted <- if violations.nonEmpty then collection.insertMany(violations).toFuture().map(_.getInsertedIds.size()) else Future(0)
       _        =  logger.info(s"removed $deleted leaks, added $inserted leaks for $repo/$branch")
-    } yield LeakUpdateResult(inserted, deleted)
+    yield LeakUpdateResult(inserted, deleted)
 
   def removeBranch(repo: String, branch: String): Future[Long] =
     collection
@@ -74,7 +74,7 @@ class LeakRepository @Inject()(
     ruleId:   Option[String] = None,
     repoName: Option[String] = None,
     branch:   Option[String] = None
-  ): Future[Seq[Leak]] = {
+  ): Future[Seq[Leak]] =
 
     val ruleFilter:   Option[Bson] = ruleId.map(Filters.eq("ruleId", _))
     val repoFilter:   Option[Bson] = repoName.map(Filters.eq("repoName", _))
@@ -82,13 +82,11 @@ class LeakRepository @Inject()(
 
     collection
       .find(
-        Seq(ruleFilter, repoFilter, branchFilter).flatten match {
+        Seq(ruleFilter, repoFilter, branchFilter).flatten match
           case Nil => BsonDocument()
           case f   => Filters.and(f: _*)
-        }
       )
       .toFuture()
-  }
 
   def findLeaksForReport(reportId: String): Future[Seq[Leak]] =
     collection.find(filter = Filters.eq("reportId", reportId)).toFuture()
@@ -125,16 +123,13 @@ class LeakRepository @Inject()(
         )
       )
       .toFuture()
-      .map(
-        _.map { doc =>
+      .map:
+        _.map: doc =>
           val line = Codecs.fromBson[CountByRepo](doc)(CountByRepo.reads)
           line._id -> line.count
-        }.toMap
-      )
-}
+        .toMap
 
 case class CountByRepo(_id: String, count: Int)
 
-object CountByRepo {
+object CountByRepo:
   val reads: Reads[CountByRepo] = Json.reads[CountByRepo]
-}

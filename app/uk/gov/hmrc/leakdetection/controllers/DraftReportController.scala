@@ -17,7 +17,7 @@
 package uk.gov.hmrc.leakdetection.controllers
 
 import play.api.libs.json.{Format, Json}
-import play.api.mvc.ControllerComponents
+import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.leakdetection.model.{Report, ReportId}
 import uk.gov.hmrc.leakdetection.services.{DraftReportsService, RuleService}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -29,34 +29,30 @@ class DraftReportController @Inject()(
   draftReportsService: DraftReportsService,
   ruleService        : RuleService,
   cc                 : ControllerComponents
-)(implicit
-  ec: ExecutionContext
-) extends BackendController(cc) {
-  implicit val rf: Format[Report] = Report.apiFormat
+)(using ExecutionContext
+) extends BackendController(cc):
+  given Format[Report] = Report.apiFormat
 
-  def findDraftReports(rule: Option[String]) = Action.async {
-    rule match {
-      case None        => draftReportsService.findAllDraftReports().map(d => Ok(Json.toJson(d)))
-      case Some("any") => draftReportsService.findDraftReportsWithViolations().map(d => Ok(Json.toJson(d)))
-      case Some(r)     => ruleService
-                            .getAllRules()
-                            .find(_.id == r)
-                            .fold(
-                              ifEmpty = Future.successful(BadRequest("Unknown ruleId"))
-                            )(
-                              rule => draftReportsService.findDraftReportsForRule(rule).map(d => Ok(Json.toJson(d)))
-                            )
-    }
-  }
+  def findDraftReports(rule: Option[String]): Action[AnyContent] =
+    Action.async:
+      rule match
+        case None        => draftReportsService.findAllDraftReports().map(d => Ok(Json.toJson(d)))
+        case Some("any") => draftReportsService.findDraftReportsWithViolations().map(d => Ok(Json.toJson(d)))
+        case Some(r)     => ruleService
+                              .getAllRules
+                              .find(_.id == r)
+                              .fold(
+                                ifEmpty = Future.successful(BadRequest("Unknown ruleId"))
+                              )(
+                                rule => draftReportsService.findDraftReportsForRule(rule).map(d => Ok(Json.toJson(d)))
+                              )
 
-  def draftReport(reportId: ReportId) = Action.async {
-    draftReportsService
-      .getDraftReport(reportId)
-      .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
-  }
+  def draftReport(reportId: ReportId): Action[AnyContent] =
+    Action.async:
+      draftReportsService
+        .getDraftReport(reportId)
+        .map(_.fold(NotFound("No report found."))(r => Ok(Json.toJson(r))))
 
-  def clearAllDrafts() =
-    Action.async {
+  def clearAllDrafts(): Action[AnyContent] =
+    Action.async:
       draftReportsService.clearDrafts().map(_ => Ok("all drafts deleted"))
-    }
-}

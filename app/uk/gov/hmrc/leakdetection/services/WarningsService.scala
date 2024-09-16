@@ -17,7 +17,8 @@
 package uk.gov.hmrc.leakdetection.services
 
 import uk.gov.hmrc.leakdetection.config.{AppConfig, Rule, RuleExemption}
-import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.model.*
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 import uk.gov.hmrc.leakdetection.persistence.WarningRepository
 
 import java.io.File
@@ -28,7 +29,7 @@ class WarningsService @Inject()(
   appConfig: AppConfig,
   repoVisibilityChecker: RepoVisibilityChecker,
   warningRepository: WarningRepository
-)(implicit ec: ExecutionContext) {
+)(using ExecutionContext):
 
   def saveWarnings(repository: Repository, branch: Branch, warnings: Seq[Warning]): Future[Unit] =
     warningRepository.update(repository.asString, branch.asString, warnings).map(_ => ())
@@ -45,10 +46,10 @@ class WarningsService @Inject()(
   def getWarningsForReport(reportId: ReportId): Future[Seq[Warning]] =
     warningRepository
       .findForReport(reportId.value)
-      .map(
-        _.map(warning =>
+      .map:
+        _.map: warning =>
           warning.copy(warningMessageType =
-            appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))))
+            appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))
 
   def checkForWarnings(
     report: Report,
@@ -66,25 +67,21 @@ class WarningsService @Inject()(
 
   private def checkFileLevelExemptions(
     isPrivate: Boolean,
-    exemptions: List[RuleExemption]): Option[WarningMessageType] = {
+    exemptions: List[RuleExemption]): Option[WarningMessageType] =
     val ruleSet =
-      if (isPrivate) appConfig.allRules.privateRules
+      if isPrivate then appConfig.allRules.privateRules
       else appConfig.allRules.publicRules
 
     def isFileContentRule(ruleId: String): Boolean =
       ruleSet.filter(_.scope == Rule.Scope.FILE_CONTENT).exists(_.id == ruleId)
 
-    if (exemptions
-          .filter(e => isFileContentRule(e.ruleId))
-          .exists(_.text.isEmpty)) {
+    if exemptions.filter(e => isFileContentRule(e.ruleId)).exists(_.text.isEmpty) then
       Some(FileLevelExemptions)
-    } else {
+    else
       None
-    }
-  }
 
   private def checkUnusedExemptions(report: Report, isArchived: Boolean): Option[WarningMessageType] =
-    if (isArchived || report.unusedExemptions.isEmpty)
+    if isArchived || report.unusedExemptions.isEmpty then
       None
-    else Some(UnusedExemptions)
-}
+    else
+      Some(UnusedExemptions)

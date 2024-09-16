@@ -20,10 +20,8 @@ import com.google.inject.AbstractModule
 import uk.gov.hmrc.leakdetection.scheduled.{MetricsScheduler, ScanRepositoriesScheduler}
 import uk.gov.hmrc.leakdetection.config.{AppConfig, AppConfigProvider}
 
-class Module() extends AbstractModule {
-  override def configure(): Unit = {
+class Module() extends AbstractModule:
+  override def configure(): Unit =
     bind(classOf[ScanRepositoriesScheduler]).asEagerSingleton()
     bind(classOf[MetricsScheduler         ]).asEagerSingleton()
     bind(classOf[AppConfig                ]).toProvider(classOf[AppConfigProvider])
-  }
-}

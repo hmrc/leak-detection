@@ -22,17 +22,16 @@ import play.api.libs.json._
 
 sealed trait GithubRequest extends Product with Serializable
 
-object GithubRequest {
+object GithubRequest:
   val githubReads: Reads[GithubRequest] =
     PushUpdate.githubReads
       .orElse(PushDelete.githubReads)
       .orElse(RepositoryEvent.githubReads)
-}
 
 // https://docs.github.com/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#push
 // Set to fail when deleted is false
 // runMode is for the admin endpoint - TODO change to query param
-final case class PushUpdate(
+case class PushUpdate(
   repositoryName: String,
   isPrivate     : Boolean,
   isArchived    : Boolean,
@@ -44,9 +43,9 @@ final case class PushUpdate(
   runMode       : Option[RunMode]
 ) extends GithubRequest
 
-object PushUpdate {
-  implicit val rmr: Format[RunMode] = RunMode.format
+object PushUpdate:
   val githubReads: Reads[GithubRequest] =
+    given Format[RunMode] = RunMode.format
     (__ \ "deleted")
       .read[Boolean]
       .filter(JsonValidationError("delete should be false"))(_ == false)
@@ -62,17 +61,16 @@ object PushUpdate {
         ~ (__ \ "runMode"                   ).readNullable[RunMode]
         )(PushUpdate.apply _)
       )
-}
 
 // Also a Push - deleted is true
-final case class PushDelete(
+case class PushDelete(
   repositoryName: String,
   authorName    : String,
   branchRef     : String,
   repositoryUrl : String
 ) extends GithubRequest
 
-object PushDelete {
+object PushDelete:
   val githubReads: Reads[GithubRequest] =
     (__ \ "deleted")
       .read[Boolean]
@@ -84,41 +82,38 @@ object PushDelete {
         ~ (__ \ "repository" \ "url" ).read[String]
         )(PushDelete.apply _)
       )
-}
 
 // https://docs.github.com/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#repository
-final case class RepositoryEvent(
+case class RepositoryEvent(
   repositoryName: String,
   action        : String
 ) extends GithubRequest
 
-object RepositoryEvent {
+object RepositoryEvent:
   val githubReads: Reads[GithubRequest] =
     ( (__ \ "repository" \ "name").read[String]
     ~ (__ \ "action"             ).read[String]
     )(RepositoryEvent.apply _)
-}
-final case class GitBlameRange(
+    
+case class GitBlameRange(
   startingLine : Int,
   endingLine   : Int,
   oid          : String,
   author       : String)
 
-object GitBlameRange {
+object GitBlameRange:
   val gitBlameFormats: Format[GitBlameRange] =
     ( (__ \ "startingLine").format[Int]
       ~ (__ \ "endingLine").format[Int]
       ~ (__ \ "commit" \ "oid").format[String]
-      ~ (__ \ "commit" \ "author" \ "name").format[String])(apply, unlift(unapply))
-}
+      ~ (__ \ "commit" \ "author" \ "name").format[String])(apply, o => Tuple.fromProductTyped(o))
 
-final case class GitBlame(ranges: Seq[GitBlameRange])
+case class GitBlame(ranges: Seq[GitBlameRange])
 
-object GitBlame {
-  implicit val rb: Format[GitBlameRange] = GitBlameRange.gitBlameFormats
+object GitBlame:
+  given Format[GitBlameRange] = GitBlameRange.gitBlameFormats
 
-  implicit val reads: Reads[GitBlame] =
+  given Reads[GitBlame] =
     (__ \ "data" \ "repositoryOwner" \ "repository" \ "object" \ "blame" \ "ranges").read[List[GitBlameRange]].map { l => GitBlame(l)}
 
-  implicit val writes: OWrites[GitBlame] = Json.writes[GitBlame]
-}
+  given OWrites[GitBlame] = Json.writes[GitBlame]

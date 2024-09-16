@@ -16,12 +16,13 @@
 
 package uk.gov.hmrc.leakdetection.services
 
-import cats.implicits._
-import play.api.Logger
+import cats.implicits.*
+import play.api.Logging
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.leakdetection.config.AppConfig
-import uk.gov.hmrc.leakdetection.connectors._
-import uk.gov.hmrc.leakdetection.model._
+import uk.gov.hmrc.leakdetection.connectors.*
+import uk.gov.hmrc.leakdetection.model.*
+import uk.gov.hmrc.leakdetection.model.WarningMessageType._
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,17 +31,15 @@ import scala.concurrent.{ExecutionContext, Future}
 class AlertingService @Inject()(
   appConfig     : AppConfig,
   slackConnector: SlackNotificationsConnector
-)(implicit
-  ec: ExecutionContext
-) {
-  private val logger = Logger(getClass)
+)(using ExecutionContext
+) extends Logging:
 
   private val slackConfig = appConfig.alerts.slack
 
   type ErrorMessage = String
 
-  def alertAboutFailure(repository: Repository, branch: Branch, author: String,  message: String, isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (!slackConfig.enabled)
+  def alertAboutFailure(repository: Repository, branch: Branch, author: String,  message: String, isPrivate: Boolean)(using HeaderCarrier): Future[Unit] =
+    if !slackConfig.enabled then
       Future.unit
     else
       processSlackChannelMessages(
@@ -56,7 +55,7 @@ class AlertingService @Inject()(
       , commitInfo  = CommitInfo(author, branch, repository)
       )
 
-  def alertAboutWarnings(author: String, warnings: Seq[Warning], isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
+  def alertAboutWarnings(author: String, warnings: Seq[Warning], isPrivate: Boolean)(using HeaderCarrier): Future[Unit] =
     warnings
       .filter(warning => slackConfig.enabled && slackConfig.warningsToAlert.contains(warning.warningMessageType))
       .traverse_ { warning =>
@@ -65,7 +64,7 @@ class AlertingService @Inject()(
         , emoji       = slackConfig.iconEmoji
         , text        = s"Leak Detection had a problem scanning repo: ${warning.repoName} on branch: ${warning.branch}"
         , blocks      = SlackNotificationsConnector.Message.toBlocks(
-                          (slackConfig.warningText + (if (warning.warningMessageType == FileLevelExemptions.toString) slackConfig.seeReportText else ""))
+                          (slackConfig.warningText + (if warning.warningMessageType == FileLevelExemptions.toString then slackConfig.seeReportText else ""))
                             .replace("{repo}"          , warning.repoName)
                             .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
                             .replace("{warningMessage}", appConfig.warningMessages.getOrElse(warning.warningMessageType, warning.warningMessageType))
@@ -75,8 +74,8 @@ class AlertingService @Inject()(
         )
       }
 
-  def alert(report: Report, isPrivate: Boolean)(implicit hc: HeaderCarrier): Future[Unit] =
-    if (!slackConfig.enabled || report.rulesViolated.isEmpty)
+  def alert(report: Report, isPrivate: Boolean)(using HeaderCarrier): Future[Unit] =
+    if !slackConfig.enabled || report.rulesViolated.isEmpty then
       Future.unit
     else
       processSlackChannelMessages(
@@ -93,8 +92,8 @@ class AlertingService @Inject()(
       , commitInfo  = CommitInfo.fromReport(report)
       )
 
-  private def processSlackChannelMessages(displayName: String, emoji: String, text: String, blocks: Seq[play.api.libs.json.JsObject], commitInfo: CommitInfo)(implicit hc: HeaderCarrier): Future[Unit] =
-    for {
+  private def processSlackChannelMessages(displayName: String, emoji: String, text: String, blocks: Seq[play.api.libs.json.JsObject], commitInfo: CommitInfo)(using HeaderCarrier): Future[Unit] =
+    for
       slackAlertMessage       <- Future.successful(SlackNotificationsConnector.Message(
                                    displayName   = displayName
                                  , emoji         = emoji
@@ -104,43 +103,36 @@ class AlertingService @Inject()(
                                  ))
       _                       <- sendSlackMessage(slackConfig.alertChannelEnabled, slackAlertMessage)
       sentToRepositoryChannel <- sendSlackMessage(slackConfig.repositoryChannelEnabled, slackAlertMessage.copy(channelLookup = SlackNotificationsConnector.ChannelLookup.GithubRepository(commitInfo.repository.asString)))
-      _                       <- if (sentToRepositoryChannel)
-                                   Future.unit
-                                 else {
+      _                       <- if sentToRepositoryChannel then Future.unit
+                                 else
                                    logger.warn("Failed to notify the Github Team falling back to notifying the User's Team")
                                    sendSlackMessage(slackConfig.repositoryChannelEnabled, slackAlertMessage.copy(channelLookup = SlackNotificationsConnector.ChannelLookup.TeamsOfGithubUser(commitInfo.author)))
-                                 }
-    } yield ()
+    yield ()
 
-  private def sendSlackMessage(enabled: Boolean, slackMessage: SlackNotificationsConnector.Message)(implicit hc: HeaderCarrier): Future[Boolean] =
-    if (enabled)
-      slackConnector.sendMessage(slackMessage).map {
+  private def sendSlackMessage(enabled: Boolean, slackMessage: SlackNotificationsConnector.Message)(using HeaderCarrier): Future[Boolean] =
+    if enabled then
+      slackConnector.sendMessage(slackMessage).map:
         case rsp if rsp.errors.isEmpty  => true
         case rsp                        => logger.error(s"Errors sending notification: ${rsp.errors.mkString("[", ",", "]")}")
                                            false
-      }
-    else {
+    else
       logger.info(s"Slack notifications disabled for ${slackMessage.channelLookup.by}")
       Future.successful(true)
-    }
-}
 
-final case class CommitInfo(
+case class CommitInfo(
   author    : String,
   branch    : Branch,
   repository: Repository
 )
 
-object CommitInfo {
+object CommitInfo:
   def fromReport(report: Report): CommitInfo =
     CommitInfo(
       author     = report.author,
       branch     = Branch(report.branch),
       repository = Repository(report.repoName)
     )
-}
 
-object RepoVisibility {
+object RepoVisibility:
   def repoVisibility(isPrivate: Boolean): String =
-    if (isPrivate) "Private" else ":alert: `Public` :alert:"
-}
+    if isPrivate then "Private" else ":alert: `Public` :alert:"

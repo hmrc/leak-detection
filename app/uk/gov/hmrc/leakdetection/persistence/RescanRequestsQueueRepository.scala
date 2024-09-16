@@ -21,6 +21,7 @@ import play.api.Configuration
 import uk.gov.hmrc.leakdetection.model.PushUpdate
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{WorkItem, WorkItemFields, WorkItemRepository}
+import org.mongodb.scala.SingleObservableFuture
 
 import java.time.{Duration, Instant}
 import javax.inject.{Inject, Singleton}
@@ -31,17 +32,17 @@ import scala.concurrent.{ExecutionContext, Future}
 class RescanRequestsQueueRepository @Inject()(
   configuration: Configuration,
   mongoComponent: MongoComponent
-)(implicit ec: ExecutionContext
+)(using ExecutionContext
 ) extends WorkItemRepository[PushUpdate](
   collectionName = "rescanRequestsQueue",
   mongoComponent = mongoComponent,
   itemFormat     = MongoPushUpdateFormats.formats,
   workItemFields = WorkItemFields.default
-) {
+):
   override def now(): Instant =
     Instant.now()
 
-  lazy val retryIntervalMillis =
+  lazy val retryIntervalMillis: Long =
     configuration.getMillis("queue.retryAfter")
 
   override val inProgressRetryAfter: Duration =
@@ -63,4 +64,3 @@ class RescanRequestsQueueRepository @Inject()(
       )
       .toFuture()
       .map(_ => ())
-}
