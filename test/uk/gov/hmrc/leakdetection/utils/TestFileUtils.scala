@@ -24,12 +24,12 @@ object TestFileUtils:
     if createFolders then Files.createDirectories(path.getParent)
     Files.write(path, content.getBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
-  def tempDir(dir: Path = null, prefix: String = null, deleteOnExit: Boolean = true): Path =
+  def tempDir(dir: Option[Path] = None, prefix: Option[String] = None): Path =
     val nioPath: Path = dir match
-      case null => Files.createTempDirectory(prefix)
-      case _ => Files.createTempDirectory(dir, prefix)
+      case None => Files.createTempDirectory(prefix.orNull)
+      case Some(directory) => Files.createTempDirectory(directory, prefix.orNull)
 
-    if deleteOnExit then nioPath.toFile.deleteOnExit()
+    nioPath.toFile.deleteOnExit()
     nioPath
 
   def makeDir(subdir: Path): Path =
