@@ -83,11 +83,13 @@ class AlertingService @Inject()(
       , emoji       = slackConfig.iconEmoji
       , text        = s"Something sensitive seems to have been pushed for repo: ${report.repoName} on branch: ${report.branch}"
       , blocks      = SlackNotificationsConnector.Message.toBlocks(
-                        (slackConfig.messageText + slackConfig.seeReportText)
-                          .replace("{repo}"          , report.repoName)
-                          .replace("{branch}"        , report.branch)
-                          .replace("{repoVisibility}", RepoVisibility.repoVisibility(isPrivate))
-                          .replace("{reportLink}"    , url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds".toString)
+                        (slackConfig.messageText + slackConfig.seeReportText + slackConfig.howToResolveText)
+                          .replace("{repo}"                   , report.repoName)
+                          .replace("{branch}"                 , report.branch)
+                          .replace("{repoVisibility}"         , RepoVisibility.repoVisibility(isPrivate))
+                          .replace("{reportLink}"             , url"${slackConfig.leakDetectionUri}/leak-detection/repositories/${report.repoName}/${report.branch}?source=slack-lds".toString)
+                          .replace("{leakResolutionLink}"     , url"${slackConfig.howToResolveUri}".toString)
+                          .replace("{removeSensitiveInfoLink}", url"${slackConfig.removeSensitiveInfoUri}".toString)
                       )
       , commitInfo  = CommitInfo.fromReport(report)
       )

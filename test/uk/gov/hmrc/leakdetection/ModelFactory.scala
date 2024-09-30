@@ -131,9 +131,12 @@ object ModelFactory:
       repositoryChannelEnabled  = true,
       messageText         = "Do not panic, but there is a leak!",
       leakDetectionUri    = "https://somewhere",
+      howToResolveUri     = "https://somewhere",
+      removeSensitiveInfoUri = "https://somewhere-else",
       failureText         = "Failure for {repo} with message - {failureMessage}",
       warningText         = "Warning for {repo} with message - {warningMessage}",
       seeReportText       = " See {reportLink}",
+      howToResolveText    = " To resolve see {leakResolutionLink} and {removeSensitiveInfoLink}",
       warningsToAlert     = Seq.empty
     )
 
