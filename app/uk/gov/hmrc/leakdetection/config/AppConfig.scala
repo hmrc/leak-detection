@@ -74,9 +74,12 @@ class AppConfigProvider @Inject()(
           repositoryChannelEnabled = configuration.get[Boolean    ]("alerts.slack.repositoryChannel.enabled"),
           messageText              = configuration.get[String     ]("alerts.slack.messageText"),
           leakDetectionUri         = configuration.get[String     ]("alerts.slack.leakDetectionUri"),
+          howToResolveUri          = configuration.get[String     ]("alerts.slack.howToResolveUri"),
+          removeSensitiveInfoUri   = configuration.get[String     ]("alerts.slack.removeSensitiveInfoUri"),
           failureText              = configuration.get[String     ]("alerts.slack.failureText"),
           warningText              = configuration.get[String     ]("alerts.slack.warningText"),
           seeReportText            = configuration.get[String     ]("alerts.slack.seeReportText"),
+          howToResolveText         = configuration.get[String     ]("alerts.slack.howToResolveText"),
           warningsToAlert          = configuration.get[Seq[String]]("alerts.slack.warningsToAlert")
         )),
       timeoutBackoff               = configuration.get[Duration]("queue.timeoutBackOff"),
@@ -151,17 +154,20 @@ case class Alerts(
 )
 
 case class SlackConfig(
-  enabled            : Boolean,
-  adminChannel       : String,
-  defaultAlertChannel: String,
-  username           : String,
-  iconEmoji          : String,
-  alertChannelEnabled : Boolean,
-  repositoryChannelEnabled : Boolean,
-  messageText        : String,
-  leakDetectionUri   : String,
-  failureText        : String,
-  warningText        : String,
-  seeReportText      : String,
-  warningsToAlert    : Seq[String]
+  enabled                 : Boolean,
+  adminChannel            : String,
+  defaultAlertChannel     : String,
+  username                : String,
+  iconEmoji               : String,
+  alertChannelEnabled     : Boolean,
+  repositoryChannelEnabled: Boolean,
+  messageText             : String,
+  leakDetectionUri        : String,
+  howToResolveUri         : String,
+  removeSensitiveInfoUri  : String,
+  failureText             : String,
+  warningText             : String,
+  seeReportText           : String,
+  howToResolveText        : String,
+  warningsToAlert         : Seq[String]
 )

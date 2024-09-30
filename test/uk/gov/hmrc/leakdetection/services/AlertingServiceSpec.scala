@@ -59,7 +59,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
           displayName   = "leak-detection",
           emoji         = ":closed_lock_with_key:",
           text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
-          blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"}"""),
+          blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
           channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
         )
 
@@ -99,7 +99,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
           displayName   = "leak-detection",
           emoji         = ":closed_lock_with_key:",
           text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: branch/that/needs/encoding",
-          blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds"}"""),
+          blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
           channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
         )
 
@@ -202,7 +202,7 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
             displayName   = "leak-detection",
             emoji         = ":closed_lock_with_key:",
             text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
-            blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"}"""),
+            blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
             channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
           )
 
