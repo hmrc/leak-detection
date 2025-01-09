@@ -97,11 +97,12 @@ class AlertingService @Inject()(
   private def processSlackChannelMessages(displayName: String, emoji: String, text: String, blocks: Seq[play.api.libs.json.JsObject], commitInfo: CommitInfo)(using HeaderCarrier): Future[Unit] =
     for
       slackAlertMessage       <- Future.successful(SlackNotificationsConnector.Message(
-                                   displayName   = displayName
-                                 , emoji         = emoji
-                                 , text          = text
-                                 , blocks        = blocks
-                                 , channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(slackChannels = List(slackConfig.defaultAlertChannel))
+                                   displayName     = displayName
+                                 , emoji           = emoji
+                                 , text            = text
+                                 , blocks          = blocks
+                                 , channelLookup   = SlackNotificationsConnector.ChannelLookup.SlackChannel(slackChannels = List(slackConfig.defaultAlertChannel))
+                                 , callbackChannel = Some("team-platops-alerts")
                                  ))
       _                       <- sendSlackMessage(slackConfig.alertChannelEnabled, slackAlertMessage)
       sentToRepositoryChannel <- sendSlackMessage(slackConfig.repositoryChannelEnabled, slackAlertMessage.copy(channelLookup = SlackNotificationsConnector.ChannelLookup.GithubRepository(commitInfo.repository.asString)))
