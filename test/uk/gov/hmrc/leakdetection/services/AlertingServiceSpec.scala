@@ -56,11 +56,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
       val expectedMessageToAlertChannel: SlackNotificationsConnector.Message =
         SlackNotificationsConnector.Message(
-          displayName   = "leak-detection",
-          emoji         = ":closed_lock_with_key:",
-          text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
-          blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
-          channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
+          displayName     = "leak-detection",
+          emoji           = ":closed_lock_with_key:",
+          text            = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
+          blocks          = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
+          channelLookup   = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel")),
+          callbackChannel = Some("team-platops-alerts")
         )
 
       val expectedMessageToGithubRepositoryChannel: SlackNotificationsConnector.Message =
@@ -96,11 +97,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
       val expectedMessageToAlertChannel: SlackNotificationsConnector.Message =
         SlackNotificationsConnector.Message(
-          displayName   = "leak-detection",
-          emoji         = ":closed_lock_with_key:",
-          text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: branch/that/needs/encoding",
-          blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
-          channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
+          displayName     = "leak-detection",
+          emoji           = ":closed_lock_with_key:",
+          text            = "Something sensitive seems to have been pushed for repo: repo-name on branch: branch/that/needs/encoding",
+          blocks          = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/branch%2Fthat%2Fneeds%2Fencoding?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
+          channelLookup   = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel")),
+          callbackChannel = Some("team-platops-alerts")
         )
 
       val expectedMessageToGithubRepositoryChannel: SlackNotificationsConnector.Message =
@@ -199,11 +201,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
         val expectedMessageToAlertChannel: SlackNotificationsConnector.Message =
           SlackNotificationsConnector.Message(
-            displayName   = "leak-detection",
-            emoji         = ":closed_lock_with_key:",
-            text          = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
-            blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
-            channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
+            displayName     = "leak-detection",
+            emoji           = ":closed_lock_with_key:",
+            text            = "Something sensitive seems to have been pushed for repo: repo-name on branch: main",
+            blocks          = SlackNotificationsConnector.Message.toBlocks(s"""Do not panic, but there is a leak! See ${url"https://somewhere/leak-detection/repositories/repo-name/${report.branch}?source=slack-lds"} To resolve see https://somewhere and https://somewhere-else"""),
+            channelLookup   = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel")),
+            callbackChannel = Some("team-platops-alerts")
           )
 
         val expectedMessageToGithubRepositoryChannel: SlackNotificationsConnector.Message =
@@ -247,11 +250,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
       val expectedMessageToAlertChannel: SlackNotificationsConnector.Message =
         SlackNotificationsConnector.Message(
-          displayName   = "leak-detection",
-          emoji         = ":closed_lock_with_key:",
-          text          = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch",
-          blocks        = SlackNotificationsConnector.Message.toBlocks("Warning for a-repo with message - invalid entry message"),
-          channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
+          displayName     = "leak-detection",
+          emoji           = ":closed_lock_with_key:",
+          text            = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch",
+          blocks          = SlackNotificationsConnector.Message.toBlocks("Warning for a-repo with message - invalid entry message"),
+          channelLookup   = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel")),
+          callbackChannel = Some("team-platops-alerts")
         )
 
       val expectedMessageToGithubRepositoryChannel: SlackNotificationsConnector.Message =
@@ -280,11 +284,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
       val expectedMessageToAlertChannel: SlackNotificationsConnector.Message =
         SlackNotificationsConnector.Message(
-          displayName   = "leak-detection",
-          emoji         = ":closed_lock_with_key:",
-          text          = "Leak Detection had a problem scanning repo: repo on branch: main",
-          blocks        = SlackNotificationsConnector.Message.toBlocks(s"""Warning for repo with message - file level exemptions See ${url"https://somewhere/leak-detection/repositories/repo/main/exemptions?source=slack-lds"}"""),
-          channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
+          displayName     = "leak-detection",
+          emoji           = ":closed_lock_with_key:",
+          text            = "Leak Detection had a problem scanning repo: repo on branch: main",
+          blocks          = SlackNotificationsConnector.Message.toBlocks(s"""Warning for repo with message - file level exemptions See ${url"https://somewhere/leak-detection/repositories/repo/main/exemptions?source=slack-lds"}"""),
+          channelLookup   = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel")),
+          callbackChannel = Some("team-platops-alerts")
         )
 
       val expectedMessageToGithubRepositoryChannel: SlackNotificationsConnector.Message =
@@ -308,11 +313,12 @@ class AlertingServiceSpec extends AnyWordSpec with Matchers with ScalaFutures wi
 
       val expectedMessageToAlertChannel: SlackNotificationsConnector.Message =
         SlackNotificationsConnector.Message(
-          displayName   = "leak-detection",
-          emoji         = ":closed_lock_with_key:",
-          text          = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch",
-          blocks        = SlackNotificationsConnector.Message.toBlocks("Warning for a-repo with message - MissingEntry"),
-          channelLookup = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel"))
+          displayName     = "leak-detection",
+          emoji           = ":closed_lock_with_key:",
+          text            = "Leak Detection had a problem scanning repo: a-repo on branch: a-branch",
+          blocks          = SlackNotificationsConnector.Message.toBlocks("Warning for a-repo with message - MissingEntry"),
+          channelLookup   = SlackNotificationsConnector.ChannelLookup.SlackChannel(List("#the-channel")),
+          callbackChannel = Some("team-platops-alerts")
         )
 
       val expectedMessageToGithubRepositoryChannel: SlackNotificationsConnector.Message =

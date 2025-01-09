@@ -58,20 +58,22 @@ object SlackNotificationsConnector:
   import play.api.libs.functional.syntax._
 
   case class Message(
-    displayName  : String,
-    emoji        : String,
-    text         : String,
-    blocks       : Seq[JsObject],
-    channelLookup: ChannelLookup
+    displayName    : String,
+    emoji          : String,
+    text           : String,
+    blocks         : Seq[JsObject],
+    channelLookup  : ChannelLookup,
+    callbackChannel: Option[String] = None
   )
 
   object Message:
     val writes: Writes[Message] =
-      ( (__ \ "displayName"  ).write[String]
-      ~ (__ \ "emoji"        ).write[String]
-      ~ (__ \ "text"         ).write[String]
-      ~ (__ \ "blocks"       ).write[Seq[JsObject]]
-      ~ (__ \ "channelLookup").write[ChannelLookup]
+      ( (__ \ "displayName"    ).write[String]
+      ~ (__ \ "emoji"          ).write[String]
+      ~ (__ \ "text"           ).write[String]
+      ~ (__ \ "blocks"         ).write[Seq[JsObject]]
+      ~ (__ \ "channelLookup"  ).write[ChannelLookup]
+      ~ (__ \ "callbackChannel").writeNullable[String]
       )(m => Tuple.fromProductTyped(m))
 
     def toBlocks(mrkdwn: String): Seq[JsObject] =
