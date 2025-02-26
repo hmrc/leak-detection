@@ -56,17 +56,19 @@ class ApiController @Inject()(
       Ok(Json.toJson(ruleService.getAllRules))
 
   def ruleSummary(
-    ruleId    : Option[String],
-    repository: Option[String],
-    team      : Option[String]
+    ruleId        : Option[String],
+    repository    : Option[String],
+    team          : Option[String],
+    digitalService: Option[String],
   ): Action[AnyContent] =
     Action.async:
       given OFormat[Summary] = Summary.apiFormat
       summaryService
         .getRuleSummaries(
-          ruleId   = ruleId,
-          repoName = repository,
-          teamName = team
+          ruleId         = ruleId,
+          repoName       = repository,
+          teamName       = team,
+          digitalService = digitalService
         )
         .map(r => Ok(Json.toJson(r)))
 
@@ -74,6 +76,7 @@ class ApiController @Inject()(
     ruleId          : Option[String],
     repository      : Option[String],
     team            : Option[String],
+    digitalService  : Option[String],
     excludeNonIssues: Boolean,
     includeBranches : Boolean
   ): Action[AnyContent] =
@@ -84,6 +87,7 @@ class ApiController @Inject()(
           ruleId           = ruleId,
           repoName         = repository,
           teamName         = team,
+          digitalService   = digitalService,
           excludeNonIssues = excludeNonIssues,
           includeBranches  = includeBranches
         )

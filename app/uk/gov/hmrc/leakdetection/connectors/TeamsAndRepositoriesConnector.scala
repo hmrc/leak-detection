@@ -77,20 +77,18 @@ class TeamsAndRepositoriesConnector @Inject()(
       .get(url"${baseUrl}/api/v2/teams")
       .execute[Seq[TeamSummary]]
 
-  def repos(): Future[Seq[RepositoryInfo]] =
+  def repos(
+    teamName      : Option[String] = None
+  , digitalService: Option[String] = None
+  ): Future[Seq[RepositoryInfo]] =
     httpClientV2
-      .get(url"${baseUrl}/api/v2/repositories")
+      .get(url"${baseUrl}/api/v2/repositories?team=$teamName&digitalServiceName=$digitalService")
       .execute[Seq[RepositoryInfo]]
 
   def repo(repoName: String): Future[Option[RepositoryInfo]] =
     httpClientV2
       .get(url"${baseUrl}/api/v2/repositories/$repoName")
       .execute[Option[RepositoryInfo]]
-
-  def reposWithTeams(teamName: String): Future[Seq[RepositoryInfo]] =
-    httpClientV2
-      .get(url"${baseUrl}/api/v2/repositories?team=$teamName")
-      .execute[Seq[RepositoryInfo]]
 
   def archivedRepos(): Future[Seq[RepositoryInfo]] =
     httpClientV2
