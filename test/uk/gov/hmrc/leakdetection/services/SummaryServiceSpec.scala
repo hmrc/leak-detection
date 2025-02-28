@@ -93,7 +93,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
     "generate rule summaries by rule, repository and branch" should:
       val repositoryInfo: TeamsAndRepositoriesConnector.RepositoryInfo =
         TeamsAndRepositoriesConnector.RepositoryInfo(name = "repo1", isPrivate = true, isArchived = true, defaultBranch = "main")
-        
+
       when(teamsAndRepositoriesConnector.archivedRepos()).thenReturn(Future(Seq(repositoryInfo)))
 
       when(ruleService.getAllRules).thenReturn(Seq(
@@ -101,13 +101,13 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         aRule.copy(id = "rule-2"),
         aRule.copy(id = "rule-3")
       ))
-      
+
       "include all leaks when no filters applied" in:
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
 
         val results: Seq[Summary] =
-          service.getRuleSummaries(None, None, None).futureValue
+          service.getRuleSummaries(ruleId = None, repoName = None, teamName = None, digitalService = None).futureValue
 
         results shouldBe Seq(
           Summary(aRule.copy(id = "rule-1"), Seq(
@@ -148,13 +148,13 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeLeaks(timestamp)
         givenSomeWarnings(timestamp)
 
-        when(teamsAndRepositoriesConnector.reposWithTeams(eqTo("team1")))
+        when(teamsAndRepositoriesConnector.repos(teamName = eqTo(Some("team1")), digitalService = eqTo(None)))
           .thenReturn(Future.successful(Seq(repositoryInfo)))
 
         when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
         val results: Seq[Summary] =
-          service.getRuleSummaries(None, None, Some("team1")).futureValue
+          service.getRuleSummaries(ruleId = None, repoName = None, teamName = Some("team1"), digitalService = None).futureValue
 
         results shouldBe Seq(
           Summary(aRule.copy(id = "rule-1"), Seq(
@@ -186,7 +186,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
 
       val repositoryInfo: TeamsAndRepositoriesConnector.RepositoryInfo =
         TeamsAndRepositoriesConnector.RepositoryInfo(name = "repo1", isPrivate = true, isArchived = true, defaultBranch = "main")
-        
+
       when(teamsAndRepositoriesConnector.archivedRepos()).thenReturn(Future(Seq(repositoryInfo)))
 
       "include details when just leaks exist" in:
@@ -195,7 +195,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeLeaks(timestamp)
 
         val results: Seq[RepositorySummary] =
-          service.getRepositorySummaries(None, None, None, excludeNonIssues = false, includeBranches = false).futureValue
+          service.getRepositorySummaries(ruleId = None, repoName = None, teamName = None, digitalService = None, excludeNonIssues = false, includeBranches = false).futureValue
 
         results shouldBe Seq(
           RepositorySummary(
@@ -224,7 +224,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeWarnings(timestamp)
 
         val results: Seq[RepositorySummary] =
-          service.getRepositorySummaries(None, None, None, excludeNonIssues = false, includeBranches = false).futureValue
+          service.getRepositorySummaries(ruleId = None, repoName = None, teamName = None, digitalService = None, excludeNonIssues = false, includeBranches = false).futureValue
 
         results shouldBe Seq(
           RepositorySummary(
@@ -262,7 +262,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeWarnings(timestamp)
 
         val results: Seq[RepositorySummary] =
-          service.getRepositorySummaries(None, None, None, excludeNonIssues = false, includeBranches = false).futureValue
+          service.getRepositorySummaries(ruleId = None, repoName = None, teamName = None, digitalService = None, excludeNonIssues = false, includeBranches = false).futureValue
 
         results shouldBe Seq(
           RepositorySummary(
@@ -300,7 +300,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeActiveBranches(timestamp)
 
         val results: Seq[RepositorySummary] =
-          service.getRepositorySummaries(None, None, None, excludeNonIssues = false, includeBranches = false).futureValue
+          service.getRepositorySummaries(ruleId = None, repoName = None, teamName = None, digitalService = None, excludeNonIssues = false, includeBranches = false).futureValue
 
         results.map(_.repository).distinct should contain theSameElementsAs
           Seq("repo1", "repo2", "repo3")
@@ -313,7 +313,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         when(ignoreListConfig.repositoriesToIgnore).thenReturn(Seq.empty)
 
         val results: Seq[RepositorySummary] =
-          service.getRepositorySummaries(None, None, Some("team1"), excludeNonIssues = false, includeBranches = false).futureValue
+          service.getRepositorySummaries(ruleId = None, repoName = None, Some("team1"), digitalService = None, excludeNonIssues = false, includeBranches = false).futureValue
 
         results.map(_.repository) shouldBe Seq("repo1")
 
@@ -323,7 +323,7 @@ class SummaryServiceSpec extends AnyWordSpec with Matchers with MockitoSugar wit
         givenSomeActiveBranches(timestamp)
 
         val results: Seq[RepositorySummary] =
-          service.getRepositorySummaries(None, None, None, excludeNonIssues = false, includeBranches = true).futureValue
+          service.getRepositorySummaries(ruleId = None, repoName = None, teamName = None, digitalService = None, excludeNonIssues = false, includeBranches = true).futureValue
 
         results shouldBe Seq(
           RepositorySummary(
