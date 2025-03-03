@@ -5,12 +5,12 @@ lazy val microservice = Project("leak-detection", file("."))
   .disablePlugins(JUnitXmlReportPlugin)
   .settings(
     majorVersion := 0,
-    scalaVersion := "3.3.3",
+    scalaVersion := "3.3.5",
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
     PlayKeys.playDefaultPort := 8855,
     resolvers     += Resolver.jcenterRepo,
-// Disabled until implemented in a later Scala version
-//    scalacOptions += "-Wconf:src=routes/.*:s"
+    scalacOptions += "-Wconf:src=routes/.*:s",
+    scalacOptions += "-Wconf:msg=Flag.*repeatedly:s"
   )
 
 RoutesKeys.routesImport ++= Seq(
