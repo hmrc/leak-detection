@@ -1,5 +1,4 @@
 //> using scala 3.6.3
-//> using dep "uk.gov.hmrc::leak-detection:0.222.0-SNAPSHOT"
 
 import java.nio.file.{Path, Paths, Files}
 import java.io.File
@@ -70,3 +69,5 @@ import scala.jdk.CollectionConverters.*
 
   println(s"Scan complete! Found ${results.length} potential leaks")
   results.foreach(result => println(s"  ${result.ruleId}: ${result.filePath}:${result.lineNumber}"))
+
+  if results.nonEmpty then sys.exit(1)
