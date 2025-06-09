@@ -8,7 +8,6 @@ lazy val microservice = Project("leak-detection", file("."))
     scalaVersion := "3.3.5",
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
     PlayKeys.playDefaultPort := 8855,
-    resolvers     += Resolver.jcenterRepo,
     scalacOptions += "-Wconf:src=routes/.*:s",
     scalacOptions += "-Wconf:msg=Flag.*repeatedly:s"
   )
