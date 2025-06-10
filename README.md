@@ -96,5 +96,16 @@ Without performing a rescan all, any violations within the existing codebase wil
   * To install Java V8 on Ubuntu, if needed, run `apt install openjdk-8-jdk`
   * If your default Java version does not support this tool, run `sudo update-alternatives --config java` and select a compatible version from the list.
 
+## Running a scan locally
+### Pre-requisites
+* Ensure [scala-cli](https://scala-cli.virtuslab.org/install) is installed.
+
+You can perform a local scan with:
+
+```bash
+./local-scan.sh path-to-repo
+# e.g ./local-scan.sh ../my-repo
+```
+
 ## License
 This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html")

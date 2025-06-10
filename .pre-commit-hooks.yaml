@@ -1,0 +1,7 @@
+-   id: leak-detection
+    name: HMRC Leak Detection
+    description: Scan repository for potential data leaks (requires scala-cli)
+    entry: ./local-scan.sh .
+    language: script
+    pass_filenames: false
+    always_run: true
