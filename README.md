@@ -107,5 +107,36 @@ You can perform a local scan with:
 # e.g ./local-scan.sh ../my-repo
 ```
 
+## pre-commit hook
+### Pre-requisites
+* Ensure [scala-cli](https://scala-cli.virtuslab.org/install) is installed.
+* Ensure [pre-commit](https://pre-commit.com) is installed.
+
+It is possible to run a scan automatically every time a commit is made by using the pre-commit framework.
+
+From the root of your repository, run:
+```bash
+pre-commit install
+```
+
+Then, add the following `.pre-commit-config.yaml` to the root of your repository:
+
+```yaml
+repos:
+-   repo: https://github.com/hmrc/leak-detection
+    rev: v0.223.0
+    hooks:
+    -   id: leak-detection
+```
+
+Ensure you are using the latest version by running `pre-commit autoupdate`
+
+You can test that this has been configured correctly with `pre-commit run`
+
+You should see:
+```bash
+HMRC Leak Detection......................................................Passed
+```
+
 ## License
 This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html")
