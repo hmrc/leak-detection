@@ -40,6 +40,7 @@ object MongoPushUpdateFormats:
     ~ (__ \ "commitId"      ).format[String]
     ~ (__ \ "archiveUrl"    ).format[String]
     ~ (__ \ "runMode"       ).formatNullable[RunMode]
+    ~ (__ \ "ruleId"        ).formatNullable[String]
     )(PushUpdate.apply, p => Tuple.fromProductTyped(p))
 
 @Singleton
