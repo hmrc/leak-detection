@@ -63,7 +63,8 @@ class ScanningService @Inject()(
     commitId:      String,
     authorName:    String,
     archiveUrl:    String,
-    runMode:       RunMode
+    runMode:       RunMode,
+    ruleId:        Option[String] = None
   )(using HeaderCarrier): Future[Report] =
     val savedZipFilePath = Files.createTempFile("unzipped_", "")
     try
@@ -104,8 +105,27 @@ class ScanningService @Inject()(
             _                       <- executeIfNormalMode(leaksService.saveLeaks(repository, branch, leaks))
             _                       <- executeIfNormalMode(warningsService.saveWarnings(repository, branch, warnings))
             _                       <- executeIfNormalMode(activeBranchesService.markAsActive(repository, branch, report.id))
-            _                       <- executeIfNormalMode(alertingService.alert(report, isPrivate))
-            _                       <- executeIfNormalMode(whenDefaultBranch(repository, branch)(alertingService.alertAboutWarnings(authorName, warnings, isPrivate)))
+            _                       <- executeIfNormalMode {
+                                         ruleId match
+                                           case Some(id) =>
+                                             val resultsToAlert = resultsWithCommitId.filter(_.ruleId == id)
+                                             if resultsToAlert.isEmpty then Future.unit
+                                             else
+                                               val filteredReport = report.copy(
+                                                 rulesViolated    = report.rulesViolated.filter { case (r, _) => r == RuleId(id) },
+                                                 exclusions       = report.exclusions.filter    { case (r, _) => r == RuleId(id) }
+                                               )
+                                               val filteredWarnings = warningsService.checkForWarnings(filteredReport, dir, isPrivate, isArchived, exemptions, exemptionParsingResult.left.toSeq)
+                                               for
+                                                 _ <- alertingService.alert(filteredReport, isPrivate)
+                                                 _ <- whenDefaultBranch(repository, branch)(alertingService.alertAboutWarnings(authorName, filteredWarnings, isPrivate))
+                                               yield ()
+                                           case None =>
+                                             for
+                                               _ <- alertingService.alert(report, isPrivate)
+                                               _ <- whenDefaultBranch(repository, branch)(alertingService.alertAboutWarnings(authorName, warnings, isPrivate))
+                                             yield ()
+                                       }
           yield if runMode == Normal then reportWithWarnings else draftReportWithWarnings
       result.onComplete:
         _ =>
@@ -161,7 +181,8 @@ class ScanningService @Inject()(
       commitId      = request.commitId,
       authorName    = request.authorName,
       archiveUrl    = request.archiveUrl,
-      runMode       = request.runMode.getOrElse(Normal)
+      runMode       = request.runMode.getOrElse(Normal),
+      ruleId        = request.ruleId
     ).flatMap(report => repo.completeAndDelete(workItem.id).map(_ => Some(report)))
      .recoverWith:
        case e: IOOperationIncompleteException if e.getCause.isInstanceOf[GithubConnector.LargeDownloadException] =>

@@ -35,27 +35,27 @@ class AdminController @Inject()(
 )(using ExecutionContext
 ) extends BackendController(cc):
 
-  def rescanRepo(repository: Repository, branch: Branch, runMode: RunMode): Action[AnyContent] =
+  def rescanRepo(repository: Repository, branch: Branch, runMode: RunMode, ruleId: Option[String] = None): Action[AnyContent] =
     Action.async:
       implicit request =>
         given Format[Report] = Report.apiFormat
 
-        rescanService.rescan(repository, branch, runMode)
+        rescanService.rescan(repository, branch, runMode, ruleId)
           .flatMap:
             case Some(f) => f.map(r => Ok(Json.toJson(r)))
             case _ => Future.successful(NotFound(s"rescan could not be performed as '${repository.asString}' is not a known HMRC repository"))
 
-  def rescan(runMode: RunMode): Action[JsValue] =
+  def rescan(runMode: RunMode, ruleId: Option[String] = None): Action[JsValue] =
     Action.async(parse.json):
       implicit request =>
         request.body.validate[List[String]].fold(
           _     => Future.successful(BadRequest("Invalid list of repos")),
-          repos => rescanService.triggerRescan(repos, runMode).map(_ => Accepted(""))
+          repos => rescanService.triggerRescan(repos, runMode, ruleId).map(_ => Accepted(""))
         )
 
-  def rescanAllRepos(runMode: RunMode): Action[JsValue] =
-    Action.async(parse.json): _ =>
-      rescanService.rescanAllRepos(runMode).map(_ => Accepted(""))
+  def rescanAllRepos(runMode: RunMode, ruleId: Option[String] = None): Action[AnyContent] =
+    Action.async: _ =>
+      rescanService.rescanAllRepos(runMode, ruleId).map(_ => Accepted(""))
 
   def checkGithubRateLimits: Action[AnyContent] =
     Action.async:
