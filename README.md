@@ -89,6 +89,8 @@ This can be done by passing the ruleId of the new rule as a query param `?rule=:
 This will ensure that teams will be alerted to any violations of the rule and that the offending code will be visible within the MDTP catalogue.    
 Without performing a rescan all, any violations within the existing codebase will not be identified until changes are pushed up to the repository - the main issue with this approach is that not all repositories are actively being worked on.
 
+**NOTE**: Please inform PlatSec before running a rescan in live so that they are aware that new Slack notifications will be going out.
+
 ## Testing in a local environment
 ### Requirements
 * Ensure [sbt](https://www.scala-sbt.org/1.x/docs/Setup.html) is installed.
