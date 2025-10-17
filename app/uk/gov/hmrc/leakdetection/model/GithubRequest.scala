@@ -40,7 +40,8 @@ case class PushUpdate(
   repositoryUrl : String,
   commitId      : String,
   archiveUrl    : String,
-  runMode       : Option[RunMode]
+  runMode       : Option[RunMode],
+  ruleId        : Option[String] = None
 ) extends GithubRequest
 
 object PushUpdate:
@@ -59,6 +60,7 @@ object PushUpdate:
         ~ (__ \ "after"                     ).read[String]
         ~ (__ \ "repository" \ "archive_url").read[String]
         ~ (__ \ "runMode"                   ).readNullable[RunMode]
+        ~ (__ \ "ruleId"                    ).readNullable[String]
         )(PushUpdate.apply _)
       )
 
