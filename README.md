@@ -91,6 +91,803 @@ Without performing a rescan all, any violations within the existing codebase wil
 
 **NOTE**: Please inform PlatSec before running a rescan in live so that they are aware that new Slack notifications will be going out.
 
+## API endpoints
+In production, the routes are mounted at both `/` and `/leak-detection`. The examples below use the `/leak-detection` prefix. For local development, the base URL is usually `http://localhost:8855`.
+
+### PlatSec: fetching AWS secret access key leaks
+Use `GET /leak-detection/api/leaks?ruleId=aws_secret_access_key` to fetch all current leak records for the `aws_secret_access_key` rule.
+
+Sample request:
+```http
+GET /leak-detection/api/leaks?ruleId=aws_secret_access_key HTTP/1.1
+Accept: application/json
+```
+
+Query parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `ruleId` | No | String | Rule id. Use `aws_secret_access_key` for AWS secret access key findings. |
+| `repository` | No | String | Repository name, for example `my-service`. |
+| `branch` | No | String | Branch name. This only applies when `repository` is also supplied. |
+
+Sample response:
+```json
+[
+  {
+    "repoName": "my-service",
+    "branch": "main",
+    "timestamp": "2026-06-24T09:15:30.000Z",
+    "reportId": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+    "ruleId": "aws_secret_access_key",
+    "description": "AWS secret key",
+    "filePath": "/conf/application.conf",
+    "scope": "fileContent",
+    "lineNumber": 42,
+    "urlToSource": "https://github.com/hmrc/my-service/blame/main/conf/application.conf#L42",
+    "lineText": "aws_secret_access_key = <aws-secret-access-key-value>",
+    "matches": [
+      {
+        "start": 4,
+        "end": 55
+      }
+    ],
+    "priority": "high",
+    "isExcluded": false,
+    "commitId": "1b2c3d4e5f6a7b8c9d0e"
+  }
+]
+```
+
+Fields needed for this use case:
+
+| Field | Description |
+| --- | --- |
+| `repoName` | Repository containing the leak. |
+| `branch` | Branch where the leak was detected. |
+| `filePath` | File containing the leak. |
+| `lineNumber` | Line number in the file. |
+| `urlToSource` | GitHub blame URL for the detected line. |
+| `lineText` | Source line, or a shortened line containing the matching text. This is not redacted by the API. |
+| `matches` | Character offsets into `lineText`. Extract `lineText.substring(start, end)` to get the matched fragment. For `aws_secret_access_key`, the actual 40-character value is at the end of that matched fragment. |
+| `isExcluded` | Whether the finding was excluded by an inline, file-level, service-defined, or rule-defined exemption. Consumers usually filter to `false` for active unresolved leaks. |
+| `commitId` | Commit id used to build `urlToSource`, when blame information is available. |
+
+Handle `lineText` and extracted match values as secrets.
+
+### Common response shapes
+
+#### Leak
+```json
+{
+  "repoName": "my-service",
+  "branch": "main",
+  "timestamp": "2026-06-24T09:15:30.000Z",
+  "reportId": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+  "ruleId": "aws_secret_access_key",
+  "description": "AWS secret key",
+  "filePath": "/conf/application.conf",
+  "scope": "fileContent",
+  "lineNumber": 42,
+  "urlToSource": "https://github.com/hmrc/my-service/blame/main/conf/application.conf#L42",
+  "lineText": "aws_secret_access_key = <aws-secret-access-key-value>",
+  "matches": [
+    {
+      "start": 4,
+      "end": 55
+    }
+  ],
+  "priority": "high",
+  "isExcluded": false,
+  "commitId": "1b2c3d4e5f6a7b8c9d0e"
+}
+```
+
+#### Report
+```json
+{
+  "_id": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+  "repoName": "my-service",
+  "repoUrl": "https://github.com/hmrc/my-service",
+  "commitId": "1b2c3d4e5f6a7b8c9d0e",
+  "branch": "main",
+  "timestamp": "2026-06-24T09:15:30.000Z",
+  "author": "github-user",
+  "totalLeaks": 1,
+  "totalWarnings": 0,
+  "rulesViolated": {
+    "aws_secret_access_key": 1
+  },
+  "exclusions": {},
+  "unusedExemptions": []
+}
+```
+
+#### Rule
+```json
+{
+  "id": "aws_secret_access_key",
+  "scope": "fileContent",
+  "regex": "(SECRET|secret|Secret|ACCESS|access|Access|KEY|key|Key)...",
+  "description": "AWS secret key",
+  "ignoredFiles": [
+    "^\\/.*phantomjs.*",
+    "/repository.yaml"
+  ],
+  "ignoredExtensions": [
+    ".zip",
+    ".pdf"
+  ],
+  "ignoredContent": [],
+  "priority": "high",
+  "draft": false
+}
+```
+
+#### Repository summary
+```json
+{
+  "repository": "my-service",
+  "isArchived": false,
+  "firstScannedAt": "2026-06-20T12:00:00Z",
+  "lastScannedAt": "2026-06-24T09:15:30Z",
+  "warningCount": 0,
+  "unresolvedCount": 1,
+  "excludedCount": 0,
+  "branchSummary": [
+    {
+      "branch": "main",
+      "reportId": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+      "scannedAt": "2026-06-24T09:15:30Z",
+      "warningCount": 0,
+      "unresolvedCount": 1,
+      "excludedCount": 0
+    }
+  ]
+}
+```
+
+### GET `/leak-detection/api/repository`
+Returns repository names with unresolved leaks.
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/api/repository HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+[
+  "my-service",
+  "another-service"
+]
+```
+
+### GET `/leak-detection/api/report/:id`
+Returns a report by report id.
+
+Path parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `id` | Yes | String | Report id. |
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/api/report/5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+{
+  "_id": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+  "repoName": "my-service",
+  "repoUrl": "https://github.com/hmrc/my-service",
+  "commitId": "1b2c3d4e5f6a7b8c9d0e",
+  "branch": "main",
+  "timestamp": "2026-06-24T09:15:30.000Z",
+  "author": "github-user",
+  "totalLeaks": 1,
+  "totalWarnings": 0,
+  "rulesViolated": {
+    "aws_secret_access_key": 1
+  },
+  "exclusions": {},
+  "unusedExemptions": []
+}
+```
+
+If no report exists, the service returns `404` with `No report found.`
+
+### GET `/leak-detection/api/report/:id/leaks`
+Returns leak records belonging to a report.
+
+Path parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `id` | Yes | String | Report id. |
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/api/report/5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a/leaks HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+[
+  {
+    "repoName": "my-service",
+    "branch": "main",
+    "timestamp": "2026-06-24T09:15:30.000Z",
+    "reportId": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+    "ruleId": "aws_secret_access_key",
+    "description": "AWS secret key",
+    "filePath": "/conf/application.conf",
+    "scope": "fileContent",
+    "lineNumber": 42,
+    "urlToSource": "https://github.com/hmrc/my-service/blame/main/conf/application.conf#L42",
+    "lineText": "aws_secret_access_key = <aws-secret-access-key-value>",
+    "matches": [
+      {
+        "start": 4,
+        "end": 55
+      }
+    ],
+    "priority": "high",
+    "isExcluded": false,
+    "commitId": "1b2c3d4e5f6a7b8c9d0e"
+  }
+]
+```
+
+### GET `/leak-detection/api/report/:id/warnings`
+Returns warning records belonging to a report.
+
+Path parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `id` | Yes | String | Report id. |
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/api/report/5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a/warnings HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+[
+  {
+    "repoName": "my-service",
+    "branch": "main",
+    "timestamp": "2026-06-24T09:15:30Z",
+    "reportId": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+    "message": "The repository.yaml file contains unused exemptions"
+  }
+]
+```
+
+### GET `/leak-detection/api/leaks`
+Returns leak records. Any combination of `repository` and `ruleId` can be used. `branch` is only applied when `repository` is also supplied.
+
+Query parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `repository` | No | String | Repository name. |
+| `branch` | No | String | Branch name. Only applies when `repository` is also supplied. |
+| `ruleId` | No | String | Rule id, for example `aws_secret_access_key`. |
+
+Sample request:
+```http
+GET /leak-detection/api/leaks?repository=my-service&branch=main&ruleId=aws_secret_access_key HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+[
+  {
+    "repoName": "my-service",
+    "branch": "main",
+    "timestamp": "2026-06-24T09:15:30.000Z",
+    "reportId": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+    "ruleId": "aws_secret_access_key",
+    "description": "AWS secret key",
+    "filePath": "/conf/application.conf",
+    "scope": "fileContent",
+    "lineNumber": 42,
+    "urlToSource": "https://github.com/hmrc/my-service/blame/main/conf/application.conf#L42",
+    "lineText": "aws_secret_access_key = <aws-secret-access-key-value>",
+    "matches": [
+      {
+        "start": 4,
+        "end": 55
+      }
+    ],
+    "priority": "high",
+    "isExcluded": false,
+    "commitId": "1b2c3d4e5f6a7b8c9d0e"
+  }
+]
+```
+
+### GET `/leak-detection/api/:repository/:branch/report`
+Returns the latest report for a repository branch.
+
+Path parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `repository` | Yes | String | Repository name. |
+| `branch` | Yes | String | Branch name. URL-encode branch names containing `/`, for example `feature%2Fabc`. |
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/api/my-service/main/report HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+{
+  "_id": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+  "repoName": "my-service",
+  "repoUrl": "https://github.com/hmrc/my-service",
+  "commitId": "1b2c3d4e5f6a7b8c9d0e",
+  "branch": "main",
+  "timestamp": "2026-06-24T09:15:30.000Z",
+  "author": "github-user",
+  "totalLeaks": 1,
+  "totalWarnings": 0,
+  "rulesViolated": {
+    "aws_secret_access_key": 1
+  },
+  "exclusions": {},
+  "unusedExemptions": []
+}
+```
+
+If no report exists, the service returns `404` with `No report found.`
+
+### GET `/leak-detection/api/rules`
+Returns all configured rules, combining private and public rules and removing duplicates.
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/api/rules HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+[
+  {
+    "id": "aws_secret_access_key",
+    "scope": "fileContent",
+    "regex": "(SECRET|secret|Secret|ACCESS|access|Access|KEY|key|Key)...",
+    "description": "AWS secret key",
+    "ignoredFiles": [
+      "^\\/.*phantomjs.*",
+      "/repository.yaml"
+    ],
+    "ignoredExtensions": [
+      ".zip",
+      ".pdf"
+    ],
+    "ignoredContent": [],
+    "priority": "high",
+    "draft": false
+  }
+]
+```
+
+### GET `/leak-detection/api/rules/summary`
+Returns rule-first summaries. Each result contains a rule and the repositories with leaks for that rule.
+
+Query parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `ruleId` | No | String | Restrict leaks to one rule id. The response still includes all rules, with empty `leaks` arrays for rules that have no matching leaks. |
+| `repository` | No | String | Restrict leaks and warnings to one repository. |
+| `team` | No | String | Restrict to repositories owned by a team according to teams-and-repositories. |
+| `digitalService` | No | String | Restrict to repositories in a digital service according to teams-and-repositories. |
+
+Sample request:
+```http
+GET /leak-detection/api/rules/summary?ruleId=aws_secret_access_key HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+[
+  {
+    "rule": {
+      "id": "aws_secret_access_key",
+      "scope": "fileContent",
+      "regex": "(SECRET|secret|Secret|ACCESS|access|Access|KEY|key|Key)...",
+      "description": "AWS secret key",
+      "ignoredFiles": [
+        "^\\/.*phantomjs.*",
+        "/repository.yaml"
+      ],
+      "ignoredExtensions": [
+        ".zip",
+        ".pdf"
+      ],
+      "ignoredContent": [],
+      "priority": "high",
+      "draft": false
+    },
+    "leaks": [
+      {
+        "repository": "my-service",
+        "isArchived": false,
+        "firstScannedAt": "2026-06-20T12:00:00Z",
+        "lastScannedAt": "2026-06-24T09:15:30Z",
+        "warningCount": 0,
+        "unresolvedCount": 1,
+        "excludedCount": 0,
+        "branchSummary": null
+      }
+    ]
+  }
+]
+```
+
+### GET `/leak-detection/api/repositories/summary`
+Returns repository-first summaries.
+
+Query parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `ruleId` | No | String | Restrict leak counts to one rule id. |
+| `repository` | No | String | Restrict to one repository. |
+| `team` | No | String | Restrict to repositories owned by a team according to teams-and-repositories. |
+| `digitalService` | No | String | Restrict to repositories in a digital service according to teams-and-repositories. |
+| `excludeNonIssues` | No | Boolean | Defaults to `false`. When `true`, repositories with no leaks or warnings are excluded. |
+| `includeBranches` | No | Boolean | Defaults to `false`. When `true`, includes per-branch summaries in `branchSummary`. |
+
+Sample request:
+```http
+GET /leak-detection/api/repositories/summary?ruleId=aws_secret_access_key&includeBranches=true&excludeNonIssues=true HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+[
+  {
+    "repository": "my-service",
+    "isArchived": false,
+    "firstScannedAt": "2026-06-20T12:00:00Z",
+    "lastScannedAt": "2026-06-24T09:15:30Z",
+    "warningCount": 0,
+    "unresolvedCount": 1,
+    "excludedCount": 0,
+    "branchSummary": [
+      {
+        "branch": "main",
+        "reportId": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+        "scannedAt": "2026-06-24T09:15:30Z",
+        "warningCount": 0,
+        "unresolvedCount": 1,
+        "excludedCount": 0
+      }
+    ]
+  }
+]
+```
+
+### POST `/leak-detection/validate`
+Accepts GitHub push and repository webhook payloads. The service queues push updates, clears records for deleted branches, and clears or rescans records for archived or deleted repositories.
+
+Query parameters: none.
+
+Request body:
+
+| Event type | Required fields |
+| --- | --- |
+| Push update | `deleted=false`, `repository.name`, `repository.private`, `repository.archived`, `repository.url`, `repository.archive_url`, `pusher.name`, `ref`, `after` |
+| Push delete | `deleted=true`, `repository.name`, `repository.url`, `pusher.name`, `ref` |
+| Repository event | `repository.name`, `action` |
+
+Sample request:
+```http
+POST /leak-detection/validate HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+{
+  "deleted": false,
+  "ref": "refs/heads/main",
+  "after": "1b2c3d4e5f6a7b8c9d0e",
+  "repository": {
+    "name": "my-service",
+    "private": true,
+    "archived": false,
+    "url": "https://github.com/hmrc/my-service",
+    "archive_url": "https://api.github.com/repos/hmrc/my-service/{archive_format}{/ref}"
+  },
+  "pusher": {
+    "name": "github-user"
+  }
+}
+```
+
+Sample response:
+```json
+{
+  "details": "Request successfully queued"
+}
+```
+
+Other successful `details` values include `Tag commit ignored`, `Duplicate request ignored`, `<repo>/<branch> deleted`, `<repo> archived`, `<repo> deleted`, and `Repository events with <action> actions are ignored`.
+
+### Admin endpoints
+
+#### GET `/leak-detection/admin/github-rate-limits`
+Returns the GitHub `/rate_limit` response fetched using the configured GitHub token.
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/admin/github-rate-limits HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+{
+  "resources": {
+    "core": {
+      "limit": 5000,
+      "used": 120,
+      "remaining": 4880,
+      "reset": 1782295200
+    }
+  },
+  "rate": {
+    "limit": 5000,
+    "used": 120,
+    "remaining": 4880,
+    "reset": 1782295200
+  }
+}
+```
+
+#### GET `/leak-detection/admin/stats`
+Returns current leak metrics.
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/admin/stats HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+{
+  "reports.total": 12,
+  "reports.unresolved": 12,
+  "reports.teams.platform_security.unresolved": 3
+}
+```
+
+#### GET `/leak-detection/admin/draft`
+Returns draft reports.
+
+Query parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `rule` | No | String | If absent, returns all draft reports. Use `any` for draft reports with at least one violation. Use a rule id, for example `aws_secret_access_key`, for draft reports with that rule in `rulesViolated` or `exclusions`. Unknown rule ids return `400 Unknown ruleId`. |
+
+Sample request:
+```http
+GET /leak-detection/admin/draft?rule=aws_secret_access_key HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+[
+  {
+    "_id": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+    "repoName": "my-service",
+    "repoUrl": "https://github.com/hmrc/my-service",
+    "commitId": "1b2c3d4e5f6a7b8c9d0e",
+    "branch": "main",
+    "timestamp": "2026-06-24T09:15:30.000Z",
+    "author": "n/a",
+    "totalLeaks": 1,
+    "totalWarnings": 0,
+    "rulesViolated": {
+      "aws_secret_access_key": 1
+    },
+    "exclusions": {},
+    "unusedExemptions": []
+  }
+]
+```
+
+#### GET `/leak-detection/admin/draft/:id`
+Returns a draft report by report id.
+
+Path parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `id` | Yes | String | Draft report id. |
+
+Query parameters: none.
+
+Sample request:
+```http
+GET /leak-detection/admin/draft/5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+{
+  "_id": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+  "repoName": "my-service",
+  "repoUrl": "https://github.com/hmrc/my-service",
+  "commitId": "1b2c3d4e5f6a7b8c9d0e",
+  "branch": "main",
+  "timestamp": "2026-06-24T09:15:30.000Z",
+  "author": "n/a",
+  "totalLeaks": 1,
+  "totalWarnings": 0,
+  "rulesViolated": {
+    "aws_secret_access_key": 1
+  },
+  "exclusions": {},
+  "unusedExemptions": []
+}
+```
+
+If no report exists, the service returns `404` with `No report found.`
+
+#### DELETE `/leak-detection/admin/draft`
+Deletes all draft reports.
+
+Query parameters: none.
+
+Sample request:
+```http
+DELETE /leak-detection/admin/draft HTTP/1.1
+Accept: text/plain
+```
+
+Sample response:
+```text
+all drafts deleted
+```
+
+#### POST `/leak-detection/admin/rescan`
+Queues rescans for a supplied list of repository names. Scans default branches only.
+
+Query parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `mode` | No | String | `draft` or `normal`. Defaults to `draft`. |
+| `rule` | No | String | Optional rule id. When supplied, the generated scan request carries that rule id. |
+
+Request body:
+
+JSON array of repository names.
+
+Sample request:
+```http
+POST /leak-detection/admin/rescan?mode=normal&rule=aws_secret_access_key HTTP/1.1
+Content-Type: application/json
+Accept: text/plain
+
+[
+  "my-service",
+  "another-service"
+]
+```
+
+Sample response:
+```text
+202 Accepted with an empty body.
+```
+
+Invalid JSON returns `400 Invalid list of repos`.
+
+#### POST `/leak-detection/admin/rescan/:repository/:branch`
+Runs a rescan for one repository branch and returns the report.
+
+Path parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `repository` | Yes | String | Repository name. |
+| `branch` | Yes | String | Branch name. URL-encode branch names containing `/`, for example `feature%2Fabc`. |
+
+Query parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `mode` | No | String | `draft` or `normal`. Defaults to `draft`. |
+| `rule` | No | String | Optional rule id. |
+
+Sample request:
+```http
+POST /leak-detection/admin/rescan/my-service/main?mode=draft&rule=aws_secret_access_key HTTP/1.1
+Accept: application/json
+```
+
+Sample response:
+```json
+{
+  "_id": "5b0d1d7e-2e3c-4a7f-91b4-208be8f8cf0a",
+  "repoName": "my-service",
+  "repoUrl": "https://github.com/hmrc/my-service",
+  "commitId": "1b2c3d4e5f6a7b8c9d0e",
+  "branch": "main",
+  "timestamp": "2026-06-24T09:15:30.000Z",
+  "author": "n/a",
+  "totalLeaks": 1,
+  "totalWarnings": 0,
+  "rulesViolated": {
+    "aws_secret_access_key": 1
+  },
+  "exclusions": {},
+  "unusedExemptions": []
+}
+```
+
+If the repository is not known to teams-and-repositories, the service returns `404` with `rescan could not be performed as 'my-service' is not a known HMRC repository`.
+
+#### POST `/leak-detection/admin/rescan/all`
+Queues rescans for all repositories known to teams-and-repositories. Scans default branches only.
+
+Query parameters:
+
+| Name | Required | Type | Description |
+| --- | --- | --- | --- |
+| `mode` | No | String | `draft` or `normal`. Defaults to `draft`. |
+| `rule` | No | String | Optional rule id. |
+
+Sample request:
+```http
+POST /leak-detection/admin/rescan/all?mode=normal&rule=aws_secret_access_key HTTP/1.1
+Accept: text/plain
+```
+
+Sample response:
+```text
+202 Accepted with an empty body.
+```
+
 ## Testing in a local environment
 ### Requirements
 * Ensure [sbt](https://www.scala-sbt.org/1.x/docs/Setup.html) is installed.
